@@ -47,9 +47,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check restricted RPC migration hygiene
-        run: bash supabase/scripts/check-restricted-rpc-grants.sh
-
       - name: Start local Supabase
         run: ./node_modules/.bin/supabase start --yes --exclude gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
 

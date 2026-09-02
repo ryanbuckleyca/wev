@@ -1,19 +1,33 @@
--- Address Supabase security linter findings:
---   * RLS disabled on job_match_recalc_queue
---   * RLS enabled but no policy on job_skills
---   * SECURITY DEFINER RPCs callable by anon/authenticated
+-- Resolve Supabase security-linter findings:
+--   1. RLS disabled on public.job_match_recalc_queue (internal worker queue).
+--   2. RLS enabled but no policy on public.job_skills, so PostgREST reads return nothing.
+--   3. Internal SECURITY DEFINER RPCs are executable by anon/authenticated.
 --
--- Supabase CLI migrations always run as the postgres superuser, so
--- SELECT apply_restricted_rpc_grants() below is valid in CI and production.
+-- On (3): a new function in public is reachable by the PostgREST roles by default,
+-- both from the built-in PUBLIC EXECUTE grant and from Supabase's own default ACLs
+-- (see pg_default_acl for supabase_admin/public/functions). ALTER DEFAULT PRIVILEGES
+-- does not reliably suppress that on the Supabase image, so an explicit revoke is the
+-- only dependable control. Rather than hand-maintain revoke/grant pairs per signature,
+-- the intended audience of every SECURITY DEFINER RPC is declared once in
+-- private.restricted_rpc and applied by private.apply_restricted_rpc_grants().
+--
+-- Note on CREATE OR REPLACE: replacing a function preserves its owner and ACL, so a
+-- plain CREATE OR REPLACE does not reopen access. Grants are reset only when a function
+-- is DROPped and recreated (required to change its signature or return type). That is
+-- the case that needs the helper re-run, and supabase/tests/restricted_rpc_grants.test.sql
+-- fails the build if any migration leaves the end state wrong, however it was written.
 
 --------------------------------------------------------------------------------
--- 1. job_match_recalc_queue — internal worker queue (service_role + triggers only)
+-- 1. job_match_recalc_queue — internal worker queue
 --------------------------------------------------------------------------------
+--
+-- Table grants for service_role already ship with the queue's own migration
+-- (20260820100000_async_job_match_recalc.sql) and are intentionally left alone here.
+-- The enqueue/drain RPCs are SECURITY DEFINER and owned by postgres, so they operate
+-- on the queue regardless of RLS.
 
 alter table public.job_match_recalc_queue enable row level security;
 
--- Explicit deny for PostgREST client roles. service_role bypasses RLS; postgres-owned
--- SECURITY DEFINER enqueue/drain functions bypass RLS when they touch the queue.
 drop policy if exists "No direct client access to job_match_recalc_queue"
   on public.job_match_recalc_queue;
 
@@ -24,20 +38,17 @@ create policy "No direct client access to job_match_recalc_queue"
   using (false)
   with check (false);
 
--- Workers use SECURITY DEFINER enqueue/drain RPCs; service_role DML is for
--- supabaseServer/admin tooling only. Keep service_role credentials server-side.
-grant select, insert, update, delete on public.job_match_recalc_queue to service_role;
-
 comment on table public.job_match_recalc_queue is
-  'Async job-match recalc worker queue. Client roles (anon/authenticated) are '
-  'denied by RLS; service_role bypasses RLS; workers use SECURITY DEFINER RPCs.';
+  'Async job-match recalc worker queue. anon/authenticated are denied by RLS; '
+  'service_role bypasses RLS; workers go through SECURITY DEFINER RPCs.';
 
 --------------------------------------------------------------------------------
--- 2. job_skills — shared job metadata, public read (like esco_skills)
+-- 2. job_skills — public read, mirroring esco_skills
 --------------------------------------------------------------------------------
+--
+-- Columns are job_id, skill_id, score, source, created_at: no PII, and the same
+-- information is already public via jobs.skills and esco_skills labels.
 
--- Columns are non-PII: job_id, skill_id, score, source, created_at.
--- Same data is already public on jobs.skills and esco_skills labels.
 drop policy if exists "Allow public read access for job_skills" on public.job_skills;
 
 create policy "Allow public read access for job_skills"
@@ -51,79 +62,163 @@ comment on table public.job_skills is
   'No PII — public read mirrors jobs.skills and esco_skills.';
 
 --------------------------------------------------------------------------------
--- 3. Lock down SECURITY DEFINER RPCs to intended roles
---
--- CREATE OR REPLACE resets EXECUTE to PUBLIC. Any migration that replaces one
--- of these functions must end with:  select public.apply_restricted_rpc_grants();
--- CI enforces this via supabase/scripts/check-restricted-rpc-grants.sh
+-- 3. Restricted RPC registry
 --------------------------------------------------------------------------------
 
-create or replace function public.apply_restricted_rpc_grants()
+create schema if not exists private;
+
+comment on schema private is
+  'Internal helpers and metadata that must never be reachable through PostgREST. '
+  'Not listed in config.toml api.schemas, and no USAGE granted to client roles.';
+
+revoke all on schema private from public;
+revoke all on schema private from anon, authenticated, service_role;
+
+-- Single source of truth for who may execute each internal RPC. Both the grant
+-- applier below and supabase/tests/restricted_rpc_grants.test.sql read this table, so
+-- the list cannot drift out of sync with what CI enforces.
+create table if not exists private.restricted_rpc (
+  function_name text primary key,
+  allowed_roles text[] not null default '{}'::text[],
+  is_optional boolean not null default false,
+  rationale text not null
+);
+
+comment on table private.restricted_rpc is
+  'Declares the intended EXECUTE audience of every SECURITY DEFINER function in public. '
+  'allowed_roles is exhaustive: any role not listed must not hold EXECUTE. '
+  'is_optional marks functions that exist only on hosted projects. CI asserts that every '
+  'SECURITY DEFINER function in public appears here, so new ones must be classified.';
+
+delete from private.restricted_rpc;
+
+insert into private.restricted_rpc (function_name, allowed_roles, is_optional, rationale)
+values
+  ('bulk_update_skill_embeddings', '{service_role}', false,
+   'ESCO embedding seeder in wev-scraper.'),
+
+  ('recalculate_matches_for_user', '{service_role}', false,
+   'Match calculator via supabaseServer, and the pg_cron drain worker.'),
+
+  ('recalculate_matches_for_job', '{service_role}', false,
+   'Match calculator via supabaseServer, and the pg_cron drain worker.'),
+
+  ('enqueue_job_match_recalc', '{service_role}', false,
+   'Scraper and admin paths enqueue recalcs after match-relevant column changes.'),
+
+  ('process_job_match_recalc_queue', '{service_role}', false,
+   'Queue drain worker; called by pg_cron and admin tooling.'),
+
+  ('purge_request_logs', '{service_role}', false,
+   'Scheduled retention job for request_logs.'),
+
+  ('reset_restore_identity_sequences', '{service_role}', false,
+   'Restore-time maintenance helper.'),
+
+  ('get_auth_user_id_by_email', '{service_role}', false,
+   'Maps email to auth user id for server-side tooling; must never be client callable.'),
+
+  ('verify_user_password', '{authenticated}', false,
+   'Sole caller is wev-bulletin/lib/account/password-verifier.ts using a server client '
+   'with the user JWT; the function raises when auth.uid() is null. Signup and password '
+   'reset go through GoTrue and do not use this RPC.'),
+
+  ('trigger_recalculate_job_matches', '{}', false,
+   'Trigger body only — never a callable RPC.'),
+
+  ('trigger_recalculate_user_matches', '{}', false,
+   'Trigger body only — never a callable RPC.'),
+
+  ('handle_auth_user_created', '{}', true,
+   'Auth hook body, present on hosted projects only — never a callable RPC.');
+
+--------------------------------------------------------------------------------
+-- 4. Grant applier
+--------------------------------------------------------------------------------
+--
+-- Resolves each manifest entry through pg_proc rather than a written-out signature, so
+-- every overload is covered and a rename or signature change cannot silently no-op.
+-- Deliberately NOT security definer: only a function's owner may change its ACL, and
+-- migrations already run as that owner (postgres). Making it security definer would turn
+-- any future EXECUTE grant on it into a privilege-escalation path.
+
+create or replace function private.apply_restricted_rpc_grants()
 returns void
 language plpgsql
 set search_path = pg_catalog, public
 as $func$
+declare
+  entry    record;
+  target   record;
+  resolved int;
+  grantee  text;
+  drift    text[];
 begin
-  -- Scraper seeder only
-  revoke all on function public.bulk_update_skill_embeddings(jsonb) from public, anon, authenticated;
-  grant execute on function public.bulk_update_skill_embeddings(jsonb) to service_role;
+  for entry in
+    select function_name, allowed_roles, is_optional
+    from private.restricted_rpc
+    order by function_name
+  loop
+    resolved := 0;
 
-  -- Bulletin match-calculator (supabaseServer) and pg_cron worker only
-  revoke all on function public.recalculate_matches_for_user(uuid) from public, anon, authenticated;
-  grant execute on function public.recalculate_matches_for_user(uuid) to service_role;
+    for target in
+      select p.oid::regprocedure as signature
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname = entry.function_name
+    loop
+      resolved := resolved + 1;
 
-  revoke all on function public.recalculate_matches_for_job(uuid) from public, anon, authenticated;
-  grant execute on function public.recalculate_matches_for_job(uuid) to service_role;
+      execute format(
+        'revoke all on function %s from public, anon, authenticated, service_role',
+        target.signature
+      );
 
-  revoke all on function public.enqueue_job_match_recalc(uuid) from public, anon, authenticated;
-  grant execute on function public.enqueue_job_match_recalc(uuid) to service_role;
+      foreach grantee in array entry.allowed_roles loop
+        execute format('grant execute on function %s to %I', target.signature, grantee);
+      end loop;
+    end loop;
 
-  revoke all on function public.process_job_match_recalc_queue(int, int, text, int)
-    from public, anon, authenticated;
-  grant execute on function public.process_job_match_recalc_queue(int, int, text, int)
-    to service_role;
+    if resolved = 0 and not entry.is_optional then
+      raise exception
+        'restricted RPC manifest lists public.% but no such function exists', entry.function_name
+        using hint = 'Drop the manifest row, or set is_optional, if the function was renamed or removed.';
+    end if;
+  end loop;
 
-  -- Maintenance / restore helpers
-  revoke all on function public.purge_request_logs() from public, anon, authenticated;
-  grant execute on function public.purge_request_logs() to service_role;
+  -- Fail the migration rather than leaving a half-applied grant set behind.
+  select array_agg(
+           format('%s: %s should%s hold EXECUTE',
+                  d.signature, d.grantee, case when d.expected then '' else ' not' end)
+           order by d.signature, d.grantee
+         )
+    into drift
+  from (
+    select p.oid::regprocedure::text                          as signature,
+           r.grantee                                          as grantee,
+           r.grantee = any(m.allowed_roles)                   as expected,
+           has_function_privilege(r.grantee, p.oid, 'EXECUTE') as actual
+    from private.restricted_rpc m
+    join pg_proc p on p.proname = m.function_name
+    join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+    cross join (values ('anon'), ('authenticated'), ('service_role')) as r(grantee)
+  ) d
+  where d.expected is distinct from d.actual;
 
-  revoke all on function public.reset_restore_identity_sequences() from public, anon, authenticated;
-  grant execute on function public.reset_restore_identity_sequences() to service_role;
-
-  -- Trigger bodies — not intended as public RPCs
-  revoke all on function public.trigger_recalculate_job_matches() from public, anon, authenticated;
-  revoke all on function public.trigger_recalculate_user_matches() from public, anon, authenticated;
-
-  -- Authenticated session only: sole caller is wev-bulletin/lib/account/password-verifier.ts
-  -- (server client with user JWT). Raises if auth.uid() is null. Signup/auth hooks
-  -- use GoTrue directly — they do not call this RPC.
-  revoke all on function public.verify_user_password(text) from public, anon;
-  grant execute on function public.verify_user_password(text) to authenticated;
-
-  -- Auth hook (may exist on hosted projects only)
-  if exists (
-    select 1
-    from pg_proc p
-    join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public'
-      and p.proname = 'handle_auth_user_created'
-      and p.pronargs = 0
-  ) then
-    revoke all on function public.handle_auth_user_created() from public, anon, authenticated;
+  if drift is not null then
+    raise exception 'restricted RPC grants did not apply cleanly: %',
+      array_to_string(drift, '; ');
   end if;
 end;
 $func$;
 
-alter function public.apply_restricted_rpc_grants() owner to postgres;
+comment on function private.apply_restricted_rpc_grants() is
+  'Applies private.restricted_rpc to every matching overload in public, then verifies the '
+  'result and raises on mismatch. Owner-only by design: migrations run as postgres. Re-run '
+  'it from any migration that DROPs and recreates a restricted RPC.';
 
--- Superuser-only: not callable via PostgREST or service_role. Migrations run as
--- postgres and invoke SELECT apply_restricted_rpc_grants(); app runtimes use the
--- individual restricted RPCs (service_role / authenticated) whose grants this sets.
-revoke all on function public.apply_restricted_rpc_grants() from public, anon, authenticated, service_role;
+revoke all on function private.apply_restricted_rpc_grants()
+  from public, anon, authenticated, service_role;
 
-select public.apply_restricted_rpc_grants();
-
-comment on function public.apply_restricted_rpc_grants() is
-  'Re-applies EXECUTE grants on internal SECURITY DEFINER RPCs. '
-  'Superuser/migration-only — not granted to service_role or PostgREST roles. '
-  'Call after any CREATE OR REPLACE on those functions.';
+select private.apply_restricted_rpc_grants();
