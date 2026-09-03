@@ -81,8 +81,18 @@ select is_empty(
   'EXECUTE privileges on restricted RPCs match the manifest'
 );
 
-select ok(
-  has_function_privilege('service_role', 'public.enqueue_job_match_recalc(uuid)', 'EXECUTE'),
+-- Named spot-check on the hottest path, resolved through pg_proc like the applier rather
+-- than a written-out signature: casting a stale literal signature to regprocedure raises
+-- undefined_function, which would surface as a died test instead of a clean failure.
+-- Phrased positively so it fails if the function disappears, rather than passing vacuously.
+select isnt_empty(
+  $$
+  select 1
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+  where p.proname = 'enqueue_job_match_recalc'
+    and has_function_privilege('service_role', p.oid, 'EXECUTE')
+  $$,
   'service_role retains EXECUTE on enqueue_job_match_recalc'
 );
 

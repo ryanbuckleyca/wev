@@ -90,6 +90,12 @@ comment on table private.restricted_rpc is
   'is_optional marks functions that exist only on hosted projects. CI asserts that every '
   'SECURITY DEFINER function in public appears here, so new ones must be classified.';
 
+-- This migration is the authoritative baseline for the manifest, so the seed below is a
+-- full replacement rather than an upsert: removing a row from this file removes it from
+-- the database. That is safe because migrations apply exactly once, and because a later
+-- migration adding an entry runs after this one both on a fresh `supabase db reset` and
+-- on an incremental deploy. Any future migration that maintains the manifest should
+-- insert or upsert its own rows and must not delete.
 delete from private.restricted_rpc;
 
 insert into private.restricted_rpc (function_name, allowed_roles, is_optional, rationale)
