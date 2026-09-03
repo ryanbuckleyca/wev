@@ -14,7 +14,7 @@
 
 begin;
 
-select plan(10);
+select plan(11);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -73,6 +73,19 @@ select isnt_empty(
     and qual = 'false'
   $$,
   'job_match_recalc_queue has a deny-all policy for anon and authenticated'
+);
+
+-- Asserted separately from the policy below: with RLS off, the public-read checks
+-- further down would still pass on the table grant alone, so a future migration could
+-- silently regress to the "RLS disabled in public" linter finding.
+select ok(
+  (
+    select c.relrowsecurity
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public' and c.relname = 'job_skills'
+  ),
+  'RLS is enabled on job_skills'
 );
 
 select isnt_empty(
