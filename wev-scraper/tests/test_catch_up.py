@@ -5,12 +5,13 @@ failed wrote nothing, so the same incomplete orgs were re-assessed on every
 scrape and burned LLM credits forever.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 
 from utils.catch_up import (
     SKIP_REASON_EXCEPTION,
+    SKIP_REASON_INCOMPLETE_BACKLOG,
     SKIP_REASON_NO_NEW_FIELDS,
     SKIP_REASON_PARTIAL_FILL,
     filter_assessment_update_fields,
@@ -256,6 +257,7 @@ def _run_processing(orgs, outcomes, db_fields=None):
     table = MagicMock()
     table.update.side_effect = lambda payload: (payloads.append(payload), table)[1]
     table.eq.return_value = table
+    table.is_.return_value = table
     table.execute.return_value = MagicMock(data=[{}])
 
     assessor = MagicMock()
@@ -394,15 +396,82 @@ def test_backlog_script_records_assessment_skip_reason(module_name):
     assert "assessor.assess(" not in source
 
 
+def _park_table(*, data=None, error=None):
+    table = MagicMock()
+    table.update.return_value = table
+    table.eq.return_value = table
+    table.is_.return_value = table
+    if error is not None:
+        table.execute.side_effect = error
+    else:
+        table.execute.return_value = MagicMock(data=data)
+    return table
+
+
 def test_park_failure_does_not_abort_the_run():
     """A DB error while parking must not take down the remaining orgs."""
     from utils.catch_up import _park_org
 
-    table = MagicMock()
-    table.update.return_value = table
-    table.eq.return_value = table
-    table.execute.side_effect = Exception("connection reset")
+    table = _park_table(error=Exception("connection reset"))
 
     with patch("utils.catch_up.supabase") as mock_sb:
         mock_sb.table.return_value = table
-        _park_org(1, SKIP_REASON_EXCEPTION)  # must not raise
+        # Must not raise.
+        _park_org({"id": 1, "assessment_skip_reason": None}, SKIP_REASON_EXCEPTION)
+
+
+# ---------------------------------------------------------------------------
+# Parking must not overwrite an admin decision
+# ---------------------------------------------------------------------------
+
+# An admin can hit Retry (clearing the reason) or Ignore while an assessment is
+# in flight. Parking the failure afterwards would silently undo that, so the
+# write is conditioned on the reason we read.
+
+
+def test_park_matches_an_unset_reason_with_is_null():
+    from utils.catch_up import _park_org
+
+    table = _park_table(data=[{}])
+
+    with patch("utils.catch_up.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        _park_org({"id": 2, "assessment_skip_reason": None}, SKIP_REASON_EXCEPTION)
+
+    # eq would never match a NULL in PostgREST.
+    table.is_.assert_called_once_with("assessment_skip_reason", "null")
+
+
+def test_park_matches_an_existing_reason_with_eq():
+    from utils.catch_up import _park_org
+
+    table = _park_table(data=[{}])
+
+    with patch("utils.catch_up.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        _park_org(
+            {"id": 3, "assessment_skip_reason": SKIP_REASON_INCOMPLETE_BACKLOG},
+            SKIP_REASON_EXCEPTION,
+        )
+
+    table.is_.assert_not_called()
+    assert (
+        call("assessment_skip_reason", SKIP_REASON_INCOMPLETE_BACKLOG)
+        in table.eq.call_args_list
+    )
+
+
+def test_park_logs_and_preserves_state_when_the_reason_changed():
+    """No row matched, so an admin changed the reason while we were assessing."""
+    from utils.catch_up import _park_org
+
+    table = _park_table(data=[])
+    logged: list[str] = []
+
+    with patch("utils.catch_up.supabase") as mock_sb, patch(
+        "utils.catch_up._log", side_effect=lambda m: logged.append(m)
+    ):
+        mock_sb.table.return_value = table
+        _park_org({"id": 4, "assessment_skip_reason": None}, SKIP_REASON_EXCEPTION)
+
+    assert any("changed since read" in m for m in logged), logged

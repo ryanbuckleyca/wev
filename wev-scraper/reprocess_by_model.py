@@ -198,12 +198,12 @@ def main():
             else:
                 print("  ❌ Assessment failed")
                 error_count += 1
-                _park_org(org_id, outcome.skip_reason or SKIP_REASON_EXCEPTION)
+                _park_org(org, outcome.skip_reason or SKIP_REASON_EXCEPTION)
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
-            _park_org(org_id, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         time.sleep(0.5)
 

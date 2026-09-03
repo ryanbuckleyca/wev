@@ -51,8 +51,12 @@ def main():
 
     print(f"Total organizations: {len(all_orgs)}")
 
-    # Filter to incomplete orgs (missing critical fields)
+    # Filter to incomplete orgs (missing critical fields), excluding rows an earlier
+    # attempt already parked for review. Matches the filter in backfill_orgs.py:
+    # without it this script re-spends LLM credits on orgs that are known to need
+    # human attention, which is what parking exists to prevent.
     incomplete_orgs = []
+    parked_skipped = 0
     for org in all_orgs:
         missing_critical = []
         if not org.get('sector_id'):
@@ -64,10 +68,19 @@ def main():
         if not org.get('description_fr'):
             missing_critical.append('description_fr')
 
-        if missing_critical:
-            incomplete_orgs.append((org, missing_critical))
+        if not missing_critical:
+            continue
+        if org.get('assessment_skip_reason') is not None:
+            parked_skipped += 1
+            continue
+        incomplete_orgs.append((org, missing_critical))
 
     print(f"\nIncomplete organizations: {len(incomplete_orgs)}")
+    if parked_skipped:
+        print(
+            f"Parked for review (skipped): {parked_skipped} — "
+            "clear assessment_skip_reason from the admin page to retry one"
+        )
 
     if not incomplete_orgs:
         print("\n✅ All organizations are complete!")
@@ -134,7 +147,6 @@ def main():
     no_change_count = 0
 
     for i, (org, missing) in enumerate(orgs_to_process, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -179,7 +191,7 @@ def main():
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
-            _park_org(org_id, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Small delay to avoid rate limiting
         time.sleep(0.5)

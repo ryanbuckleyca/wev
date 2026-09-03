@@ -123,7 +123,6 @@ def main(argv=None):
     error_count = 0
 
     for i, org in enumerate(incomplete_orgs, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -169,7 +168,7 @@ def main(argv=None):
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
-            _park_org(org_id, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Rate limiting
         time.sleep(0.5)

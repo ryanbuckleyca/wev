@@ -84,7 +84,6 @@ def main():
     still_failed_count = 0
 
     for i, org in enumerate(orgs_to_retry, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -125,7 +124,7 @@ def main():
         except Exception as e:
             print(f"  ❌ Error: {e}")
             still_failed_count += 1
-            _park_org(org_id, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         time.sleep(0.5)
 

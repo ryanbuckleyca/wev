@@ -287,7 +287,6 @@ def process_unprocessed_orgs(unprocessed):
     errors = 0
 
     for i, (org, _initial_needs) in enumerate(unprocessed, 1):
-        oid = org["id"]
         name = org.get("name") or "(unnamed)"
         municipality = org.get("municipality")
         province = org.get("province")
@@ -348,7 +347,7 @@ def process_unprocessed_orgs(unprocessed):
             errors += 1
             parked += 1
 
-            _park_org(oid, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         if i % 50 == 0 or i == 1:
             _log(

@@ -228,15 +228,34 @@ def persist_org_assessment_outcome(
     return OrgAssessmentWriteResult(filtered, reason, True)
 
 
-def _park_org(oid: Any, reason: str | None) -> None:
+def _park_org(org: Dict[str, Any], reason: str | None) -> None:
     """Write assessment_skip_reason on its own, tolerating DB failure.
 
     Only for exception handlers: a failed park must not abort the remaining orgs.
+
+    Conditioned on the reason we read, so parking cannot overwrite an administrative
+    decision taken while the assessment was running — an admin Retry that cleared the
+    reason, or an Ignore. Guarding on assessment_skip_reason rather than on the row
+    version like persist_org_assessment_outcome does is deliberate: organizations has
+    no updated_at column, so a row-level compare-and-swap has nothing to compare.
     """
+    oid = org["id"]
+    read_reason = org.get("assessment_skip_reason")
     try:
-        supabase.table("organizations").update(
+        query = supabase.table("organizations").update(
             {"assessment_skip_reason": reason}
-        ).eq("id", oid).execute()
+        ).eq("id", oid)
+        # PostgREST needs is.null rather than eq for an unset reason.
+        if read_reason is None:
+            query = query.is_("assessment_skip_reason", "null")
+        else:
+            query = query.eq("assessment_skip_reason", read_reason)
+        resp = query.execute()
+        if not resp.data:
+            _log(
+                f"  ⚠️  Did not park org {oid} as {reason!r}: "
+                f"assessment_skip_reason changed since read (was {read_reason!r})"
+            )
     except Exception as e:
         _log(f"  ⚠️  Could not park org {oid} as {reason!r}: {e}")
 
@@ -334,7 +353,6 @@ def process_unprocessed_organizations(
     errors = 0
     parked = 0
     for i, (org, _needs) in enumerate(unprocessed, 1):
-        oid = org["id"]
         name = org.get("name") or "(unnamed)"
 
         if i % 25 == 0:
@@ -374,7 +392,7 @@ def process_unprocessed_organizations(
             _log(f"  Org [{name}] error: {e}")
             errors += 1
             parked += 1
-            _park_org(oid, SKIP_REASON_EXCEPTION)
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Gentle rate limit — Gemini free tier ~15 RPM; keep well under to avoid
         # 429/503 spikes that trigger long cooldowns. Override via
