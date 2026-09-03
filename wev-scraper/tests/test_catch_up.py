@@ -221,16 +221,31 @@ def test_filter_assessment_update_fields_uses_field_aware_missing_predicate():
     assert filtered == {"language": "en", "values_list": ["Community"]}
 
 
-def test_persist_org_assessment_outcome_skips_stale_rows():
-    org = _complete_org(id=7, sector_id=None, updated_at="2026-01-01T00:00:00Z")
+def _update_table(*, data=None, payloads=None, error=None):
+    """Mock of the supabase table builder used by the org write helpers."""
+    table = MagicMock()
+    if payloads is None:
+        table.update.return_value = table
+    else:
+        table.update.side_effect = lambda payload: (payloads.append(payload), table)[1]
+    table.eq.return_value = table
+    table.is_.return_value = table
+    if error is not None:
+        table.execute.side_effect = error
+    else:
+        table.execute.return_value = MagicMock(data=data)
+    return table
+
+
+def test_persist_skips_when_another_writer_changed_the_reason():
+    org = _complete_org(id=7, sector_id=None)
     outcome = AssessmentOutcome({"canonical_name": "X"}, None)
 
-    table = MagicMock()
-    table.update.return_value = table
-    table.eq.return_value = table
-    table.execute.return_value = MagicMock(data=[])
+    table = _update_table(data=[])  # update matched no row
 
     with patch("utils.catch_up.supabase") as mock_sb, patch(
+        "utils.catch_up._reload_org", return_value=dict(org)
+    ), patch(
         "utils.organization_assessment._result_to_db_fields",
         return_value={"sector_id": "housing"},
     ):
@@ -238,8 +253,60 @@ def test_persist_org_assessment_outcome_skips_stale_rows():
         write = persist_org_assessment_outcome(org, outcome)
 
     assert write.applied is False
-    assert write.reason is None
-    assert table.eq.call_count == 2
+    # organizations has no updated_at, so the guard is the skip reason we re-read.
+    table.is_.assert_called_once_with("assessment_skip_reason", "null")
+
+
+def test_persist_reports_not_applied_when_the_row_is_gone():
+    org = _complete_org(id=7, sector_id=None)
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+
+    with patch("utils.catch_up.supabase"), patch(
+        "utils.catch_up._reload_org", return_value=None
+    ):
+        write = persist_org_assessment_outcome(org, outcome)
+
+    assert write.applied is False
+    assert write.filtered == {}
+
+
+def test_persist_resolves_against_the_freshly_read_row():
+    """An admin completing the org mid-assessment must clear it, not park it.
+
+    The assessment ran against a row missing sector_id and came back with nothing
+    new. Resolving from that stale snapshot parks the org as no_new_fields, sending
+    a row the admin just finished straight back into the review queue.
+    """
+    stale = _complete_org(id=8, sector_id=None)  # what we selected for assessment
+    fresh = _complete_org(id=8)  # admin filled it in while we were assessing
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+
+    payloads: list[dict] = []
+    table = _update_table(data=[{}], payloads=payloads)
+
+    with patch("utils.catch_up.supabase") as mock_sb, patch(
+        "utils.catch_up._reload_org", return_value=fresh
+    ), patch("utils.organization_assessment._result_to_db_fields", return_value={}):
+        mock_sb.table.return_value = table
+        write = persist_org_assessment_outcome(stale, outcome)
+
+    assert write.applied is True
+    assert write.reason is None, "a row that is already complete must not be parked"
+    assert payloads == [{"assessment_skip_reason": None}]
+
+
+def test_reload_org_returns_none_when_the_read_fails():
+    from utils.catch_up import _reload_org
+
+    table = MagicMock()
+    table.select.return_value = table
+    table.eq.return_value = table
+    table.limit.return_value = table
+    table.execute.side_effect = Exception("timeout")
+
+    with patch("utils.catch_up.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        assert _reload_org(1) is None
 
 
 # ---------------------------------------------------------------------------
@@ -265,7 +332,13 @@ def _run_processing(orgs, outcomes, db_fields=None):
 
     unprocessed = [(org, find_missing_org_fields(org)) for org in orgs]
 
+    # persist_org_assessment_outcome re-reads the row before writing; hand back the
+    # same state so these cases stay focused on the write payloads.
+    reload_rows = {o["id"]: dict(o) for o in orgs}
+
     with patch("utils.catch_up.supabase") as mock_sb, patch(
+        "utils.catch_up._reload_org", side_effect=lambda oid: reload_rows.get(oid)
+    ), patch(
         "utils.organization_assessment.OrganizationAssessor", return_value=assessor
     ), patch("llm.tavily_grounding.is_tavily_available", return_value=True), patch(
         "utils.organization_assessment._result_to_db_fields",
@@ -396,23 +469,11 @@ def test_backlog_script_records_assessment_skip_reason(module_name):
     assert "assessor.assess(" not in source
 
 
-def _park_table(*, data=None, error=None):
-    table = MagicMock()
-    table.update.return_value = table
-    table.eq.return_value = table
-    table.is_.return_value = table
-    if error is not None:
-        table.execute.side_effect = error
-    else:
-        table.execute.return_value = MagicMock(data=data)
-    return table
-
-
 def test_park_failure_does_not_abort_the_run():
     """A DB error while parking must not take down the remaining orgs."""
     from utils.catch_up import _park_org
 
-    table = _park_table(error=Exception("connection reset"))
+    table = _update_table(error=Exception("connection reset"))
 
     with patch("utils.catch_up.supabase") as mock_sb:
         mock_sb.table.return_value = table
@@ -432,7 +493,7 @@ def test_park_failure_does_not_abort_the_run():
 def test_park_matches_an_unset_reason_with_is_null():
     from utils.catch_up import _park_org
 
-    table = _park_table(data=[{}])
+    table = _update_table(data=[{}])
 
     with patch("utils.catch_up.supabase") as mock_sb:
         mock_sb.table.return_value = table
@@ -445,7 +506,7 @@ def test_park_matches_an_unset_reason_with_is_null():
 def test_park_matches_an_existing_reason_with_eq():
     from utils.catch_up import _park_org
 
-    table = _park_table(data=[{}])
+    table = _update_table(data=[{}])
 
     with patch("utils.catch_up.supabase") as mock_sb:
         mock_sb.table.return_value = table
@@ -465,7 +526,7 @@ def test_park_logs_and_preserves_state_when_the_reason_changed():
     """No row matched, so an admin changed the reason while we were assessing."""
     from utils.catch_up import _park_org
 
-    table = _park_table(data=[])
+    table = _update_table(data=[])
     logged: list[str] = []
 
     with patch("utils.catch_up.supabase") as mock_sb, patch(

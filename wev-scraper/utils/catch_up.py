@@ -167,14 +167,16 @@ def resolve_org_skip_reason(
     Returns None when the org came out complete (clearing any prior reason), or
     the reason that parks it for human review. Order-independent: it merges
     *filtered* over *org* itself rather than trusting the caller to have done so.
+
+    Completeness is checked before "did we contribute anything", so an org that is
+    already complete clears its reason even when the assessment had nothing new to
+    add. Ordering it the other way parked rows an admin had just finished filling in.
     """
     if outcome.result is None:
         return outcome.skip_reason or SKIP_REASON_EXCEPTION
-    if not filtered:
-        return SKIP_REASON_NO_NEW_FIELDS
-    if find_missing_org_fields({**org, **filtered}):
-        return SKIP_REASON_PARTIAL_FILL
-    return None
+    if not find_missing_org_fields({**org, **filtered}):
+        return None
+    return SKIP_REASON_PARTIAL_FILL if filtered else SKIP_REASON_NO_NEW_FIELDS
 
 
 @dataclass(frozen=True)
@@ -202,29 +204,67 @@ def filter_assessment_update_fields(
     return filtered
 
 
+def _reload_org(oid: Any) -> Dict[str, Any] | None:
+    """Re-read one organization row. None means gone, or unreadable right now."""
+    try:
+        resp = (
+            supabase.table("organizations").select("*").eq("id", oid).limit(1).execute()
+        )
+    except Exception as e:
+        _log(f"  ⚠️  Could not re-read org {oid} before writing: {e}")
+        return None
+    rows = resp.data or []
+    return rows[0] if rows else None
+
+
+def _require_unchanged_reason(query: Any, read_reason: str | None) -> Any:
+    """Constrain an organizations update to rows whose skip reason still matches.
+
+    Stands in for a row-version compare-and-swap, which organizations cannot support
+    because it has no updated_at column. Stops a write from overwriting an admin
+    decision — a Retry that cleared the reason, or an Ignore.
+    """
+    # PostgREST needs is.null rather than eq for an unset reason.
+    if read_reason is None:
+        return query.is_("assessment_skip_reason", "null")
+    return query.eq("assessment_skip_reason", read_reason)
+
+
 def persist_org_assessment_outcome(
     org: Dict[str, Any],
     outcome: Any,
 ) -> OrgAssessmentWriteResult:
-    """Filter fields, resolve skip reason, and CAS-write on updated_at.
+    """Filter fields, resolve the skip reason, and write, guarded against races.
 
-    Returns applied=False when another writer changed the row since we read it.
+    Assessment takes seconds to minutes of LLM and search calls, so the row is
+    re-read immediately before writing and the outcome is resolved against that
+    fresh copy. Deciding from the snapshot we started with would park an org an
+    admin had completed in the meantime, bouncing it back into the review queue.
+
+    Returns applied=False when the row vanished or another writer changed its skip
+    reason since the re-read.
     """
-    filtered = filter_assessment_update_fields(org, outcome)
-    reason = resolve_org_skip_reason(org, outcome, filtered)
+    oid = org["id"]
+    current = _reload_org(oid)
+    if current is None:
+        return OrgAssessmentWriteResult({}, None, False)
+
+    filtered = filter_assessment_update_fields(current, outcome)
+    reason = resolve_org_skip_reason(current, outcome, filtered)
     payload = {**filtered, "assessment_skip_reason": reason}
 
-    oid = org["id"]
-    read_at = org.get("updated_at")
     query = supabase.table("organizations").update(payload).eq("id", oid)
-    if read_at:
-        query = query.eq("updated_at", read_at)
+    query = _require_unchanged_reason(query, current.get("assessment_skip_reason"))
     resp = query.execute()
 
     if not resp.data:
         return OrgAssessmentWriteResult(filtered, reason, False)
 
+    # Reflect both the admin's concurrent edits and our own write, so callers log
+    # what is actually missing now rather than what was missing at selection time.
+    org.update(current)
     org.update(filtered)
+    org["assessment_skip_reason"] = reason
     return OrgAssessmentWriteResult(filtered, reason, True)
 
 
@@ -245,12 +285,7 @@ def _park_org(org: Dict[str, Any], reason: str | None) -> None:
         query = supabase.table("organizations").update(
             {"assessment_skip_reason": reason}
         ).eq("id", oid)
-        # PostgREST needs is.null rather than eq for an unset reason.
-        if read_reason is None:
-            query = query.is_("assessment_skip_reason", "null")
-        else:
-            query = query.eq("assessment_skip_reason", read_reason)
-        resp = query.execute()
+        resp = _require_unchanged_reason(query, read_reason).execute()
         if not resp.data:
             _log(
                 f"  ⚠️  Did not park org {oid} as {reason!r}: "
