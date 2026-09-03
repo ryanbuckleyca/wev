@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger';
 import PageLayout from '@/components/PageLayout';
 import SseBadge from '@/components/SseBadge';
 import UrlSyncedPagination from '@/components/UrlSyncedPagination';
-import OrgReviewActions from '@/components/admin/OrgReviewActions';
+import OrgReviewQueue from '@/components/admin/OrgReviewQueue';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,9 @@ function parsePage(raw: string | undefined): number {
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
+
+const ORG_ADMIN_LIST_SELECT =
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list';
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
@@ -65,9 +68,10 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   const from = (page - 1) * ADMIN_ORGS_PER_PAGE;
   const to = from + ADMIN_ORGS_PER_PAGE - 1;
 
-  let query = supabaseServer
-    .from('organizations')
-    .select('id, name, slug, type, is_sse, location, created_at, assessment_skip_reason');
+  // Same column set for both filters so Supabase's typed select stays a single
+  // literal (a ternary of two select strings fails the parser). Extra checklist
+  // fields are only rendered in the Needs review queue.
+  let query = supabaseServer.from('organizations').select(ORG_ADMIN_LIST_SELECT);
 
   if (reviewOnly) {
     query = query
@@ -92,7 +96,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
     reason ? t(`skipReasons.${reason}`, { defaultValue: reason }) : t('skipReasons.unknown');
 
   return (
-    // xl, not the lg default: this table carries up to seven columns, and at
+    // xl, not the lg default: the All table carries up to seven columns, and at
     // lg the Actions buttons wrap on every row even on a wide screen.
     <PageLayout maxWidth="xl">
       <div className="flex justify-between items-center mb-8">
@@ -136,6 +140,8 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
         <div className="text-center py-12 text-muted-foreground">
           <p>{reviewOnly ? t('noNeedsReview') : t('noOrganizations')}</p>
         </div>
+      ) : !loadFailed && reviewOnly ? (
+        <OrgReviewQueue orgs={orgs} locale={locale} reasonLabel={reasonLabel} />
       ) : !loadFailed ? (
         // overflow-x-auto, not overflow-hidden: a table too wide to fit should
         // scroll rather than have its Actions column clipped off.
@@ -155,11 +161,6 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
                   {t('columns.location')}
                 </th>
-                {reviewOnly && (
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                    {t('columns.reason')}
-                  </th>
-                )}
                 <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">
                   {t('columns.sse')}
                 </th>
@@ -187,13 +188,6 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                     {getOrganizationTypeLabel(org.type, tOrgs) ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{org.location || '—'}</td>
-                  {reviewOnly && (
-                    // Bounded so a long reason wraps instead of starving the
-                    // Actions column of width.
-                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-[14rem] align-top">
-                      {reasonLabel(org.assessment_skip_reason)}
-                    </td>
-                  )}
                   <td className="px-4 py-3 text-center">
                     {org.is_sse ? (
                       <div className="inline-flex">
@@ -211,14 +205,6 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                       >
                         {t('edit')}
                       </Link>
-                      {reviewOnly && (
-                        <OrgReviewActions
-                          orgId={org.id}
-                          currentReason={org.assessment_skip_reason}
-                          locale={locale}
-                          className="contents"
-                        />
-                      )}
                     </div>
                   </td>
                 </tr>

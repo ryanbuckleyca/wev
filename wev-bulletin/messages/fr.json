@@ -933,6 +933,8 @@
       "review": {
         "banner": "Cette organisation doit être révisée : {reason}",
         "bannerHint": "Le collecteur a cessé de l'évaluer et ne réessaiera pas tant que vous n'aurez pas relancé l'évaluation ou complété les champs manquants.",
+        "checklistHeading": "Champs évalués",
+        "fieldMissing": "manquant",
         "missingIntro": "Toujours manquant :",
         "missingNone": "Tous les champs évalués sont maintenant remplis. L'enregistrement effacera cet avis.",
         "missingFields": {

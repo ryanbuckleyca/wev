@@ -947,6 +947,8 @@
       "review": {
         "banner": "This organization needs review: {reason}",
         "bannerHint": "The scraper stopped assessing it and will not try again until you retry or complete the missing fields.",
+        "checklistHeading": "Assessed fields",
+        "fieldMissing": "missing",
         "missingIntro": "Still missing:",
         "missingNone": "Every assessed field is now filled in. Saving will clear this notice.",
         "missingFields": {
