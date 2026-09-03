@@ -157,8 +157,8 @@ _JSON_FIELDS = """{
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
   "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
-  "values_raw": "Organization values and principles if found on their website (strictly under 800 chars / ~100 words — extract closely from source. Record provenance in flags as 'values via=extracted|inferred|absent'), or null",
-  "values": ["List of mapped Knowdell work values (see taxonomy below), max 5 values"],
+  "values_raw": "Organization values and principles copied from their own site (strictly under 800 chars / ~100 words). Use only when via=extracted. If you only inferred Knowdell labels, this MUST be null. Record provenance in flags as 'values via=extracted|inferred|absent'.",
+  "values": ["3 to 5 Knowdell work values from the taxonomy below. Extract from a published values/principles list when Tavily/web evidence has one; otherwise INFER from that same research (about text, programs, sector, description written from search). Empty array only if there is no usable research evidence at all."],
   "sse_rating": "strong_yes or weak_yes or no",
   "sse_confidence": "0.0 to 1.0",
   "sse_reasoning_en": "2–3 concise English sentences citing the key evidence for the rating (strictly under 320 chars / ~35 words — paraphrase to fit completely). Do NOT restate must_haves_met or nice_to_haves_met — those belong only in their arrays",
@@ -208,7 +208,10 @@ Also add when relevant:
 - any other short concern labels
 
 Most organizations do NOT explicitly publish a mission statement or values list —
-use mission via=absent / values via=inferred when not found on their site."""
+use mission via=absent when not found on their site. For Knowdell "values", prefer
+extracted copy when Tavily/web evidence quotes their own values/principles; otherwise
+INFER 3–5 taxonomy labels from the rest of that research (values via=inferred). Do
+not leave "values" empty just because they never titled a page "Our values"."""
 
 _BILINGUAL_COPY_RULES = """BILINGUAL PUBLIC COPY (required):
 - Always provide BOTH English and French for description_*, mission_statement_*, and sse_reasoning_* when you have enough evidence to write the field at all.
@@ -315,12 +318,21 @@ ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 
 RULES for the "values" field:
 - Values must exactly match labels from the ALLOWED VALUES list above (case-sensitive).
-- Choose 3 to 5 values from official-website / supporting web research about the org
-  (mission, governance, public materials) — NOT from SOURCE DESCRIPTION or listing notes.
+- Choose 3 to 5 values. Two sources, in order:
+  1) Extracted — Tavily/web evidence quotes the org's own values, principles, or
+     "about" commitments on an employer-owned page. Copy that into values_raw
+     (via=extracted) and map it onto Knowdell labels.
+  2) Inferred — no literal values list. Still return 3–5 Knowdell labels from the
+     SAME research: about/program copy in search snippets, description_* you wrote
+     from that evidence, sector, governance, and who they serve. Flag
+     values via=inferred. Leave values_raw null.
+- NEVER use SOURCE DESCRIPTION or listing notes for values (wrong brand / stale listing).
 - Do NOT include labels not in the ALLOWED VALUES list.
 - Do NOT include duplicates.
 - "Help Society" and "Community" are distinct — use both if evidence supports both.
-- Be honest: if you can't determine values from web research, return an empty array.
+- Empty array is allowed ONLY when there is no usable web/search evidence AND you
+  could not write description_* from research (values via=absent). If you wrote a
+  description from search, you MUST infer values too.
 
 {website_rules}
 

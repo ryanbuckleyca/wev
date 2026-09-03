@@ -7,6 +7,7 @@ import pytest
 
 from utils.organization_assessment import (
     _attach_org_language,
+    _build_assessment_prompt,
     _build_search_query,
     _parse_response,
     _parse_website,
@@ -1343,3 +1344,18 @@ def test_assess_wrapper_preserves_result_or_none_contract():
     assert _assessor_with_provider(failing_provider).assess(
         raw_name="Riverside Housing Co-op"
     ) is None
+
+
+def test_values_rules_require_infer_from_tavily_when_no_literal_list():
+    """Empty values was the easy out; parked backlog is almost all 'missing values'."""
+    prompt = _build_assessment_prompt(
+        raw_name="AECOM",
+        municipality="Toronto",
+        province="ON",
+        job_title="Engineer",
+    )
+    assert "return an empty array" not in prompt
+    assert "Still return 3–5 Knowdell labels" in prompt
+    assert "Tavily/web evidence" in prompt
+    assert "NEVER use SOURCE DESCRIPTION or listing notes for values" in prompt
+    assert "you MUST infer values too" in prompt
