@@ -67,6 +67,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');
   const [sectorId, setSectorId] = useState(initialValues?.sector_id || '');
   const [isSse, setIsSse] = useState(initialValues?.is_sse ?? false);
+  const [language, setLanguage] = useState(initialValues?.language || '');
   const [valuesList, setValuesList] = useState<string[]>(initialValues?.values_list ?? []);
   const [valueCutoff, setValueCutoff] = useState(valuesList.length);
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialValues?.slug));
@@ -108,6 +109,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
       type: type || null,
       sector_id: sectorId || null,
       is_sse: isSse,
+      language: language || null,
       values_list: valuesList,
     };
   }, [
@@ -123,6 +125,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     type,
     sectorId,
     isSse,
+    language,
     valuesList,
   ]);
 
@@ -150,6 +153,8 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setSectorId,
     isSse,
     setIsSse,
+    language,
+    setLanguage,
     valuesList,
     setValuesList,
     valueCutoff,

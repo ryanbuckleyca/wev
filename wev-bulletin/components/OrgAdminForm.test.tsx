@@ -213,4 +213,75 @@ describe('OrgAdminForm', () => {
 
     confirmSpy.mockRestore();
   });
+
+  describe('assessment review banner', () => {
+    const parkedOrg = {
+      id: 42,
+      name: 'Existing Org',
+      slug: 'existing-org',
+      values_list: [],
+    };
+
+    it('shows the banner with retry and ignore for a parked org', () => {
+      render(
+        <OrgAdminForm
+          locale="en"
+          initialValues={{ ...parkedOrg, assessment_skip_reason: 'location_mismatch' }}
+        />,
+      );
+
+      expect(screen.getByText('review.banner')).toBeInTheDocument();
+      expect(screen.getByText('review.bannerHint')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'actions.retry' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'actions.ignore' })).toBeInTheDocument();
+    });
+
+    it('lists only the fields that are still missing', () => {
+      render(
+        <OrgAdminForm
+          locale="en"
+          initialValues={{
+            ...parkedOrg,
+            assessment_skip_reason: 'incomplete_backlog',
+            sector_id: 'manufacturing-production',
+            type: 'other',
+            description_en: 'An aluminum producer.',
+            description_fr: 'Un producteur d’aluminium.',
+            language: 'bilingual',
+            values_list: [],
+          }}
+        />,
+      );
+
+      expect(screen.getByText('review.missingIntro')).toBeInTheDocument();
+      expect(screen.getByText('review.missingFields.values')).toBeInTheDocument();
+      expect(screen.queryByText('review.missingFields.sector')).not.toBeInTheDocument();
+      expect(screen.queryByText('review.missingFields.language')).not.toBeInTheDocument();
+    });
+
+    it('hides the banner when the org is not parked', () => {
+      render(
+        <OrgAdminForm locale="en" initialValues={{ ...parkedOrg, assessment_skip_reason: null }} />,
+      );
+
+      expect(screen.queryByText('review.banner')).not.toBeInTheDocument();
+    });
+
+    it('hides the banner for an org an admin chose to ignore', () => {
+      render(
+        <OrgAdminForm
+          locale="en"
+          initialValues={{ ...parkedOrg, assessment_skip_reason: 'ignored' }}
+        />,
+      );
+
+      expect(screen.queryByText('review.banner')).not.toBeInTheDocument();
+    });
+
+    it('hides the banner in create mode', () => {
+      render(<OrgAdminForm locale="en" />);
+
+      expect(screen.queryByText('review.banner')).not.toBeInTheDocument();
+    });
+  });
 });

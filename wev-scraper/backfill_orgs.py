@@ -1,15 +1,33 @@
 #!/usr/bin/env python3
 """Backfill incomplete organization fields."""
 
+import argparse
 import sys
 import time
 
 from llm.tavily_grounding import is_tavily_available
+from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, persist_org_assessment_outcome
 from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from utils.organization_assessment import OrganizationAssessor
 
 
-def main():
+def _parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Backfill incomplete organization fields.",
+    )
+    parser.add_argument(
+        "--include-parked",
+        action="store_true",
+        help=(
+            "Also process organizations parked with an assessment_skip_reason. "
+            "By default parked rows are skipped."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
     # Check Tavily availability upfront
     if not is_tavily_available():
         print("=" * 80)
@@ -66,8 +84,10 @@ def main():
             missing_critical.append('description_fr')
 
         # Mission statement is optional (many orgs don't publish one)
-        # Only include orgs missing critical fields, not just mission
-        if missing_critical:
+        # Only include orgs missing critical fields, not just mission.
+        if missing_critical and (
+            args.include_parked or org.get("assessment_skip_reason") is None
+        ):
             incomplete_orgs.append(org)
 
     print(f"Incomplete organizations: {len(incomplete_orgs)}")
@@ -103,7 +123,6 @@ def main():
     error_count = 0
 
     for i, org in enumerate(incomplete_orgs, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -119,7 +138,7 @@ def main():
             # Re-assess the organization WITH TAVILY GROUNDING
             # If Tavily is unavailable, this will use grounding but fall back gracefully
             # For critical backfill operations, consider using web_evidence with required=True
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -129,38 +148,27 @@ def main():
                 existing_description=existing_description,
             )
 
-            if result:
-                # Build update payload
-                update_fields = _result_to_db_fields(result)
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered_update = write.filtered
+            reason = write.reason
 
-                # Only update fields that are currently missing
-                filtered_update = {}
-                for field, value in update_fields.items():
-                    if not org.get(field) and value:
-                        filtered_update[field] = value
-
-                if filtered_update:
-                    # Conditional write: only update if the row hasn't changed since we read it.
-                    read_at = org.get('updated_at')
-                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
-                    if read_at:
-                        query = query.eq('updated_at', read_at)
-                    resp = query.execute()
-                    if resp.data:
-                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                        success_count += 1
-                    else:
-                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
-                        error_count += 1
-                else:
-                    print("  ⚠️  No new fields to update")
-            else:
-                print("  ❌ Assessment failed")
+            if not write.applied:
+                print("  ⚠️  Conflict: row was modified since we read it, skipping")
                 error_count += 1
+            elif reason is None:
+                print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                success_count += 1
+            else:
+                if filtered_update:
+                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                print(f"  ⏸  Parked for review: {reason}")
+                if outcome.result is None:
+                    error_count += 1
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Rate limiting
         time.sleep(0.5)

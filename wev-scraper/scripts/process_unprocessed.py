@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Process all unprocessed orgs and jobs in prod DB."""
+import argparse
 import os
 import sys
 import time
@@ -24,7 +25,14 @@ os.environ["CONFIRM_PROD_RUN"] = "YES"
 os.environ["ENV_MODE"] = "prod"
 
 from settings import get_supabase_settings  # noqa: E402
-from utils.catch_up import VALID_LANGUAGES, _is_org_field_missing  # noqa: E402
+from utils.catch_up import (  # noqa: E402
+    SKIP_REASON_EXCEPTION,
+    VALID_LANGUAGES,
+    _park_org,
+    find_missing_org_fields,
+    org_batch_limit,
+    persist_org_assessment_outcome,
+)
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log as _log  # noqa: E402
 
@@ -88,8 +96,12 @@ def fetch_unprocessed_jobs():
     return all_jobs, unprocessed
 
 
-def fetch_unprocessed_orgs():
-    """Fetch all orgs missing sector_id/type/descriptions/language/values_list."""
+def fetch_unprocessed_orgs(include_parked=False):
+    """Fetch orgs missing sector_id/type/descriptions/language/values_list.
+
+    Parked orgs (assessment_skip_reason set) are excluded unless *include_parked*,
+    so a plain run never re-spends credits on rows a previous attempt gave up on.
+    """
     _log("Fetching organizations from DB...")
     all_orgs = []
     page = 0
@@ -120,7 +132,8 @@ def fetch_unprocessed_orgs():
                     "id,name,sector_id,type,description,description_en,"
                     "description_fr,website,location,is_sse,sse_rating,"
                     "mission_statement,values_list,values_rated,language,"
-                    "municipality,province,lat,lng,geocode_accuracy_type,created_at"
+                    "municipality,province,lat,lng,geocode_accuracy_type,created_at,"
+                    "updated_at,assessment_skip_reason"
                 )
                 .order("id")
                 .range(page * page_size, (page + 1) * page_size - 1)
@@ -136,33 +149,23 @@ def fetch_unprocessed_orgs():
         page += 1
 
     unprocessed = []
+    parked = 0
 
     for o in all_orgs:
-        needs = []
+        if not include_parked and o.get("assessment_skip_reason") is not None:
+            parked += 1
+            continue
 
-        if not o.get("sector_id"):
-            needs.append("sector_id")
-
-        if not o.get("type"):
-            needs.append("type")
-
-        desc_en = o.get("description_en") or o.get("description")
-        desc_fr = o.get("description_fr")
-
-        if not (desc_en or "").strip():
-            needs.append("description_en")
-
-        if not (desc_fr or "").strip():
-            needs.append("description_fr")
-
-        if o.get("language") not in VALID_LANGUAGES:
-            needs.append("language")
-
-        if not o.get("values_list"):
-            needs.append("values_list")
+        needs = _missing_org_fields(o)
 
         if needs:
             unprocessed.append((o, needs))
+
+    if parked:
+        _log(
+            f"Skipping {parked} parked org(s) awaiting review "
+            "(use --include-parked to reassess them)"
+        )
 
     return all_orgs, unprocessed
 
@@ -250,30 +253,12 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
 
 
 def _missing_org_fields(org):
-    """Return the required organization fields that are still missing."""
-    missing = []
+    """Return the required organization fields that are still missing.
 
-    if not org.get("sector_id"):
-        missing.append("sector_id")
-
-    if not org.get("type"):
-        missing.append("type")
-
-    desc_en = org.get("description_en") or org.get("description")
-
-    if not (desc_en or "").strip():
-        missing.append("description_en")
-
-    if not (org.get("description_fr") or "").strip():
-        missing.append("description_fr")
-
-    if org.get("language") not in VALID_LANGUAGES:
-        missing.append("language")
-
-    if not org.get("values_list"):
-        missing.append("values_list")
-
-    return missing
+    Delegates to catch_up so this script and the scraper cannot disagree about
+    what "complete" means.
+    """
+    return find_missing_org_fields(org)
 
 
 def process_unprocessed_orgs(unprocessed):
@@ -285,10 +270,7 @@ def process_unprocessed_orgs(unprocessed):
     _log(f"Assessing {len(unprocessed)} organizations...")
 
     from llm.tavily_grounding import is_tavily_available
-    from utils.organization_assessment import (
-        OrganizationAssessor,
-        _result_to_db_fields,
-    )
+    from utils.organization_assessment import OrganizationAssessor
 
     if not is_tavily_available():
         _log(
@@ -301,10 +283,10 @@ def process_unprocessed_orgs(unprocessed):
     assessed = 0
     updated = 0
     completed = 0
+    parked = 0
     errors = 0
 
     for i, (org, _initial_needs) in enumerate(unprocessed, 1):
-        oid = org["id"]
         name = org.get("name") or "(unnamed)"
         municipality = org.get("municipality")
         province = org.get("province")
@@ -315,7 +297,7 @@ def process_unprocessed_orgs(unprocessed):
                 org.get("description_en") or org.get("description")
             )
 
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -327,43 +309,31 @@ def process_unprocessed_orgs(unprocessed):
 
             assessed += 1
 
-            if result:
-                update_fields = _result_to_db_fields(result)
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered = write.filtered
+            reason = write.reason
 
-                filtered = {}
-
-                for field, value in update_fields.items():
-                    if value is not None and _is_org_field_missing(org, field):
-                        filtered[field] = value
-
-                if filtered:
-                    supabase.table("organizations").update(filtered).eq(
-                        "id", oid
-                    ).execute()
-
-                    # Keep our local copy in sync so the completion check
-                    # reflects the values we just wrote to the database.
-                    org.update(filtered)
-                    updated += 1
-
-                missing = _missing_org_fields(org)
-
-                if not missing:
-                    completed += 1
-                else:
-                    _log(
-                        f"  ⚠️  Org [{name}] incomplete — "
-                        f"missing: {', '.join(missing)}"
-                    )
-
-            else:
+            if not write.applied:
                 errors += 1
+                _log(f"  ⚠️  Org [{name}] skipped: row changed since read")
+                continue
+
+            if filtered:
+                updated += 1
+
+            if reason is None:
+                completed += 1
+            else:
+                parked += 1
+
+                if outcome.result is None:
+                    errors += 1
 
                 missing = _missing_org_fields(org)
 
                 _log(
-                    f"  ✗ Org [{name}] assessment failed — "
-                    f"still missing: {', '.join(missing)}"
+                    f"  ⏸  Org [{name}] parked ({reason}) — "
+                    f"still missing: {', '.join(missing) or 'nothing'}"
                 )
 
         except Exception as e:
@@ -375,6 +345,9 @@ def process_unprocessed_orgs(unprocessed):
             )
 
             errors += 1
+            parked += 1
+
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         if i % 50 == 0 or i == 1:
             _log(
@@ -382,6 +355,7 @@ def process_unprocessed_orgs(unprocessed):
                 f"assessed={assessed} | "
                 f"updated={updated} | "
                 f"completed={completed} | "
+                f"parked={parked} | "
                 f"errors={errors}"
             )
 
@@ -403,24 +377,65 @@ def process_unprocessed_orgs(unprocessed):
         f"assessed={assessed}, "
         f"updated={updated}, "
         f"completed={completed}, "
+        f"parked={parked}, "
         f"still_incomplete={still_incomplete}, "
         f"errors={errors}"
     )
 
+    if parked:
+        _log(
+            f"{parked} org(s) parked for review — see the Needs review filter "
+            "on the admin organizations page."
+        )
+
     return completed, errors
 
 
-def main():
+def _parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Process unprocessed orgs and jobs in the prod DB.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help=(
+            "Max organizations to assess. Defaults to CATCH_UP_ORG_LIMIT "
+            f"(currently {org_batch_limit()}). Use 0 for unlimited."
+        ),
+    )
+    parser.add_argument(
+        "--include-parked",
+        action="store_true",
+        help=(
+            "Also reassess organizations parked with an assessment_skip_reason. "
+            "This spends credits on rows a previous attempt gave up on."
+        ),
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    limit = org_batch_limit() if args.limit is None else args.limit
+
     _log("=" * 70)
     _log("PROCESSING UNPROCESSED ORGS + JOBS (PROD)")
     _log("=" * 70)
 
     _, unprocessed_jobs = fetch_unprocessed_jobs()
-    _, unprocessed_orgs = fetch_unprocessed_orgs()
+    _, unprocessed_orgs = fetch_unprocessed_orgs(include_parked=args.include_parked)
+
+    if limit > 0 and len(unprocessed_orgs) > limit:
+        _log(
+            f"Limiting to first {limit} of {len(unprocessed_orgs)} eligible orgs "
+            "(--limit 0 for unlimited)."
+        )
+        unprocessed_orgs = unprocessed_orgs[:limit]
 
     _log(
         f"Found {len(unprocessed_jobs)} unprocessed jobs, "
-        f"{len(unprocessed_orgs)} unprocessed orgs."
+        f"{len(unprocessed_orgs)} orgs to assess."
     )
 
     if not unprocessed_jobs and not unprocessed_orgs:

@@ -1166,3 +1166,180 @@ def test_assess_passes_prefer_hosts_for_known_website():
     call_kwargs = mock_provider.complete.call_args.kwargs
     assert call_kwargs.get("prefer_hosts") == ["paro.ca"]
     assert "https://paro.ca" in call_kwargs.get("search_query", "")
+
+
+# ---------------------------------------------------------------------------
+# assess_with_outcome: skip reasons drive the admin review queue
+# ---------------------------------------------------------------------------
+
+
+def _valid_assessment_payload(**overrides):
+    payload = {
+        "canonical_name": "Riverside Housing Co-op",
+        "slug": "riverside-housing-co-op",
+        "type": "cooperative",
+        "sector_id": "housing",
+        "values": ["Community"],
+        "values_raw": "Community",
+        "sse_rating": "strong_yes",
+        "sse_confidence": 0.9,
+        "sse_reasoning_en": "Member-owned housing cooperative.",
+        "sse_reasoning_fr": None,
+        "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
+        "nice_to_haves_met": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
+        "public_language": "en",
+        "geographic_scope": "local",
+        "website": None,
+        "description_en": "Riverside Housing Co-op provides member-owned housing.",
+        "description_fr": None,
+        "mission_statement_en": "Affordable member-owned housing.",
+        "mission_statement_fr": None,
+        "values_en": ["Community"],
+        "values_fr": [],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _assessor_with_provider(mock_provider):
+    from unittest.mock import patch
+
+    from utils.organization_assessment import OrganizationAssessor
+
+    with patch("utils.organization_assessment.get_sse_provider", return_value=mock_provider):
+        return OrganizationAssessor()
+
+
+def test_assess_with_outcome_flags_private_residence_without_calling_llm():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_PRIVATE_RESIDENCE
+
+    mock_provider = MagicMock()
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Private Residence")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_PRIVATE_RESIDENCE
+    mock_provider.complete.assert_not_called()
+
+
+def test_assess_with_outcome_maps_provider_503_to_llm_error():
+    from unittest.mock import MagicMock
+
+    from llm.base import LLMProviderError
+    from utils.organization_assessment import SKIP_REASON_LLM_ERROR
+
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = LLMProviderError(
+        "Gemini completion error: 503 UNAVAILABLE."
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_LLM_ERROR
+
+
+def test_assess_with_outcome_reports_empty_response_after_retry():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_EMPTY_RESPONSE
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = "   "
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_EMPTY_RESPONSE
+
+
+def test_assess_with_outcome_reports_parse_failed_on_garbage_json():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_PARSE_FAILED
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = "not json at all"
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_PARSE_FAILED
+
+
+def test_assess_with_outcome_reports_location_mismatch():
+    """The St. Catharines case: LLM answered, but for the wrong municipality."""
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_LOCATION_MISMATCH
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(
+        _valid_assessment_payload(
+            canonical_name="City of St. Catharines",
+            slug="city-of-st-catharines",
+            type="government",
+            website="https://stcatharines.ca",
+            description_en="The municipal government of St. Catharines, Ontario.",
+            mission_statement_en="Serving St. Catharines residents.",
+            geographic_scope="local",
+        )
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="City of St. Catharines",
+        municipality="Sainte-Catherine",
+        province="QC",
+    )
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_LOCATION_MISMATCH
+
+
+def test_assess_with_outcome_returns_no_reason_on_success():
+    from unittest.mock import MagicMock
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(_valid_assessment_payload())
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["canonical_name"] == "Riverside Housing Co-op"
+
+
+def test_assess_wrapper_preserves_result_or_none_contract():
+    """Existing callers keep getting a result or None, never an outcome object."""
+    from unittest.mock import MagicMock
+
+    from llm.base import LLMProviderError
+
+    ok_provider = MagicMock()
+    ok_provider.complete.return_value = json.dumps(_valid_assessment_payload())
+    assert _assessor_with_provider(ok_provider).assess(
+        raw_name="Riverside Housing Co-op"
+    )["canonical_name"] == "Riverside Housing Co-op"
+
+    failing_provider = MagicMock()
+    failing_provider.complete.side_effect = LLMProviderError("503 UNAVAILABLE")
+    assert _assessor_with_provider(failing_provider).assess(
+        raw_name="Riverside Housing Co-op"
+    ) is None

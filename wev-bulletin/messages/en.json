@@ -900,8 +900,17 @@
         "location": "Location",
         "type": "Organization Type",
         "sector": "Sector",
+        "language": "Public Language",
         "isSse": "Solidarity Economy Organization",
         "values": "Core Values"
+      },
+      "languages": {
+        "en": "English",
+        "fr": "French",
+        "bilingual": "Bilingual"
+      },
+      "hints": {
+        "language": "The language the organization communicates in publicly. Used for filtering and matching."
       },
       "placeholders": {
         "name": "e.g., Centraide Montreal",
@@ -916,6 +925,7 @@
         "location": "Start typing a city…",
         "selectType": "Select a type...",
         "selectSector": "Select a sector...",
+        "selectLanguage": "Select a language...",
         "values": "Search and select work values"
       },
       "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
@@ -924,8 +934,45 @@
         "slug": "Slug",
         "type": "Type",
         "location": "Location",
+        "reason": "Reason",
         "sse": "SSE",
         "actions": "Actions"
+      },
+      "filters": {
+        "all": "All",
+        "needsReview": "Needs review",
+        "needsReviewCount": "Needs review ({count})"
+      },
+      "noNeedsReview": "No organizations need review. Everything the scraper could not finish has been handled.",
+      "review": {
+        "banner": "This organization needs review: {reason}",
+        "bannerHint": "The scraper stopped assessing it and will not try again until you retry or complete the missing fields.",
+        "missingIntro": "Still missing:",
+        "missingNone": "Every assessed field is now filled in. Saving will clear this notice.",
+        "missingFields": {
+          "sector": "Sector",
+          "type": "Organization Type",
+          "descriptionEn": "Description (English)",
+          "descriptionFr": "Description (French)",
+          "language": "Public Language",
+          "values": "Core Values"
+        },
+        "retrySuccess": "Organization queued for another assessment",
+        "ignoreSuccess": "Organization removed from the review queue",
+        "actionFailed": "Could not update the review state. Please try again."
+      },
+      "skipReasons": {
+        "private_residence": "Not an organization (private residence)",
+        "llm_error": "AI provider error",
+        "empty_response": "AI returned an empty response",
+        "parse_failed": "AI response could not be read",
+        "location_mismatch": "Location did not match the organization found",
+        "no_new_fields": "Assessment produced no new information",
+        "partial_fill": "Assessment filled some fields but not all",
+        "exception": "Unexpected error during assessment",
+        "incomplete_backlog": "Incomplete before review was introduced",
+        "ignored": "Ignored by an admin",
+        "unknown": "Unknown"
       },
       "actions": {
         "addNew": "Add Organization",
@@ -933,6 +980,8 @@
         "create": "Create Organization",
         "update": "Update Organization",
         "delete": "Delete Organization",
+        "retry": "Retry",
+        "ignore": "Ignore",
         "cancel": "Cancel"
       },
       "errors": {
@@ -944,6 +993,7 @@
         "missionTooLong": "Mission statement is too long (max 500 characters)",
         "invalidType": "Please select a valid organization type",
         "invalidSector": "Please select a valid sector",
+        "invalidLanguage": "Please select a valid public language",
         "invalidValues": "One or more selected values are not recognized",
         "tooManyValues": "You can select at most 5 values",
         "slug_taken": "This slug is already in use",

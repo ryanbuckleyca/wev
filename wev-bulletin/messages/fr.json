@@ -886,8 +886,17 @@
         "location": "Emplacement",
         "type": "Type d'organisation",
         "sector": "Secteur",
+        "language": "Langue publique",
         "isSse": "Organisation d'économie solidaire",
         "values": "Valeurs fondamentales"
+      },
+      "languages": {
+        "en": "Anglais",
+        "fr": "Français",
+        "bilingual": "Bilingue"
+      },
+      "hints": {
+        "language": "La langue dans laquelle l'organisation communique publiquement. Utilisée pour le filtrage et le jumelage."
       },
       "placeholders": {
         "name": "p. ex., Centraide Montréal",
@@ -902,6 +911,7 @@
         "location": "Commencez à taper une ville…",
         "selectType": "Sélectionnez un type...",
         "selectSector": "Sélectionnez un secteur...",
+        "selectLanguage": "Sélectionnez une langue...",
         "values": "Rechercher et sélectionner des valeurs professionnelles"
       },
       "locationHint": "Niveau ville seulement — utilisé pour les filtres et le jumelage. Les offres d'emploi portent les lieux de travail précis.",
@@ -910,8 +920,45 @@
         "slug": "Identifiant",
         "type": "Type",
         "location": "Emplacement",
+        "reason": "Motif",
         "sse": "ÉSS",
         "actions": "Actions"
+      },
+      "filters": {
+        "all": "Toutes",
+        "needsReview": "À réviser",
+        "needsReviewCount": "À réviser ({count})"
+      },
+      "noNeedsReview": "Aucune organisation à réviser. Tout ce que le collecteur n'a pas pu terminer a été traité.",
+      "review": {
+        "banner": "Cette organisation doit être révisée : {reason}",
+        "bannerHint": "Le collecteur a cessé de l'évaluer et ne réessaiera pas tant que vous n'aurez pas relancé l'évaluation ou complété les champs manquants.",
+        "missingIntro": "Toujours manquant :",
+        "missingNone": "Tous les champs évalués sont maintenant remplis. L'enregistrement effacera cet avis.",
+        "missingFields": {
+          "sector": "Secteur",
+          "type": "Type d'organisation",
+          "descriptionEn": "Description (anglais)",
+          "descriptionFr": "Description (français)",
+          "language": "Langue publique",
+          "values": "Valeurs fondamentales"
+        },
+        "retrySuccess": "Organisation remise en file pour une nouvelle évaluation",
+        "ignoreSuccess": "Organisation retirée de la file de révision",
+        "actionFailed": "Impossible de mettre à jour l'état de révision. Veuillez réessayer."
+      },
+      "skipReasons": {
+        "private_residence": "Pas une organisation (résidence privée)",
+        "llm_error": "Erreur du fournisseur d'IA",
+        "empty_response": "L'IA a renvoyé une réponse vide",
+        "parse_failed": "La réponse de l'IA n'a pas pu être lue",
+        "location_mismatch": "L'emplacement ne correspond pas à l'organisation trouvée",
+        "no_new_fields": "L'évaluation n'a produit aucune nouvelle information",
+        "partial_fill": "L'évaluation a rempli certains champs, mais pas tous",
+        "exception": "Erreur inattendue pendant l'évaluation",
+        "incomplete_backlog": "Incomplète avant l'introduction de la révision",
+        "ignored": "Ignorée par un administrateur",
+        "unknown": "Inconnu"
       },
       "actions": {
         "addNew": "Ajouter une organisation",
@@ -919,6 +966,8 @@
         "create": "Créer l'organisation",
         "update": "Mettre à jour l'organisation",
         "delete": "Supprimer l'organisation",
+        "retry": "Réessayer",
+        "ignore": "Ignorer",
         "cancel": "Annuler"
       },
       "errors": {
@@ -930,6 +979,7 @@
         "missionTooLong": "L'énoncé de mission est trop long (max. 500 caractères)",
         "invalidType": "Veuillez sélectionner un type d'organisation valide",
         "invalidSector": "Veuillez sélectionner un secteur valide",
+        "invalidLanguage": "Veuillez sélectionner une langue publique valide",
         "invalidValues": "Une ou plusieurs valeurs sélectionnées ne sont pas reconnues",
         "tooManyValues": "Vous pouvez sélectionner au maximum 5 valeurs",
         "slug_taken": "Cet identifiant est déjà utilisé",

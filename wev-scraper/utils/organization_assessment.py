@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, List, TypedDict
 from urllib.parse import urlparse
@@ -371,6 +372,28 @@ class AssessedOrgResult(TypedDict):
     geographic_scope: str | None
     headquarters_municipality: str | None
     headquarters_province: str | None
+
+
+# ── Skip reasons written by the assessor ────────────────────────────────────
+# These end up in organizations.assessment_skip_reason. Any non-null reason
+# parks the org: catch-up will not re-assess it until an admin clears it.
+SKIP_REASON_PRIVATE_RESIDENCE = "private_residence"
+SKIP_REASON_LLM_ERROR = "llm_error"
+SKIP_REASON_EMPTY_RESPONSE = "empty_response"
+SKIP_REASON_PARSE_FAILED = "parse_failed"
+SKIP_REASON_LOCATION_MISMATCH = "location_mismatch"
+
+
+@dataclass(frozen=True)
+class AssessmentOutcome:
+    """An assessment attempt plus, when it failed, why.
+
+    ``assess()`` discards ``skip_reason`` so existing callers keep their
+    result-or-None contract; catch-up uses it to park the organization.
+    """
+
+    result: AssessedOrgResult | None
+    skip_reason: str | None
 
 
 _TAXONOMY_STR: str | None = None
@@ -1722,6 +1745,36 @@ class OrganizationAssessor(BaseGroundedClassifier):
         listing_notes: str | None = None,
         web_evidence: str | None = None,
     ) -> AssessedOrgResult | None:
+        """Assess an organization, returning None when the attempt did not succeed.
+
+        Use :meth:`assess_with_outcome` when the caller needs to know *why* an
+        attempt failed (catch-up records that as a skip reason).
+        """
+        return self.assess_with_outcome(
+            raw_name,
+            municipality,
+            province,
+            job_title,
+            description,
+            known_website,
+            existing_description=existing_description,
+            listing_notes=listing_notes,
+            web_evidence=web_evidence,
+        ).result
+
+    def assess_with_outcome(
+        self,
+        raw_name: str,
+        municipality: str | None = None,
+        province: str | None = None,
+        job_title: str = "",
+        description: str = "",
+        known_website: str | None = None,
+        *,
+        existing_description: str | None = None,
+        listing_notes: str | None = None,
+        web_evidence: str | None = None,
+    ) -> AssessmentOutcome:
         # Early rejection: private residences are not organizations
         import unicodedata
         if raw_name:
@@ -1732,7 +1785,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     "OrganizationAssessor: rejecting 'private residence' - not an organization. Name: %r",
                     raw_name
                 )
-                return None
+                return AssessmentOutcome(None, SKIP_REASON_PRIVATE_RESIDENCE)
 
         notes = listing_notes if listing_notes is not None else description
         # SOURCE DESCRIPTION = stored org/job about-text for description_* only.
@@ -1791,7 +1844,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 "OrganizationAssessor LLM call failed for %r: %s",
                 raw_name, exc,
             )
-            return None
+            return AssessmentOutcome(None, SKIP_REASON_LLM_ERROR)
 
         # Grounding sometimes silently fails, returning HTTP 200 with empty text.
         # Retry once without grounding as a fallback.
@@ -1815,11 +1868,18 @@ class OrganizationAssessor(BaseGroundedClassifier):
                     "OrganizationAssessor LLM retry (no grounding) failed for %r: %s",
                     raw_name, exc,
                 )
-                return None
+                return AssessmentOutcome(None, SKIP_REASON_LLM_ERROR)
+
+            if not response_text.strip():
+                logger.warning(
+                    "OrganizationAssessor: still empty response for %r after no-grounding retry",
+                    raw_name,
+                )
+                return AssessmentOutcome(None, SKIP_REASON_EMPTY_RESPONSE)
 
         result = _parse_response(response_text, raw_name)
         if result is None:
-            return None
+            return AssessmentOutcome(None, SKIP_REASON_PARSE_FAILED)
 
         result = _enforce_locale_correctness(result)
 
@@ -2008,7 +2068,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                                 len(location_terms),
                                 matches,
                             )
-                            return None
+                            return AssessmentOutcome(None, SKIP_REASON_LOCATION_MISMATCH)
                         elif not location_found and is_broad_scope:
                             # Accept broader-scope organizations even without local location match
                             logger.info(
@@ -2273,7 +2333,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 flags.append(f"model:{model_used}")
                 result = AssessedOrgResult(**{**result, "flags": flags})
 
-        return self._ensure_length_limits(result, raw_name)
+        return AssessmentOutcome(self._ensure_length_limits(result, raw_name), None)
 
     def _ensure_length_limits(
         self,

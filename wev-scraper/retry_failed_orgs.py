@@ -5,8 +5,9 @@ import sys
 import time
 
 from llm.tavily_grounding import is_tavily_available
+from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, persist_org_assessment_outcome
 from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from utils.organization_assessment import OrganizationAssessor
 
 # List of org names that failed validation
 FAILED_ORGS = [
@@ -83,7 +84,6 @@ def main():
     still_failed_count = 0
 
     for i, org in enumerate(orgs_to_retry, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -95,7 +95,7 @@ def main():
         existing_description = org.get('description_en') or org.get('description')
 
         try:
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -105,35 +105,26 @@ def main():
                 existing_description=existing_description,
             )
 
-            if result:
-                update_fields = _result_to_db_fields(result)
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered_update = write.filtered
+            reason = write.reason
 
-                # Only update fields that are currently missing
-                filtered_update = {}
-                for field, value in update_fields.items():
-                    if not org.get(field) and value:
-                        filtered_update[field] = value
-
-                if filtered_update:
-                    # Conditional write: only update if the row hasn't changed since we read it.
-                    read_at = org.get('updated_at')
-                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
-                    if read_at:
-                        query = query.eq('updated_at', read_at)
-                    resp = query.execute()
-                    if resp.data:
-                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                        success_count += 1
-                    else:
-                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
-                        still_failed_count += 1
+            if not write.applied:
+                print("  ⚠️  Conflict: row was modified since we read it, skipping")
+                still_failed_count += 1
+            elif reason is None:
+                print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                success_count += 1
             else:
-                print("  ❌ Assessment still failed")
+                if filtered_update:
+                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                print(f"  ⏸  Still parked: {reason}")
                 still_failed_count += 1
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             still_failed_count += 1
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         time.sleep(0.5)
 
