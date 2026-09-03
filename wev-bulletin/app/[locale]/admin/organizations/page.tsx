@@ -23,8 +23,11 @@ function parsePage(raw: string | undefined): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
 
-const ORG_ADMIN_LIST_SELECT =
-  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list';
+const ORG_ADMIN_TABLE_SELECT =
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason' as const;
+
+const ORG_ADMIN_REVIEW_SELECT =
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list' as const;
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
@@ -68,20 +71,22 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
   const from = (page - 1) * ADMIN_ORGS_PER_PAGE;
   const to = from + ADMIN_ORGS_PER_PAGE - 1;
 
-  // Same column set for both filters so Supabase's typed select stays a single
-  // literal (a ternary of two select strings fails the parser). Extra checklist
-  // fields are only rendered in the Needs review queue.
-  let query = supabaseServer.from('organizations').select(ORG_ADMIN_LIST_SELECT);
-
-  if (reviewOnly) {
-    query = query
-      .not('assessment_skip_reason', 'is', null)
-      .neq('assessment_skip_reason', ORG_SKIP_REASON_IGNORED);
-  }
-
-  const { data: organizations, error } = await query
-    .order('name', { ascending: true })
-    .range(from, to);
+  // Two full query statements (not a ternary select string): Supabase's typed
+  // select parser rejects a union of two column lists, and the All table should
+  // not pull description*/values_list that only the review checklist needs.
+  const { data: organizations, error } = reviewOnly
+    ? await supabaseServer
+        .from('organizations')
+        .select(ORG_ADMIN_REVIEW_SELECT)
+        .not('assessment_skip_reason', 'is', null)
+        .neq('assessment_skip_reason', ORG_SKIP_REASON_IGNORED)
+        .order('name', { ascending: true })
+        .range(from, to)
+    : await supabaseServer
+        .from('organizations')
+        .select(ORG_ADMIN_TABLE_SELECT)
+        .order('name', { ascending: true })
+        .range(from, to);
 
   if (error) {
     logger.error({ err: error }, 'Failed to fetch organizations for admin list');
@@ -96,8 +101,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
     reason ? t(`skipReasons.${reason}`, { defaultValue: reason }) : t('skipReasons.unknown');
 
   return (
-    // xl, not the lg default: the All table carries up to seven columns, and at
-    // lg the Actions buttons wrap on every row even on a wide screen.
+    // xl keeps the six-column All table readable without wrapping the Edit action.
     <PageLayout maxWidth="xl">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-foreground">{t('listTitle')}</h1>
