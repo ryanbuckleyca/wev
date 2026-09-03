@@ -61,7 +61,41 @@ CREATE POLICY "Users can view own data" ON my_table
   FOR SELECT USING (auth.uid() = user_id);
 ```
 
-### 5. Keep Generated Types Fresh
+### 5. Restricted RPC grants
+
+A new function in `public` is executable by `anon` and `authenticated` by default on
+Supabase. Every SECURITY DEFINER function therefore has to declare its intended
+audience in the `private.restricted_rpc` manifest:
+
+```sql
+INSERT INTO private.restricted_rpc (function_name, allowed_roles, is_optional, rationale)
+VALUES ('my_new_rpc', '{service_role}', false, 'Why this exists and who calls it.');
+
+SELECT private.apply_restricted_rpc_grants();
+```
+
+`allowed_roles` is exhaustive — any role not listed must not hold `EXECUTE`. Use
+`'{anon,authenticated}'` for a genuinely public-facing RPC; the point is that the
+decision is recorded rather than inherited from a default.
+
+`private.apply_restricted_rpc_grants()` resolves each entry through `pg_proc`, so all
+overloads are covered and a rename cannot silently no-op. It verifies the result and
+raises if anything is off, so a bad deploy fails loudly instead of half-applying. It is
+owner-only on purpose (migrations run as `postgres`); it is deliberately **not**
+SECURITY DEFINER, because only a function's owner may change its ACL and granting
+`EXECUTE` on a SECURITY DEFINER version of it would be an escalation path.
+
+**When to re-run the helper:** `CREATE OR REPLACE` preserves a function's owner and
+ACL, so replacing a body needs nothing. Grants are reset only when a function is
+`DROP`ped and recreated, which is required to change its signature or return type.
+Re-run the helper in that migration.
+
+You do not have to remember, though: `supabase/tests/restricted_rpc_grants.test.sql`
+asserts the real end state of the migrated database in CI. It fails if a restricted RPC
+is reachable by the wrong role, if a manifest entry no longer resolves, or if a new
+SECURITY DEFINER function in `public` has not been classified at all.
+
+### 6. Keep Generated Types Fresh
 
 If you need to refresh the app's database types without running a migration, use:
 
