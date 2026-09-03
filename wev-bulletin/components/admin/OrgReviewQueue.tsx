@@ -32,11 +32,7 @@ interface OrgReviewQueueProps {
  * A table cannot surface the completeness criteria without becoming unreadable,
  * so each parked org is a stacked review row instead.
  */
-export default async function OrgReviewQueue({
-  orgs,
-  locale,
-  reasonLabel,
-}: OrgReviewQueueProps) {
+export default async function OrgReviewQueue({ orgs, locale, reasonLabel }: OrgReviewQueueProps) {
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
   const tOrgs = await getTranslations({ locale, namespace: 'organizations' });
 
@@ -47,10 +43,7 @@ export default async function OrgReviewQueue({
         const typeLabel = getOrganizationTypeLabel(org.type, tOrgs);
 
         return (
-          <li
-            key={org.id}
-            className="border border-border rounded-wev-card bg-card p-4 sm:p-5"
-          >
+          <li key={org.id} className="border border-border rounded-wev-card bg-card p-4 sm:p-5">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
