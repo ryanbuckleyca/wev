@@ -7,7 +7,7 @@ import {
   setOrganizationAssessmentReview,
 } from './actions';
 
-const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() => {
+const { mockRequireAdminSession, mockFrom, organizationsQuery, jobsQuery } = vi.hoisted(() => {
   const createQuery = () => {
     let result: { data: unknown; error: unknown } = { data: null, error: null };
     const query: Record<string, unknown> = {
@@ -29,8 +29,10 @@ const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() 
   };
 
   const organizations = createQuery();
+  const jobs = createQuery();
   const from = vi.fn((table: string) => {
     if (table === 'organizations') return organizations;
+    if (table === 'jobs') return jobs;
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -38,6 +40,7 @@ const { mockRequireAdminSession, mockFrom, organizationsQuery } = vi.hoisted(() 
     mockRequireAdminSession: vi.fn(),
     mockFrom: from,
     organizationsQuery: organizations,
+    jobsQuery: jobs,
   };
 });
 
@@ -79,6 +82,10 @@ describe('organizations/actions', () => {
       user: { id: 'admin-1' },
     });
     setOrgResult({ data: null, error: null });
+    (jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }).setResult({
+      data: [],
+      error: null,
+    });
   });
 
   it('returns unauthorized when admin session is missing', async () => {
@@ -127,7 +134,7 @@ describe('organizations/actions', () => {
   });
 
   it('updates organization fields', async () => {
-    const updated = { id: 5, name: 'Updated Org', slug: 'updated-org' };
+    const updated = { id: 5, name: 'Updated Org', slug: 'updated-org', is_sse: false };
     setOrgResult({ data: updated, error: null });
 
     const result = await updateOrganization(5, { name: 'Updated Org' });
@@ -137,6 +144,46 @@ describe('organizations/actions', () => {
       expect.objectContaining({ name: 'Updated Org' }),
     );
     expect(organizationsQuery.eq).toHaveBeenCalledWith('id', 5);
+  });
+
+  it('demotes job SSE when the org is marked non-SSE', async () => {
+    (organizationsQuery.single as Mock)
+      .mockResolvedValueOnce({
+        data: {
+          id: 5,
+          slug: 'sse-org',
+          is_sse: true,
+          type: 'nonprofit',
+          assessment_skip_reason: null,
+          sector_id: 'housing-collective-real-estate',
+          description: 'x',
+          description_en: 'x',
+          description_fr: 'x',
+          language: 'en',
+          values_list: ['Community'],
+          name: 'SSE Org',
+          website: 'https://example.org',
+          municipality: 'Montreal',
+          province: 'QC',
+          location: 'Montreal, QC',
+        },
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: { id: 5, slug: 'sse-org', is_sse: false, name: 'SSE Org' },
+        error: null,
+      });
+    (jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }).setResult({
+      data: [{ id: 'j1' }],
+      error: null,
+    });
+
+    const result = await updateOrganization(5, { is_sse: false });
+
+    expect(result.ok).toBe(true);
+    expect(jobsQuery.update).toHaveBeenCalledWith({ is_sse: false });
+    expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 5);
+    expect(jobsQuery.eq).toHaveBeenCalledWith('is_sse', true);
   });
 
   it('deletes organization when found', async () => {

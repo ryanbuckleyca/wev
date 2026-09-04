@@ -215,10 +215,77 @@ def test_filter_assessment_update_fields_uses_field_aware_missing_predicate():
     with patch(
         "utils.organization_assessment._result_to_db_fields",
         return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
     ):
         filtered = filter_assessment_update_fields(org, outcome)
 
     assert filtered == {"language": "en", "values_list": ["Community"]}
+
+
+def test_filter_assessment_update_fields_attaches_language_from_name():
+    org = _complete_org(language=None, values_list=["Community"])
+    outcome = AssessmentOutcome(
+        {"canonical_name": "Habitations Les Trinitaires", "public_language": None},
+        None,
+    )
+    db_fields = {
+        "values_list": ["Community"],
+        "sse_details": {"flags": ["values via=inferred"]},
+    }
+
+    def _fake_attach(row, llm_public_language=None, force_lang=False, fetch_web=False):
+        row["language"] = "fr"
+        details = dict(row.get("sse_details") or {})
+        flags = list(details.get("flags") or [])
+        flags.append("language:fr via=llm_name")
+        details["flags"] = flags
+        row["sse_details"] = details
+        return row
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=_fake_attach,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["language"] == "fr"
+    assert "language:fr via=llm_name" in filtered["sse_details"]["flags"]
+
+
+def test_filter_assessment_french_name_beats_english_public_language():
+    """Catch-up must not seed language from public_language before classify runs."""
+    from utils.organization_language import LanguageClassification
+
+    org = _complete_org(name="Habitations Les Trinitaires", language=None, values_list=["Community"])
+    outcome = AssessmentOutcome(
+        {
+            "canonical_name": "Habitations Les Trinitaires",
+            "public_language": "en",
+        },
+        None,
+    )
+    db_fields = {
+        "language": "en",
+        "values_list": ["Community"],
+        "sse_details": {"flags": ["values via=inferred"]},
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment.classify_org_language",
+        return_value=LanguageClassification("fr", 0.7, "llm_name", ("name_llm=fr",)),
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["language"] == "fr"
+    assert "language:fr via=llm_name" in filtered["sse_details"]["flags"]
 
 
 def _update_table(*, data=None, payloads=None, error=None):
