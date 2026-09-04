@@ -73,7 +73,13 @@
     "clearAllFilters": "Effacer tous les filtres",
     "showNonSse": "Afficher les organisations non-ÉSS",
     "noJobsForOrg": "Cette organisation n'a aucune offre d'emploi active en ce moment.",
+    "noJobsForOrgAll": "Cette organisation n'a aucune offre d'emploi.",
     "jobs": "{count, plural, =0 {Aucun emploi actif} one {1 emploi actif} other {# emplois actifs}}",
+    "jobsAll": "{count, plural, =0 {Aucun emploi} one {1 emploi} other {# emplois}}",
+    "jobsActivityLabel": "Période des offres",
+    "jobsActivity28d": "4 dernières semaines",
+    "jobsActivity90d": "3 derniers mois",
+    "jobsActivityAll": "Toutes les offres",
     "website": "Site web",
     "viewProfile": "Voir le profil de l'organisation",
     "noDescription": "Aucune description disponible.",
@@ -310,7 +316,8 @@
     "expandDetails": "Développer les détails de l'emploi",
     "viewMatchDetails": "Voir les détails de la correspondance",
     "removeSseConfirm": "Retirer l'étiquette SSE de \"{title}\" chez {org} ?",
-    "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?"
+    "markSseConfirm": "Marquer \"{title}\" chez {org} comme un emploi d'économie solidaire ?",
+    "roleAtOrg": "{title} chez {org}"
   },
   "buttons": {
     "copyPageJobs": "Copier cette page",

@@ -33,9 +33,10 @@ def test_build_update_data():
         "sse_confidence": 0.9,
         "sse_details": "Reasoning"
     }
+    sse_org_job = {"organizations": {"is_sse": True}, "language": "en"}
 
     # Task all
-    data = _build_update_data("all", job_result)
+    data = _build_update_data("all", job_result, sse_org_job)
     assert data["summary"] == "Job summary"
     assert data["values"] == ["Ambition"]
     assert data["is_sse"] is True
@@ -47,7 +48,7 @@ def test_build_update_data():
     assert "values" not in data
 
     # Task sse only
-    data = _build_update_data("sse", job_result)
+    data = _build_update_data("sse", job_result, sse_org_job)
     assert "is_sse" in data
     assert "summary" not in data
 
@@ -57,18 +58,50 @@ def test_build_update_data():
     assert data["language"] == "fr"
 
     # Task all: Language is added when valid and differing
-    data = _build_update_data("all", job_result, {"language": "en"})
+    data = _build_update_data("all", job_result, {"language": "en", "organizations": {"is_sse": True}})
     assert data["language"] == "fr"
 
     # Task all: Language clobbering prevention (invalid or None language)
     job_result["language"] = None
-    data = _build_update_data("all", job_result, {"language": "en"})
+    data = _build_update_data("all", job_result, {"language": "en", "organizations": {"is_sse": True}})
     assert "language" not in data
 
     # Task all: Invalid language does not overwrite
     job_result["language"] = "de"
-    data = _build_update_data("all", job_result, {"language": "en"})
+    data = _build_update_data("all", job_result, {"language": "en", "organizations": {"is_sse": True}})
     assert "language" not in data
+
+
+def test_build_update_data_gates_job_sse_on_org():
+    job_result = {
+        "is_sse": True,
+        "sse_confidence": 0.9,
+        "sse_details": "Mission-flavored role",
+        "flags": [],
+    }
+
+    gated = _build_update_data("sse", job_result, {"organizations": {"is_sse": False}})
+    assert gated["is_sse"] is False
+    assert "gated_by_org_is_sse" in gated["sse_details"]
+
+    deferred = _build_update_data("sse", job_result, {"organizations": {"is_sse": None}})
+    assert "is_sse" not in deferred
+    assert "sse_details" not in deferred
+
+    deferred_missing = _build_update_data("sse", job_result, {})
+    assert "is_sse" not in deferred_missing
+
+    allowed = _build_update_data("sse", job_result, {"org_is_sse": True})
+    assert allowed["is_sse"] is True
+    assert "gated_by_org_is_sse" not in allowed["sse_details"]
+
+    no_claim = _build_update_data(
+        "sse",
+        {"is_sse": False, "sse_confidence": 0.2, "sse_details": "No"},
+        {"organizations": {"is_sse": True}},
+    )
+    assert no_claim["is_sse"] is False
+
 
 def test_is_transient_db_error():
     e = Exception("timeout")

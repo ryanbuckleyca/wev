@@ -268,10 +268,38 @@ describe('organizations/server-data', () => {
     expect(mockFrom).toHaveBeenCalledWith('jobs');
     expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 42);
     expect(jobsQuery.gte).toHaveBeenCalledWith('date_posted', '2026-05-16T00:00:00.000Z');
-    expect(jobsQuery.order).toHaveBeenCalledWith('date_posted', { ascending: false });
+    expect(jobsQuery.order).toHaveBeenCalledWith('date_posted', {
+      ascending: false,
+      nullsFirst: false,
+    });
     expect(jobsQuery.range).toHaveBeenCalledWith(20, 39);
     expect(result.total).toBe(1);
     expect(result.jobs).toHaveLength(1);
+  });
+
+  it('omits the date_posted filter when activityDays is null (all jobs)', async () => {
+    jobsQuery.setResult({
+      data: [],
+      error: null,
+      count: 0,
+    });
+
+    await getOrganizationJobs({ orgId: 42, page: 1, activityDays: null });
+
+    expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 42);
+    expect(jobsQuery.gte).not.toHaveBeenCalled();
+  });
+
+  it('applies a custom activityDays window', async () => {
+    jobsQuery.setResult({
+      data: [],
+      error: null,
+      count: 0,
+    });
+
+    await getOrganizationJobs({ orgId: 42, page: 1, activityDays: 90 });
+
+    expect(jobsQuery.gte).toHaveBeenCalledWith('date_posted', '2026-03-15T00:00:00.000Z');
   });
 
   describe('fetchOrganizationFilterOptions', () => {

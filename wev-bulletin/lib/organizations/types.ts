@@ -47,6 +47,14 @@ export interface OrgJobPosting {
   location: string | null;
   work_type: string | null;
   municipality?: string | null;
+  province?: string | null;
+  summary?: string | null;
+  wage?: string | null;
+  unit_text?: JobRow['unit_text'];
+  min_value?: number | null;
+  max_value?: number | null;
+  hours_per_week?: number | null;
+  language?: string | null;
   skills?: string[] | null;
   values?: string[] | null;
   skill_labels?: Record<

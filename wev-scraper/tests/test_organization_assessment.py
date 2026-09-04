@@ -1359,3 +1359,148 @@ def test_values_rules_require_infer_from_tavily_when_no_literal_list():
     assert "Tavily/web evidence" in prompt
     assert "NEVER use SOURCE DESCRIPTION or listing notes for values" in prompt
     assert "you MUST infer values too" in prompt
+    assert "Municipal / government" in prompt
+
+
+def test_description_present_without_values():
+    from utils.organization_assessment import (
+        _description_present_without_values,
+        _should_retry_empty_values,
+    )
+
+    assert _description_present_without_values(
+        {
+            "description_en": "A municipal government in Ontario.",
+            "description_fr": "",
+            "values": [],
+        }
+    )
+    assert not _description_present_without_values(
+        {
+            "description_en": "A municipal government in Ontario.",
+            "description_fr": "",
+            "values": ["Community"],
+        }
+    )
+    assert not _description_present_without_values(
+        {"description_en": "", "description_fr": "", "values": []}
+    )
+
+    inferred_empty = {
+        "description_en": "A municipal government in Ontario.",
+        "description_fr": "",
+        "values": [],
+        "flags": ["description via=inferred", "values via=absent"],
+    }
+    extracted_empty = {
+        "description_en": "Stale listing blurb only.",
+        "description_fr": "",
+        "values": [],
+        "flags": ["description via=extracted", "values via=absent"],
+    }
+    assert _should_retry_empty_values(inferred_empty)
+    assert not _should_retry_empty_values(extracted_empty)
+
+
+def test_assess_with_outcome_keeps_first_parse_when_values_retry_still_empty():
+    """Empty values after retry must not discard a usable first parse as parse_failed."""
+    from unittest.mock import MagicMock
+
+    empty_values = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [empty_values, empty_values]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["description_en"]
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count >= 2
+
+
+def test_assess_with_outcome_skips_values_retry_for_source_description_only():
+    """SOURCE DESCRIPTION + empty values must not trigger the research values nudge."""
+    from unittest.mock import MagicMock
+
+    source_only = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=extracted",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = source_only
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+        existing_description="Stale listing blurb only.",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count == 1
+
+
+def test_assess_with_outcome_uses_values_retry_when_it_fills_values():
+    from unittest.mock import MagicMock
+
+    empty_values = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    with_values = json.dumps(
+        _valid_assessment_payload(
+            values=["Community", "Help Society", "Stability"],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=inferred",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [empty_values, with_values]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["values"] == ["Community", "Help Society", "Stability"]

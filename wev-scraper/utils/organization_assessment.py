@@ -333,6 +333,9 @@ RULES for the "values" field:
 - Empty array is allowed ONLY when there is no usable web/search evidence AND you
   could not write description_* from research (values via=absent). If you wrote a
   description from search, you MUST infer values too.
+- Municipal / government / utility employers still need 3–5 Knowdell labels
+  (e.g. Community, Public Contact, Help Society, Stability). Do NOT return []
+  for them when description_* is filled.
 
 {website_rules}
 
@@ -1434,6 +1437,32 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     return _apply_private_company_sse_guard(gated, raw_name)
 
 
+def _description_present_without_values(result: AssessedOrgResult) -> bool:
+    """True when the model wrote a description but left Knowdell values empty."""
+    has_desc = bool(
+        (result.get("description_en") or "").strip()
+        or (result.get("description_fr") or "").strip()
+    )
+    return has_desc and not bool(result.get("values"))
+
+
+def _should_retry_empty_values(result: AssessedOrgResult) -> bool:
+    """Retry empty values only when description itself came from research.
+
+    SOURCE DESCRIPTION (description via=extracted from a stored listing blurb) is
+    explicitly distrusted for values; nudging inference from that path contradicts
+    the prompt. Research-inferred descriptions are the municipal backlog case.
+    """
+    if not _description_present_without_values(result):
+        return False
+    for raw in result.get("flags") or []:
+        if not isinstance(raw, str):
+            continue
+        if raw.strip().lower() == "description via=inferred":
+            return True
+    return False
+
+
 def _append_language_provenance_flags(
     row: dict,
     *,
@@ -1894,6 +1923,58 @@ class OrganizationAssessor(BaseGroundedClassifier):
             return AssessmentOutcome(None, SKIP_REASON_PARSE_FAILED)
 
         result = _enforce_locale_correctness(result)
+
+        # Flash-lite often returned research-inferred description_* with values:[].
+        # One nudged retry when description via=inferred. If retry still lacks values,
+        # keep the first parse so catch-up can write other missing fields (e.g. language)
+        # and park as partial_fill rather than discarding a usable result as parse_failed.
+        if _should_retry_empty_values(result):
+            logger.warning(
+                "OrganizationAssessor: research description without values for %r — retrying once",
+                raw_name,
+            )
+            nudge = (
+                "\n\nCRITICAL RETRY: Your prior JSON had a research-inferred description_* "
+                'but an empty "values" array. Infer 3–5 Knowdell labels from that research '
+                "(Community, Public Contact, Help Society, Stability are typical for "
+                "municipalities). Only leave values empty if there is truly no usable "
+                "web/search evidence (values via=absent)."
+            )
+            try:
+                retry_text = self._call_provider_with_retry(
+                    provider=self.provider,
+                    prompt=prompt + nudge,
+                    system=_ASSESSOR_SYSTEM,
+                    task="sse",
+                    search_query=search_query if use_grounding else None,
+                    retries=1,
+                    prefer_hosts=prefer_hosts if use_grounding else None,
+                    require_terms=require_terms if use_grounding else None,
+                    use_grounding=use_grounding,
+                )
+                retried = _parse_response(retry_text, raw_name)
+                if retried is not None:
+                    retried = _enforce_locale_correctness(retried)
+                    if not _description_present_without_values(retried):
+                        result = retried
+                    else:
+                        logger.warning(
+                            "OrganizationAssessor: retry still missing values for %r — "
+                            "keeping first parse",
+                            raw_name,
+                        )
+                else:
+                    logger.warning(
+                        "OrganizationAssessor: values-retry unparseable for %r — "
+                        "keeping first parse",
+                        raw_name,
+                    )
+            except (SSEClassificationError, LLMProviderError) as exc:
+                logger.warning(
+                    "OrganizationAssessor values-retry LLM call failed for %r: %s — "
+                    "keeping first parse",
+                    raw_name, exc,
+                )
 
         # Location validation: when we used grounding, validate that the discovered content
         # matches the expected location and name (regardless of whether we have a known_website)

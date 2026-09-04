@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { getWorkTypeLabel, labelize } from '@/lib/bulletin/filter-labels';
 import {
   buildJobMatchTooltipProps,
   buildProfileMatchPreferences,
@@ -10,13 +9,48 @@ import {
   buildSkillLabelMaps,
 } from '@/lib/bulletin/job-match-display';
 import { fetchMatchMapForJobs } from '@/lib/bulletin/match-map';
+import { parseDateString } from '@/lib/date-utils';
 import { safeUrl } from '@/lib/url';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import type { OrgJobPosting } from '@/lib/organizations/types';
-import type { JobMatchData } from '@/lib/supabase';
+import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import CardFooter from './CardFooter';
+import JobCardDetails from './JobCardDetails';
 import MatchDetailsTooltip from './MatchDetailsTooltip';
+
+function toJobPosting(job: OrgJobPosting, org: { name: string; slug: string | null }): JobPosting {
+  const url = safeUrl(job.listing_url);
+  const workType =
+    job.work_type === 'remote' || job.work_type === 'hybrid' || job.work_type === 'office'
+      ? job.work_type
+      : 'office';
+
+  return {
+    id: job.id,
+    job_title: job.job_title,
+    organization: org.name,
+    organization_slug: org.slug,
+    location: job.location || '',
+    municipality: job.municipality ?? null,
+    province: job.province ?? null,
+    work_type: workType,
+    date_posted: job.date_posted || '',
+    close_date: null,
+    wage: job.wage ?? null,
+    listing_url: url ?? '',
+    employment_type: job.employment_type,
+    summary: job.summary ?? null,
+    values: job.values ?? undefined,
+    skills: job.skills ?? undefined,
+    skill_labels: job.skill_labels,
+    unit_text: (job.unit_text as JobPosting['unit_text']) ?? null,
+    min_value: job.min_value ?? null,
+    max_value: job.max_value ?? null,
+    hours_per_week: job.hours_per_week ?? null,
+    language: job.language ?? null,
+  };
+}
 
 function JobSkillFooter({
   job,
@@ -69,11 +103,11 @@ function JobSkillFooter({
     profilePreferences,
   ]);
 
-  const hasFooter = skills.length > 0 || values.length > 0;
+  const hasFooter = skills.length > 0 || values.length > 0 || Boolean(job.language);
   if (!hasFooter) return null;
 
   return (
-    <div className="mt-3 pt-3 border-t border-border">
+    <div className="border-t border-border bg-muted px-4 py-3">
       <CardFooter
         values={values}
         skills={skills}
@@ -85,9 +119,11 @@ function JobSkillFooter({
         matchTooltipContent={matchTooltipContent}
         showTooltip={Boolean(userId && match && matchTooltipContent)}
         showMatchLoading={Boolean(userId && matchLoading && !match)}
-        fadeBackground="var(--card)"
+        fadeBackground="var(--muted)"
         workType={job.work_type as 'remote' | 'hybrid' | 'office' | undefined}
         selectedWorkTypes={profile?.work_types ?? []}
+        language={job.language ?? undefined}
+        selectedLanguages={[]}
         isLoggedIn={!!userId}
       />
     </div>
@@ -96,79 +132,57 @@ function JobSkillFooter({
 
 export default function OrganizationJobRow({
   job,
+  org,
   match,
   matchLoading = false,
   userId = null,
 }: {
   job: OrgJobPosting;
+  org: { name: string; slug: string | null };
   match?: JobMatchData | null;
   matchLoading?: boolean;
   userId?: string | null;
 }) {
   const t = useTranslations();
   const locale = useLocale();
+  const dateLocale = locale === 'fr' ? 'fr-CA' : 'en-CA';
 
-  let formattedDate = '';
-  if (job.date_posted) {
-    const date = new Date(job.date_posted);
-    if (!isNaN(date.getTime())) {
-      formattedDate = new Intl.DateTimeFormat(locale, {
-        month: 'short',
-        day: 'numeric',
+  const posting = useMemo(() => toJobPosting(job, org), [job, org]);
+
+  const formatDate = useCallback(
+    (dateString: string): string => {
+      if (!dateString) return t('jobCard.nA');
+      const parsed = parseDateString(dateString);
+      if (Number.isNaN(parsed.getTime())) return t('jobCard.nA');
+      return parsed.toLocaleDateString(dateLocale, {
         year: 'numeric',
-      }).format(date);
-    }
-  }
-
-  const url = safeUrl(job.listing_url);
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'America/New_York',
+      });
+    },
+    [dateLocale, t],
+  );
 
   return (
-    <article className="border border-border rounded-wev-card p-4 transition-colors hover:bg-muted/50">
-      <a
-        href={url ?? undefined}
-        {...(url ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        className={`block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2${url ? '' : ' pointer-events-none opacity-70'}`}
-      >
-        <div className="flex flex-col gap-2">
-          <h3 className="font-semibold text-lg text-primary-text group-hover:underline">
-            {job.job_title}
-          </h3>
-
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-            {job.location && (
-              <div className="flex items-center gap-1.5">
-                <span>{job.location}</span>
-              </div>
-            )}
-
-            {job.work_type && (
-              <div className="flex items-center gap-1.5">
-                <span>{getWorkTypeLabel(job.work_type, t)}</span>
-              </div>
-            )}
-
-            {job.employment_type && (
-              <div className="flex items-center gap-1.5">
-                <span>{labelize(job.employment_type)}</span>
-              </div>
-            )}
-
-            {formattedDate && (
-              <div className="flex items-center gap-1.5 ml-auto">
-                <span>{formattedDate}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </a>
-
+    <article
+      aria-label={t('jobCard.roleAtOrg', { title: job.job_title, org: org.name })}
+      className="overflow-hidden rounded-wev-card border border-border bg-card transition-colors hover:border-primary"
+    >
+      <JobCardDetails job={posting} locale={locale} t={t} formatDate={formatDate} />
       <JobSkillFooter job={job} match={match} matchLoading={matchLoading} userId={userId} />
     </article>
   );
 }
 
 /** Client list that hydrates job_matches for the visible org jobs. */
-export function OrganizationJobsList({ jobs }: { jobs: OrgJobPosting[] }) {
+export function OrganizationJobsList({
+  jobs,
+  org,
+}: {
+  jobs: OrgJobPosting[];
+  org: { name: string; slug: string | null };
+}) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const [matchData, setMatchData] = useState<Map<string, JobMatchData>>(new Map());
@@ -205,6 +219,7 @@ export function OrganizationJobsList({ jobs }: { jobs: OrgJobPosting[] }) {
         <OrganizationJobRow
           key={job.id}
           job={job}
+          org={org}
           match={matchData.get(job.id) ?? null}
           matchLoading={matchLoading}
           userId={userId}

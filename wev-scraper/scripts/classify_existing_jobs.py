@@ -84,14 +84,14 @@ def classify_existing_jobs(
 
     try:
         if limit > 0:
-            query = supabase.table("jobs").select("*")
+            query = supabase.table("jobs").select("*, organizations(is_sse)")
             if not reclassify:
                 query = query.filter("sse_rating", "is", "null")
             resp = query.order("id", desc=True).range(0, limit - 1).execute()
             jobs = resp.data or []
             query_desc = f"first {limit} {query_desc}"
         elif reclassify:
-            jobs = fetch_all_rows("jobs", "*")
+            jobs = fetch_all_rows("jobs", "*, organizations(is_sse)")
         else:
             from utils.db import PAGE_SIZE
             jobs = []
@@ -99,7 +99,7 @@ def classify_existing_jobs(
             while True:
                 resp = (
                     supabase.table("jobs")
-                    .select("*")
+                    .select("*, organizations(is_sse)")
                     .filter("sse_rating", "is", "null")
                     .order("id", desc=True)
                     .range(offset, offset + PAGE_SIZE - 1)
@@ -179,48 +179,70 @@ def classify_existing_jobs(
                     for flag in result['flags']:
                         print(f"    ⚠ {flag}")
 
-            # Determine is_sse from rating
-            is_sse = None
+            # Determine is_sse from rating, then gate on linked org SSE.
+            from utils.job_sse import apply_job_sse_org_gate, org_is_sse_from_job_row
+
+            proposed_is_sse = None
             if result["rating"] in ("strong_yes", "weak_yes"):
-                is_sse = True
+                proposed_is_sse = True
             elif result["rating"] == "no":
-                is_sse = False
+                proposed_is_sse = False
 
-            # Update database (remove rating from sse_details since it's in sse_rating column)
-            try:
-                # Create normalized sse_details with consistent field order
-                sse_details = {
-                    "confidence": result.get("confidence"),
-                    "reasoning": result.get("reasoning"),
-                    "must_haves_met": result.get("must_haves_met", []),
-                    "nice_to_haves_met": result.get("nice_to_haves_met", []),
-                    "flags": result.get("flags", []),
-                    "classified_at": result.get("classified_at"),
-                    "reviewed": result.get("reviewed", False),
-                }
-
-                update_data: dict[str, object] = {
-                    "sse_rating": result["rating"],
-                    "sse_details": json.dumps(sse_details) if isinstance(sse_details, dict) else sse_details,
-                }
-                if is_sse is not None:
-                    update_data["is_sse"] = is_sse
-
-                supabase.table("jobs").update(update_data).eq("id", job_id).execute()
+            is_sse, gated_flags, deferred = apply_job_sse_org_gate(
+                proposed_is_sse=proposed_is_sse,
+                org_is_sse=org_is_sse_from_job_row(job),
+                flags=result.get("flags", []),
+            )
+            # Do not `continue` on defer — the rate-limit sleep below must still run
+            # after every grounded classifier call (including deferred writes).
+            if deferred:
                 if verbose:
-                    print("  ✅ Updated in database")
+                    print("  ⏸ Deferred is_sse write — org not yet assessed as SSE")
+                counts["skipped"] += 1
+            else:
+                # Update database (remove rating from sse_details since it's in sse_rating column)
+                try:
+                    # Create normalized sse_details with consistent field order
+                    sse_details = {
+                        "confidence": result.get("confidence"),
+                        "reasoning": result.get("reasoning"),
+                        "must_haves_met": result.get("must_haves_met", []),
+                        "nice_to_haves_met": result.get("nice_to_haves_met", []),
+                        "flags": gated_flags,
+                        "classified_at": result.get("classified_at"),
+                        "reviewed": result.get("reviewed", False),
+                    }
 
-                counts["classified"] += 1
+                    update_data: dict[str, object] = {
+                        "sse_rating": (
+                            "no"
+                            if (proposed_is_sse is True and is_sse is False)
+                            else result["rating"]
+                        ),
+                        "sse_details": (
+                            json.dumps(sse_details)
+                            if isinstance(sse_details, dict)
+                            else sse_details
+                        ),
+                    }
+                    if is_sse is not None:
+                        update_data["is_sse"] = is_sse
 
-            except Exception as e:
-                print(f"  ❌ Database update failed: {e}")
-                counts["errors"] += 1
+                    supabase.table("jobs").update(update_data).eq("id", job_id).execute()
+                    if verbose:
+                        print("  ✅ Updated in database")
+
+                    counts["classified"] += 1
+
+                except Exception as e:
+                    print(f"  ❌ Database update failed: {e}")
+                    counts["errors"] += 1
 
         except Exception as e:
             print(f"  ❌ Classification failed: {e}")
             counts["errors"] += 1
 
-        # Rate limiting between individual jobs
+        # Rate limiting between individual jobs (runs on defer and error paths too)
         if delay_seconds > 0 and i < len(jobs):
             time.sleep(delay_seconds)
 
@@ -253,9 +275,14 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
         print(f"✗ Failed to initialize classifier: {e}")
         return False
 
-    # Fetch the job
+    # Fetch the job (include org is_sse for the employer gate)
     try:
-        response = supabase.table("jobs").select("*").eq("id", job_id).execute()
+        response = (
+            supabase.table("jobs")
+            .select("*, organizations(is_sse)")
+            .eq("id", job_id)
+            .execute()
+        )
         jobs = response.data or []
     except Exception as e:
         print(f"✗ Database query failed: {e}")
@@ -272,6 +299,8 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
 
     # Classify the job
     try:
+        from utils.job_sse import apply_job_sse_org_gate, org_is_sse_from_job_row
+
         job_input = {
             "org_name": job.get("organization", "Unknown"),
             "title": job.get("job_title", "Unknown"),
@@ -308,12 +337,21 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
                     print(f"  ⚠ {flag}")
             print()
 
-        # Update database (remove rating from sse_details since it's in sse_rating column)
-        is_sse = None
+        proposed_is_sse = None
         if result["rating"] in ("strong_yes", "weak_yes"):
-            is_sse = True
+            proposed_is_sse = True
         elif result["rating"] == "no":
-            is_sse = False
+            proposed_is_sse = False
+
+        is_sse, gated_flags, deferred = apply_job_sse_org_gate(
+            proposed_is_sse=proposed_is_sse,
+            org_is_sse=org_is_sse_from_job_row(job),
+            flags=result.get("flags", []),
+        )
+        if deferred:
+            if verbose:
+                print("⏸ Deferred is_sse write — org not yet assessed as SSE")
+            return False
 
         # Create normalized sse_details with consistent field order
         sse_details = {
@@ -321,12 +359,17 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
             "reasoning": result.get("reasoning"),
             "must_haves_met": result.get("must_haves_met", []),
             "nice_to_haves_met": result.get("nice_to_haves_met", []),
-            "flags": result.get("flags", []),
+            "flags": gated_flags,
             "classified_at": result.get("classified_at"),
             "reviewed": result.get("reviewed", False),
         }
+        persisted_rating = (
+            "no"
+            if (proposed_is_sse is True and is_sse is False)
+            else result.get("rating")
+        )
         update_data = {
-            "sse_rating": result.get("rating"),
+            "sse_rating": persisted_rating,
             "sse_details": sse_details,
         }
         if is_sse is not None:
@@ -348,7 +391,7 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
 
         if verbose:
             print("✓ Database updated")
-            print(f"  sse_rating: {result['rating']}")
+            print(f"  sse_rating: {persisted_rating}")
             print(f"  is_sse: {is_sse}")
             print()
 

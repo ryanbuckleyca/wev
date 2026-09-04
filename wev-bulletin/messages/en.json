@@ -73,7 +73,13 @@
     "clearAllFilters": "Clear all filters",
     "showNonSse": "Show non-SSE organizations",
     "noJobsForOrg": "This organization has no active job listings at the moment.",
+    "noJobsForOrgAll": "This organization has no job listings.",
     "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
+    "jobsAll": "{count, plural, =0 {No jobs} one {1 job} other {# jobs}}",
+    "jobsActivityLabel": "Job listing period",
+    "jobsActivity28d": "Last 4 weeks",
+    "jobsActivity90d": "Last 3 months",
+    "jobsActivityAll": "All jobs",
     "website": "Website",
     "viewProfile": "View organization profile",
     "noDescription": "No description available.",
@@ -310,7 +316,8 @@
     "expandDetails": "Expand job details",
     "viewMatchDetails": "View match details",
     "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
-    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
+    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?",
+    "roleAtOrg": "{title} at {org}"
   },
   "buttons": {
     "copyPageJobs": "Copy This Page",
