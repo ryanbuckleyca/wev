@@ -19,7 +19,10 @@ export function resolveJobIsSse(
 export type DemoteJobsClient = {
   from: (table: 'jobs') => {
     update: (values: { is_sse: false }) => {
-      eq: (column: 'organization_id' | 'is_sse', value: number | boolean) => {
+      eq: (
+        column: 'organization_id' | 'is_sse',
+        value: number | boolean,
+      ) => {
         eq: (
           column: 'organization_id' | 'is_sse',
           value: number | boolean,

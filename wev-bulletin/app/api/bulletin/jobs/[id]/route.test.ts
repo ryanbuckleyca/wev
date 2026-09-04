@@ -123,9 +123,7 @@ describe('PATCH /api/bulletin/jobs/[id]', () => {
       data: { id: 'job-1', is_sse: true },
       error: null,
     });
-    mockSupabase.from
-      .mockReturnValueOnce(mockSelectChain())
-      .mockReturnValueOnce(mockUpdateChain());
+    mockSupabase.from.mockReturnValueOnce(mockSelectChain()).mockReturnValueOnce(mockUpdateChain());
 
     const request = new NextRequest('http://localhost/api/bulletin/jobs/job-1', {
       method: 'PATCH',

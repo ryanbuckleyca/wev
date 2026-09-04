@@ -59,8 +59,7 @@ export async function PATCH(
       if (resolved !== true) {
         return NextResponse.json(
           {
-            error:
-              'Job cannot be marked SSE unless the linked organization is SSE',
+            error: 'Job cannot be marked SSE unless the linked organization is SSE',
           },
           { status: 400 },
         );

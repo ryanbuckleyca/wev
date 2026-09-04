@@ -4,7 +4,11 @@ import { isGeneratedBackupColumn, sanitizeBackupRow } from "./backup-row";
 
 describe("sanitizeBackupRow", () => {
   it("strips generated search_* columns that staging restore cannot INSERT", () => {
-    for (const col of ["search_municipality", "search_province", "search_name"]) {
+    for (const col of [
+      "search_municipality",
+      "search_province",
+      "search_name",
+    ]) {
       assert.equal(isGeneratedBackupColumn(col), true);
     }
 

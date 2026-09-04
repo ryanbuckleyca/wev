@@ -82,9 +82,10 @@ describe('organizations/actions', () => {
       user: { id: 'admin-1' },
     });
     setOrgResult({ data: null, error: null });
-    (
-      jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }
-    ).setResult({ data: [], error: null });
+    (jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }).setResult({
+      data: [],
+      error: null,
+    });
   });
 
   it('returns unauthorized when admin session is missing', async () => {
@@ -172,9 +173,10 @@ describe('organizations/actions', () => {
         data: { id: 5, slug: 'sse-org', is_sse: false, name: 'SSE Org' },
         error: null,
       });
-    (
-      jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }
-    ).setResult({ data: [{ id: 'j1' }], error: null });
+    (jobsQuery as { setResult: (next: { data: unknown; error: unknown }) => void }).setResult({
+      data: [{ id: 'j1' }],
+      error: null,
+    });
 
     const result = await updateOrganization(5, { is_sse: false });
 
