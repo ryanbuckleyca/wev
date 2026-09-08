@@ -14,10 +14,11 @@ describe('resolveJobIsSse', () => {
 
 describe('demoteOrgJobSse', () => {
   it('updates SSE jobs for the org and returns the row count', async () => {
-    const eqIsSse = vi.fn().mockResolvedValue({
+    const select = vi.fn().mockResolvedValue({
       data: [{ id: 'j1' }, { id: 'j2' }],
       error: null,
     });
+    const eqIsSse = vi.fn(() => ({ select }));
     const eqOrg = vi.fn(() => ({ eq: eqIsSse }));
     const update = vi.fn(() => ({ eq: eqOrg }));
     const from = vi.fn(() => ({ update }));
@@ -28,11 +29,13 @@ describe('demoteOrgJobSse', () => {
     expect(update).toHaveBeenCalledWith({ is_sse: false });
     expect(eqOrg).toHaveBeenCalledWith('organization_id', 42);
     expect(eqIsSse).toHaveBeenCalledWith('is_sse', true);
+    expect(select).toHaveBeenCalledWith('id');
     expect(count).toBe(2);
   });
 
   it('returns 0 on error', async () => {
-    const eqIsSse = vi.fn().mockResolvedValue({ data: null, error: { message: 'fail' } });
+    const select = vi.fn().mockResolvedValue({ data: null, error: { message: 'fail' } });
+    const eqIsSse = vi.fn(() => ({ select }));
     const eqOrg = vi.fn(() => ({ eq: eqIsSse }));
     const update = vi.fn(() => ({ eq: eqOrg }));
     const from = vi.fn(() => ({ update }));

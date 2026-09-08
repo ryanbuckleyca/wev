@@ -1955,13 +1955,22 @@ class OrganizationAssessor(BaseGroundedClassifier):
                 retried = _parse_response(retry_text, raw_name)
                 if retried is not None:
                     retried = _enforce_locale_correctness(retried)
-                    if not _description_present_without_values(retried):
+                    # Adopt the retry only when it keeps a description and fills
+                    # values — a values-only retry that clears description_* would
+                    # regress the record.
+                    retry_has_desc = bool(
+                        (retried.get("description_en") or "").strip()
+                        or (retried.get("description_fr") or "").strip()
+                    )
+                    if retried.get("values") and retry_has_desc:
                         result = retried
                     else:
                         logger.warning(
-                            "OrganizationAssessor: retry still missing values for %r — "
-                            "keeping first parse",
+                            "OrganizationAssessor: values-retry incomplete for %r "
+                            "(values=%s, description=%s) — keeping first parse",
                             raw_name,
+                            bool(retried.get("values")),
+                            retry_has_desc,
                         )
                 else:
                     logger.warning(

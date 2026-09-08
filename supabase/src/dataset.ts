@@ -316,7 +316,10 @@ function createJobFixture(
   // en:           Fully English posting, English only.
   const jobTitle = buildJobTitle(language, index);
 
-  const partnerIndex = (index % 4) + 1;
+  // SSE jobs must belong to SSE employers (partners 1–2). Non-SSE jobs use
+  // partners 3–4 so the seed respects jobs.is_sse ⊆ organizations.is_sse.
+  const isSseJob = index < TOTAL_SSE_JOB_COUNT;
+  const partnerIndex = isSseJob ? (index % 2) + 1 : (index % 2) + 3;
   const organization = `WEV Partner ${partnerIndex}`;
   const organizationId = partnerIndex;
 
@@ -342,7 +345,7 @@ function createJobFixture(
     is_remote: location.is_remote,
     // The bulletin defaults to the SSE-only filter, so the first SSE rows shape
     // the default landing state and the trailing non-SSE rows exercise that toggle.
-    is_sse: index < TOTAL_SSE_JOB_COUNT,
+    is_sse: isSseJob,
     job_title: jobTitle,
     language: dbLanguage(language),
     lat: location.lat,

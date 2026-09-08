@@ -4,9 +4,11 @@ from unittest.mock import MagicMock
 
 from utils.job_sse import (
     ORG_SSE_GATE_FLAG,
+    ORG_SSE_GATE_REASON_PREFIX,
     annotate_sse_details_flags,
     apply_job_sse_org_gate,
     demote_org_job_sse,
+    gated_sse_reasoning,
     job_sse_was_deferred,
     job_sse_was_gated,
     org_is_sse_from_job_row,
@@ -31,6 +33,10 @@ def test_gate_helpers():
     assert job_sse_was_deferred(True, False) is False
     flags = annotate_sse_details_flags(["a"], gated=True)
     assert flags == ["a", ORG_SSE_GATE_FLAG]
+    assert gated_sse_reasoning("Mission-aligned role.", gated=True).startswith(
+        ORG_SSE_GATE_REASON_PREFIX
+    )
+    assert gated_sse_reasoning("Mission-aligned role.", gated=False) == "Mission-aligned role."
 
 
 def test_apply_job_sse_org_gate():

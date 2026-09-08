@@ -83,6 +83,7 @@ def test_build_update_data_gates_job_sse_on_org():
     gated = _build_update_data("sse", job_result, {"organizations": {"is_sse": False}})
     assert gated["is_sse"] is False
     assert "gated_by_org_is_sse" in gated["sse_details"]
+    assert "Gated: employer organization is not SSE." in gated["sse_details"]
 
     deferred = _build_update_data("sse", job_result, {"organizations": {"is_sse": None}})
     assert "is_sse" not in deferred
@@ -115,6 +116,9 @@ def test_is_transient_db_error():
     assert is_transient_db_error(e) is True
 
     e.code = "57014"
+    assert is_transient_db_error(e) is True
+
+    e.code = "40P01"
     assert is_transient_db_error(e) is True
 
     e.code = "500"

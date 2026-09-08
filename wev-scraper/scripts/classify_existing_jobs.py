@@ -180,7 +180,11 @@ def classify_existing_jobs(
                         print(f"    ⚠ {flag}")
 
             # Determine is_sse from rating, then gate on linked org SSE.
-            from utils.job_sse import apply_job_sse_org_gate, org_is_sse_from_job_row
+            from utils.job_sse import (
+                apply_job_sse_org_gate,
+                gated_sse_reasoning,
+                org_is_sse_from_job_row,
+            )
 
             proposed_is_sse = None
             if result["rating"] in ("strong_yes", "weak_yes"):
@@ -202,10 +206,13 @@ def classify_existing_jobs(
             else:
                 # Update database (remove rating from sse_details since it's in sse_rating column)
                 try:
+                    gated = proposed_is_sse is True and is_sse is False
                     # Create normalized sse_details with consistent field order
                     sse_details = {
                         "confidence": result.get("confidence"),
-                        "reasoning": result.get("reasoning"),
+                        "reasoning": gated_sse_reasoning(
+                            result.get("reasoning"), gated=gated
+                        ),
                         "must_haves_met": result.get("must_haves_met", []),
                         "nice_to_haves_met": result.get("nice_to_haves_met", []),
                         "flags": gated_flags,
@@ -215,9 +222,7 @@ def classify_existing_jobs(
 
                     update_data: dict[str, object] = {
                         "sse_rating": (
-                            "no"
-                            if (proposed_is_sse is True and is_sse is False)
-                            else result["rating"]
+                            "no" if gated else result["rating"]
                         ),
                         "sse_details": (
                             json.dumps(sse_details)
@@ -299,7 +304,11 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
 
     # Classify the job
     try:
-        from utils.job_sse import apply_job_sse_org_gate, org_is_sse_from_job_row
+        from utils.job_sse import (
+            apply_job_sse_org_gate,
+            gated_sse_reasoning,
+            org_is_sse_from_job_row,
+        )
 
         job_input = {
             "org_name": job.get("organization", "Unknown"),
@@ -353,21 +362,18 @@ def classify_single_job(job_id: str, verbose: bool = True) -> bool:
                 print("⏸ Deferred is_sse write — org not yet assessed as SSE")
             return False
 
+        gated = proposed_is_sse is True and is_sse is False
         # Create normalized sse_details with consistent field order
         sse_details = {
             "confidence": result.get("confidence"),
-            "reasoning": result.get("reasoning"),
+            "reasoning": gated_sse_reasoning(result.get("reasoning"), gated=gated),
             "must_haves_met": result.get("must_haves_met", []),
             "nice_to_haves_met": result.get("nice_to_haves_met", []),
             "flags": gated_flags,
             "classified_at": result.get("classified_at"),
             "reviewed": result.get("reviewed", False),
         }
-        persisted_rating = (
-            "no"
-            if (proposed_is_sse is True and is_sse is False)
-            else result.get("rating")
-        )
+        persisted_rating = "no" if gated else result.get("rating")
         update_data = {
             "sse_rating": persisted_rating,
             "sse_details": sse_details,

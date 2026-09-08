@@ -69,6 +69,25 @@ describe('OrganizationJobRow', () => {
     expect(screen.getByText('Coordinate community programs and outreach.')).toBeInTheDocument();
   });
 
+  it('keeps UTC-midnight date_posted on the original calendar day', () => {
+    const job: OrgJobPosting = {
+      id: '123',
+      job_title: 'Coordinator',
+      listing_url: 'https://example.com/job',
+      date_posted: '2026-06-01T00:00:00.000Z',
+      employment_type: 'full-time',
+      location: 'Montreal, QC',
+      work_type: 'hybrid',
+      summary: 'Coordinate community programs and outreach.',
+    };
+
+    render(<OrganizationJobRow job={job} org={ORG} />);
+
+    // Must not shift to May 31 when formatting a UTC midnight date-only instant.
+    expect(screen.getByText(/June 1, 2026|1 juin 2026/i)).toBeInTheDocument();
+    expect(screen.queryByText(/May 31, 2026|31 mai 2026/i)).not.toBeInTheDocument();
+  });
+
   it('shows the title as plain text when the listing URL is missing', () => {
     const job: OrgJobPosting = {
       id: '123',

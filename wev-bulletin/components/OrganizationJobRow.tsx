@@ -158,7 +158,7 @@ export default function OrganizationJobRow({
         year: 'numeric',
         month: 'long',
         day: 'numeric',
-        timeZone: 'America/New_York',
+        timeZone: 'UTC',
       });
     },
     [dateLocale, t],

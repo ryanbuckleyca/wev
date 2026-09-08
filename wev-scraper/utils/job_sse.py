@@ -17,6 +17,17 @@ from typing import Any
 
 ORG_SSE_GATE_FLAG = "gated_by_org_is_sse"
 ORG_SSE_DEFER_FLAG = "deferred_org_sse_unassessed"
+ORG_SSE_GATE_REASON_PREFIX = "Gated: employer organization is not SSE."
+
+
+def gated_sse_reasoning(reasoning: str | None, *, gated: bool) -> str:
+    """Align persisted reasoning with an org-gated no decision."""
+    text = (reasoning or "").strip()
+    if not gated:
+        return text
+    if text:
+        return f"{ORG_SSE_GATE_REASON_PREFIX} {text}"
+    return ORG_SSE_GATE_REASON_PREFIX
 
 
 def resolve_job_is_sse(

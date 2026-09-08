@@ -1504,3 +1504,49 @@ def test_assess_with_outcome_uses_values_retry_when_it_fills_values():
     assert outcome.skip_reason is None
     assert outcome.result is not None
     assert outcome.result["values"] == ["Community", "Help Society", "Stability"]
+
+
+def test_assess_with_outcome_keeps_first_parse_when_retry_omits_descriptions():
+    """A values-retry that clears description_* must not replace, even with values."""
+    from unittest.mock import MagicMock
+
+    first = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    # Retry fills values but drops both description fields.
+    stripped = json.dumps(
+        _valid_assessment_payload(
+            description_en=None,
+            description_fr=None,
+            values=["Community", "Help Society"],
+            values_raw=None,
+            flags=[
+                "description via=absent",
+                "mission via=absent",
+                "values via=inferred",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [first, stripped]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["description_en"]
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count >= 2

@@ -26,7 +26,9 @@ export type DemoteJobsClient = {
         eq: (
           column: 'organization_id' | 'is_sse',
           value: number | boolean,
-        ) => PromiseLike<{ data: unknown[] | null; error: unknown }>;
+        ) => {
+          select: (columns: 'id') => PromiseLike<{ data: unknown[] | null; error: unknown }>;
+        };
       };
     };
   };
@@ -41,7 +43,8 @@ export async function demoteOrgJobSse(
     .from('jobs')
     .update({ is_sse: false })
     .eq('organization_id', organizationId)
-    .eq('is_sse', true);
+    .eq('is_sse', true)
+    .select('id');
 
   if (error) return 0;
   return Array.isArray(data) ? data.length : 0;
