@@ -6,6 +6,7 @@ import { requireAdminSession } from '@/lib/auth/require-admin';
 import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { routing } from '@/i18n/routing';
 import { logger } from '@/lib/logger';
+import { demoteOrgJobSse } from '@/lib/bulletin/job-sse';
 import { mapUniqueViolation } from './action-errors';
 import type { OrgFormInput } from './validate';
 import { buildOrgPayload, buildOrgUpdateFields, validateOrgInput } from './validate';
@@ -178,6 +179,17 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
     { orgId: org.id, orgName: org.name, userId: authResult.user.id },
     'Organization updated by admin',
   );
+
+  // Employer non-SSE → jobs cannot remain SSE.
+  if (updates.is_sse === false || (org.is_sse === false && existingOrg.is_sse === true)) {
+    const demoted = await demoteOrgJobSse(
+      supabaseServer as unknown as Parameters<typeof demoteOrgJobSse>[0],
+      id,
+    );
+    if (demoted > 0) {
+      logger.info({ orgId: id, demoted }, 'Demoted job is_sse after org marked non-SSE');
+    }
+  }
 
   revalidateOrganizationRoutes(org.slug, existingOrg.slug);
 

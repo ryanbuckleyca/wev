@@ -42,6 +42,16 @@ export type OrgMissingField =
   | 'language'
   | 'values';
 
+/** Assessed fields in form / checklist order. */
+export const ORG_ASSESSMENT_FIELDS: readonly OrgMissingField[] = [
+  'sector',
+  'type',
+  'descriptionEn',
+  'descriptionFr',
+  'language',
+  'values',
+] as const;
+
 export function findMissingOrgFields(org: OrgAssessmentSnapshot): OrgMissingField[] {
   const missing: OrgMissingField[] = [];
   if (!org.sector_id?.trim()) missing.push('sector');

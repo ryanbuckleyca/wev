@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ORG_ASSESSMENT_FIELDS,
   ORG_SKIP_REASON_IGNORED,
   findMissingOrgFields,
   identityFieldsChanged,
@@ -26,14 +27,7 @@ describe('findMissingOrgFields', () => {
   });
 
   it('lists every missing field in form order', () => {
-    expect(findMissingOrgFields({})).toEqual([
-      'sector',
-      'type',
-      'descriptionEn',
-      'descriptionFr',
-      'language',
-      'values',
-    ]);
+    expect(findMissingOrgFields({})).toEqual([...ORG_ASSESSMENT_FIELDS]);
   });
 
   it('counts a language outside en/fr/bilingual as missing', () => {

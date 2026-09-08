@@ -193,12 +193,38 @@ def filter_assessment_update_fields(
     outcome: Any,
 ) -> Dict[str, Any]:
     """Return assessor DB fields to write — only those still missing on *org*."""
-    from utils.organization_assessment import _result_to_db_fields
+    from utils.organization_assessment import _attach_org_language, _result_to_db_fields
 
     filtered: Dict[str, Any] = {}
     if not outcome.result:
         return filtered
-    for field, value in _result_to_db_fields(outcome.result).items():
+    db_fields = _result_to_db_fields(outcome.result)
+
+    # Catch-up used to skip name-based language classification; LLM public_language
+    # alone left French-named orgs (e.g. Habitations Les Trinitaires) with null language.
+    # Do not seed draft["language"] from public_language — that short-circuits
+    # classify_org_language. Pass public_language as the soft tiebreaker instead so a
+    # French name can beat a soft English public_language guess.
+    if _is_org_field_missing(org, "language"):
+        draft = {
+            "name": org.get("name") or outcome.result.get("canonical_name"),
+            "website": db_fields.get("website") or org.get("website"),
+            "language": None,
+            "sse_details": dict(db_fields.get("sse_details") or {}),
+        }
+        _attach_org_language(
+            draft,
+            outcome.result.get("public_language"),
+            fetch_web=False,
+        )
+        if draft.get("language"):
+            db_fields["language"] = draft["language"]
+        # Only fold language provenance into sse_details when the assessor already
+        # produced one — avoid inventing an empty sse_details write.
+        if "sse_details" in db_fields and isinstance(draft.get("sse_details"), dict):
+            db_fields["sse_details"] = draft["sse_details"]
+
+    for field, value in db_fields.items():
         if value is not None and _is_org_field_missing(org, field):
             filtered[field] = value
     return filtered
@@ -265,6 +291,16 @@ def persist_org_assessment_outcome(
     org.update(current)
     org.update(filtered)
     org["assessment_skip_reason"] = reason
+
+    # SSE is an employer property: when the org is non-SSE, demote any jobs that
+    # still claim is_sse=true (write-time job gate only covers new classifications).
+    if org.get("is_sse") is False:
+        from utils.job_sse import demote_org_job_sse
+
+        demoted = demote_org_job_sse(supabase, oid)
+        if demoted:
+            _log(f"  ↳ Demoted is_sse on {demoted} job(s) for non-SSE org {oid}")
+
     return OrgAssessmentWriteResult(filtered, reason, True)
 
 

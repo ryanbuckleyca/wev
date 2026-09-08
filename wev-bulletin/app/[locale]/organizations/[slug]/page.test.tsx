@@ -15,6 +15,22 @@ vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
 }));
 
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock('next-intl/server', () => ({
   getTranslations: vi.fn(async () => (key: string, values?: Record<string, unknown>) => {
     if (key === 'jobs' && typeof values?.count === 'number') return `${values.count} jobs`;
@@ -60,8 +76,14 @@ vi.mock('@/lib/bulletin/server-data', () => ({
 
 vi.mock('@/components/OrganizationJobRow', () => ({
   default: ({ job }: { job: { job_title: string } }) => <div>{job.job_title}</div>,
-  OrganizationJobsList: ({ jobs }: { jobs: { job_title: string }[] }) => (
-    <div>
+  OrganizationJobsList: ({
+    jobs,
+    org,
+  }: {
+    jobs: { job_title: string }[];
+    org: { name: string; slug: string | null };
+  }) => (
+    <div data-org={org.name}>
       {jobs.map((job) => (
         <div key={job.job_title}>{job.job_title}</div>
       ))}
@@ -70,7 +92,26 @@ vi.mock('@/components/OrganizationJobRow', () => ({
 }));
 
 vi.mock('@/components/SimplePagination', () => ({
-  default: () => <div>pagination</div>,
+  default: ({
+    currentPage,
+    totalPages,
+    baseUrl,
+    extraParams,
+  }: {
+    currentPage: number;
+    totalPages: number;
+    baseUrl: string;
+    extraParams?: Record<string, string>;
+  }) => {
+    if (totalPages <= 1) return null;
+    const nextParams = new URLSearchParams(extraParams);
+    nextParams.set('page', String(currentPage + 1));
+    return (
+      <nav aria-label="pagination">
+        <a href={`${baseUrl}?${nextParams.toString()}`}>next</a>
+      </nav>
+    );
+  },
 }));
 
 import OrganizationDetailPage from './page';
@@ -138,6 +179,175 @@ describe('OrganizationDetailPage', () => {
     expect(screen.getByText('Test Org')).toBeInTheDocument();
     expect(screen.getByText('0 jobs')).toBeInTheDocument();
     expect(screen.getByText('noJobsForOrg')).toBeInTheDocument();
-    expect(screen.queryByText('pagination')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('jobsActivityLabel')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'pagination' })).not.toBeInTheDocument();
+    expect(mockGetOrganizationJobs).toHaveBeenCalledWith({
+      orgId: 12,
+      page: 1,
+      locale: 'en',
+      activityDays: 28,
+    });
+  });
+
+  it('requests all jobs when activity=all', async () => {
+    mockGetOrganizationBySlug.mockResolvedValue({
+      id: 12,
+      name: 'Test Org',
+      slug: 'test-org',
+      description: null,
+      description_en: null,
+      description_fr: null,
+      website: null,
+      location: null,
+      sse_rating: null,
+      sse_details: null,
+      is_sse: false,
+      type: null,
+      values: null,
+      logo_url: null,
+      created_at: '2026-06-01T00:00:00.000Z',
+      mission_statement: null,
+      mission_statement_en: null,
+      mission_statement_fr: null,
+      municipality: null,
+      province: null,
+      lat: null,
+      lng: null,
+      geocode_accuracy_type: null,
+      sector_id: null,
+      values_list: null,
+      values_rated: null,
+    });
+    mockGetOrganizationJobs.mockResolvedValue({
+      jobs: [{ job_title: 'Old role' }],
+      total: 1,
+    });
+
+    const output = await OrganizationDetailPage({
+      params: Promise.resolve({ locale: 'en', slug: 'test-org' }),
+      searchParams: Promise.resolve({ activity: 'all' }),
+    });
+
+    render(output);
+
+    expect(mockGetOrganizationJobs).toHaveBeenCalledWith({
+      orgId: 12,
+      page: 1,
+      locale: 'en',
+      activityDays: null,
+    });
+    expect(screen.getByText('Old role')).toBeInTheDocument();
+  });
+
+  it('uses non-active copy for the 90-day window', async () => {
+    mockGetOrganizationBySlug.mockResolvedValue({
+      id: 12,
+      name: 'Test Org',
+      slug: 'test-org',
+      description: null,
+      description_en: null,
+      description_fr: null,
+      website: null,
+      location: null,
+      sse_rating: null,
+      sse_details: null,
+      is_sse: false,
+      type: null,
+      values: null,
+      logo_url: null,
+      created_at: '2026-06-01T00:00:00.000Z',
+      mission_statement: null,
+      mission_statement_en: null,
+      mission_statement_fr: null,
+      municipality: null,
+      province: null,
+      lat: null,
+      lng: null,
+      geocode_accuracy_type: null,
+      sector_id: null,
+      values_list: null,
+      values_rated: null,
+    });
+    mockGetOrganizationJobs.mockResolvedValue({
+      jobs: [],
+      total: 0,
+    });
+
+    const output = await OrganizationDetailPage({
+      params: Promise.resolve({ locale: 'en', slug: 'test-org' }),
+      searchParams: Promise.resolve({ activity: '90d' }),
+    });
+
+    render(output);
+
+    expect(mockGetOrganizationJobs).toHaveBeenCalledWith({
+      orgId: 12,
+      page: 1,
+      locale: 'en',
+      activityDays: 90,
+    });
+    expect(screen.getByText('jobsAll')).toBeInTheDocument();
+    expect(screen.getByText('noJobsForOrgAll')).toBeInTheDocument();
+    expect(screen.queryByText('noJobsForOrg')).not.toBeInTheDocument();
+  });
+
+  it('preserves activity=90d and activity=all on pagination links', async () => {
+    const org = {
+      id: 12,
+      name: 'Test Org',
+      slug: 'test-org',
+      description: null,
+      description_en: null,
+      description_fr: null,
+      website: null,
+      location: null,
+      sse_rating: null,
+      sse_details: null,
+      is_sse: false,
+      type: null,
+      values: null,
+      logo_url: null,
+      created_at: '2026-06-01T00:00:00.000Z',
+      mission_statement: null,
+      mission_statement_en: null,
+      mission_statement_fr: null,
+      municipality: null,
+      province: null,
+      lat: null,
+      lng: null,
+      geocode_accuracy_type: null,
+      sector_id: null,
+      values_list: null,
+      values_rated: null,
+    };
+
+    for (const activity of ['90d', 'all'] as const) {
+      mockGetOrganizationBySlug.mockResolvedValue(org);
+      mockGetOrganizationJobs.mockResolvedValue({
+        jobs: [{ id: 'j1', job_title: 'Role' }],
+        total: 25,
+      });
+
+      const output = await OrganizationDetailPage({
+        params: Promise.resolve({ locale: 'en', slug: 'test-org' }),
+        searchParams: Promise.resolve({ activity }),
+      });
+
+      const { unmount } = render(output);
+
+      expect(mockGetOrganizationJobs).toHaveBeenCalledWith({
+        orgId: 12,
+        page: 1,
+        locale: 'en',
+        activityDays: activity === '90d' ? 90 : null,
+      });
+
+      const next = screen.getByRole('link', { name: 'next' });
+      expect(next.getAttribute('href')).toContain(`activity=${activity}`);
+      expect(next.getAttribute('href')).toContain('page=2');
+
+      unmount();
+      vi.clearAllMocks();
+    }
   });
 });

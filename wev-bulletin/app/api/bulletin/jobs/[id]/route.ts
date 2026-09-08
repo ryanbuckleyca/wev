@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminResponse } from '@/lib/auth/require-admin';
 import { BULLETIN_CACHE_TAG } from '@/lib/bulletin/server-data';
+import { resolveJobIsSse } from '@/lib/bulletin/job-sse';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +32,65 @@ export async function PATCH(
     }
 
     const supabase = supabaseServer;
+
+    let nextIsSse = isSse;
+    if (isSse) {
+      const { data: jobRow, error: jobError } = await supabase
+        .from('jobs')
+        .select('id, organization_id, organizations(is_sse)')
+        .eq('id', id)
+        .single();
+
+      if (jobError || !jobRow) {
+        return NextResponse.json(
+          { error: jobError?.message ?? 'Job not found' },
+          { status: jobError ? 500 : 404 },
+        );
+      }
+
+      const orgEmbed = jobRow.organizations as
+        | { is_sse: boolean | null }
+        | { is_sse: boolean | null }[]
+        | null;
+      const orgIsSse = Array.isArray(orgEmbed)
+        ? (orgEmbed[0]?.is_sse ?? null)
+        : (orgEmbed?.is_sse ?? null);
+      const resolved = resolveJobIsSse(true, orgIsSse);
+      if (resolved !== true) {
+        return NextResponse.json(
+          {
+            error: 'Job cannot be marked SSE unless the linked organization is SSE',
+          },
+          { status: 400 },
+        );
+      }
+      nextIsSse = true;
+    }
+
     const { data, error } = await supabase
       .from('jobs')
-      .update({ is_sse: isSse })
+      .update({ is_sse: nextIsSse })
       .eq('id', id)
       .select('id, is_sse')
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error || !data) {
+      const message = error?.message ?? 'Job not found';
+      const code = error?.code;
+      // Trigger rejection when org lost SSE between pre-check and write.
+      if (code === '23514' || /jobs\.is_sse cannot be true/i.test(message)) {
+        return NextResponse.json(
+          {
+            error: 'Job cannot be marked SSE unless the linked organization is SSE',
+          },
+          { status: 400 },
+        );
+      }
+      // .single() with zero matching rows, or update that returned nothing.
+      if (!error || code === 'PGRST116') {
+        return NextResponse.json({ error: message }, { status: 404 });
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
     revalidateTag(BULLETIN_CACHE_TAG, 'default');
