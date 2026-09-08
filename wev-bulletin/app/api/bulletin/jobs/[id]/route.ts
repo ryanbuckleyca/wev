@@ -78,10 +78,7 @@ export async function PATCH(
       const message = error?.message ?? 'Job not found';
       const code = error?.code;
       // Trigger rejection when org lost SSE between pre-check and write.
-      if (
-        code === '23514' ||
-        /jobs\.is_sse cannot be true/i.test(message)
-      ) {
+      if (code === '23514' || /jobs\.is_sse cannot be true/i.test(message)) {
         return NextResponse.json(
           {
             error: 'Job cannot be marked SSE unless the linked organization is SSE',
