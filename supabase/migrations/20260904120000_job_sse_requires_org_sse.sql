@@ -70,7 +70,7 @@ BEGIN
     UPDATE public.jobs
     SET is_sse = false
     WHERE organization_id = NEW.id
-      AND is_sse IS TRUE;
+      AND is_sse IS true;
   END IF;
   RETURN NEW;
 END;
@@ -88,10 +88,10 @@ UPDATE public.jobs AS j
 SET is_sse = false
 FROM public.organizations AS o
 WHERE o.id = j.organization_id
-  AND j.is_sse IS TRUE
-  AND o.is_sse IS NOT TRUE;
+  AND j.is_sse IS true
+  AND o.is_sse IS NOT true;
 
 UPDATE public.jobs
 SET is_sse = false
-WHERE is_sse IS TRUE
+WHERE is_sse IS true
   AND organization_id IS NULL;

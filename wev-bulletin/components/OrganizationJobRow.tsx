@@ -123,7 +123,7 @@ function JobSkillFooter({
         workType={job.work_type as 'remote' | 'hybrid' | 'office' | undefined}
         selectedWorkTypes={profile?.work_types ?? []}
         language={job.language ?? undefined}
-        selectedLanguages={[]}
+        selectedLanguages={profile?.preferred_languages ?? []}
         isLoggedIn={!!userId}
       />
     </div>
