@@ -74,8 +74,26 @@ export async function PATCH(
       .select('id, is_sse')
       .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error || !data) {
+      const message = error?.message ?? 'Job not found';
+      const code = error?.code;
+      // Trigger rejection when org lost SSE between pre-check and write.
+      if (
+        code === '23514' ||
+        /jobs\.is_sse cannot be true/i.test(message)
+      ) {
+        return NextResponse.json(
+          {
+            error: 'Job cannot be marked SSE unless the linked organization is SSE',
+          },
+          { status: 400 },
+        );
+      }
+      // .single() with zero matching rows, or update that returned nothing.
+      if (!error || code === 'PGRST116') {
+        return NextResponse.json({ error: message }, { status: 404 });
+      }
+      return NextResponse.json({ error: message }, { status: 500 });
     }
 
     revalidateTag(BULLETIN_CACHE_TAG, 'default');

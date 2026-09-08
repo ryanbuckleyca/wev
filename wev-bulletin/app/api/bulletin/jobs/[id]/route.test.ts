@@ -146,4 +146,47 @@ describe('PATCH /api/bulletin/jobs/[id]', () => {
     const response = await PATCH(request, { params: Promise.resolve({ id: 'job-1' }) });
     expect(response.status).toBe(400);
   });
+
+  it('returns 400 when the DB trigger rejects SSE after the org check', async () => {
+    mockRequireAdminResponse.mockResolvedValue(null);
+    mockSelectSingle.mockResolvedValue({
+      data: { id: 'job-1', organization_id: 9, organizations: { is_sse: true } },
+      error: null,
+    });
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: {
+        message: 'jobs.is_sse cannot be true unless organizations.is_sse is true',
+        code: '23514',
+      },
+    });
+    mockSupabase.from.mockReturnValueOnce(mockSelectChain()).mockReturnValueOnce(mockUpdateChain());
+
+    const request = new NextRequest('http://localhost/api/bulletin/jobs/job-1', {
+      method: 'PATCH',
+      body: JSON.stringify({ is_sse: true }),
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'job-1' }) });
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toMatch(/organization is SSE/i);
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the update returns no row', async () => {
+    mockRequireAdminResponse.mockResolvedValue(null);
+    mockSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const request = new NextRequest('http://localhost/api/bulletin/jobs/missing', {
+      method: 'PATCH',
+      body: JSON.stringify({ is_sse: false }),
+    });
+
+    const response = await PATCH(request, { params: Promise.resolve({ id: 'missing' }) });
+    expect(response.status).toBe(404);
+    expect(revalidateTag).not.toHaveBeenCalled();
+  });
 });
