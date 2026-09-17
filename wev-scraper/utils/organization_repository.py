@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 _LIKE_SPECIAL = re.compile(r"[%_\\]")
 
+_ORG_MATCH_COLUMNS = "id, name, location, website, alternative_names"
+
 
 def escape_like(s: str) -> str:
     """Escape % and _ for ILIKE so they're treated literally.
@@ -35,11 +37,30 @@ class OrganizationRepository:
         self._supabase = supabase_client
 
     def find_by_name(self, name: str) -> list[dict]:
+        """Match canonical name or alternative_names (case-insensitive exact)."""
+        cleaned = (name or "").strip()
+        if not cleaned:
+            return []
+        try:
+            resp = self._supabase.rpc(
+                "find_organizations_by_name",
+                {"p_name": cleaned},
+            ).execute()
+            rows = getattr(resp, "data", None)
+            if isinstance(rows, list):
+                return rows
+        except Exception as exc:
+            logger.warning(
+                "OrganizationRepository: find_organizations_by_name RPC failed for %r (%s); "
+                "falling back to name ILIKE",
+                name,
+                exc,
+            )
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, location, website")
-                .ilike("name", escape_like(name.strip()))
+                .select(_ORG_MATCH_COLUMNS)
+                .ilike("name", escape_like(cleaned))
                 .execute()
             )
             return resp.data or []
@@ -61,7 +82,7 @@ class OrganizationRepository:
             for host in evidence_domain_query_hosts(cleaned):
                 resp = (
                     self._supabase.table("organizations")
-                    .select("id, name, location, website")
+                    .select(_ORG_MATCH_COLUMNS)
                     .ilike("website", f"%{escape_like(host)}%")
                     .execute()
                 )

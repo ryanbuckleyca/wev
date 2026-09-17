@@ -227,6 +227,22 @@ def filter_assessment_update_fields(
     for field, value in db_fields.items():
         if value is not None and _is_org_field_missing(org, field):
             filtered[field] = value
+
+    # is_sse defaults to false in the DB, so the missing-predicate treats it as
+    # already set. Keep the boolean locked to whatever rating this write leaves
+    # on the row — never flip is_sse from a new assessment while preserving an
+    # older conflicting sse_rating.
+    if "sse_rating" in filtered:
+        rating = filtered["sse_rating"]
+        expected = db_fields.get("is_sse")
+        filtered["is_sse"] = (
+            bool(expected) if expected is not None else rating in ("strong_yes", "weak_yes")
+        )
+    elif "sse_details" in filtered:
+        preserved = org.get("sse_rating")
+        if preserved is not None:
+            filtered["is_sse"] = preserved in ("strong_yes", "weak_yes")
+
     return filtered
 
 

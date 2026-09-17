@@ -127,6 +127,40 @@ class TestMakeCacheKey:
     def test_accented_and_unaccented_produce_same_key(self):
         assert make_cache_key("Centraide Montréal") == make_cache_key("Centraide Montreal")
 
+    def test_ampersand_and_and_match(self):
+        assert make_cache_key("Food & Ecology") == make_cache_key("Food and Ecology")
+
+    def test_trailing_acronym_stripped(self):
+        assert make_cache_key("Canadian Centre for Food & Ecology") == make_cache_key(
+            "Canadian Centre for Food and Ecology (CCFE)"
+        )
+
+    def test_trailing_place_paren_not_stripped(self):
+        """Location qualifiers stay part of the key; only all-caps acronyms drop."""
+        assert make_cache_key("Canadian Cancer Society (Ontario)") != make_cache_key(
+            "Canadian Cancer Society"
+        )
+        assert "ontario" in make_cache_key("Canadian Cancer Society (Ontario)")
+        assert make_cache_key("Foo (Inc)") == make_cache_key("Foo (Inc)")  # mixed case kept
+        assert make_cache_key("Foo (INC)") == make_cache_key("Foo")
+
+    def test_names_equivalent_uses_alternative_names(self):
+        from utils.organization_cache import merge_alternative_names, names_equivalent
+
+        org = {
+            "name": "Canadian Cancer Society",
+            "alternative_names": ["Société canadienne du cancer"],
+        }
+        assert names_equivalent(org, "Société canadienne du cancer")
+        assert not names_equivalent(org, "Some Other Org")
+
+        alts = merge_alternative_names(
+            "Canadian Cancer Society",
+            [],
+            [{"name": "Société canadienne du cancer", "alternative_names": []}],
+        )
+        assert alts == ["Société canadienne du cancer"]
+
 
 class TestExtractDomain:
     def test_strips_www_and_scheme(self):

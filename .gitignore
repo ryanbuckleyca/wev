@@ -45,6 +45,8 @@ wev-bulletin/test_output*.txt
 .trae/
 .agent/
 AGENTS.md
+CLAUDE.md
+**/CLAUDE.md
 
 # Python
 .venv/

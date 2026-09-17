@@ -64,6 +64,10 @@ def resolve_prod_env_path(script_file: Path) -> Path:
 def apply_prod_overrides(prod_env: Path, *, full_prod: bool) -> None:
     """Load production credentials and set ENV_MODE / USE_PROD_DB."""
     if full_prod:
+        # Base .env first (LLM/tool keys like TAVILY), then prod overrides.
+        from settings import ensure_env_loaded
+
+        ensure_env_loaded()
         print(f"▶ Loading production overrides from {prod_env.name}")
         load_env_file(prod_env)
         os.environ["ENV_MODE"] = "prod"

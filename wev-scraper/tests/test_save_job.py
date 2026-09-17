@@ -34,10 +34,11 @@ def _mock_supabase(inserted_id="abc-123", existing=None):
 
 
 @patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_confident_near_duplicate", return_value=None)
 @patch("utils.db._find_existing_job", return_value=None)
 @patch("utils.db._job_row", return_value={"job_title": "Test Job"})
 @patch("utils.db.supabase")
-def test_save_job_returns_tuple_on_insert(mock_sb, mock_row, mock_find, mock_env):
+def test_save_job_returns_tuple_on_insert(mock_sb, mock_row, mock_find, mock_near, mock_env):
     mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
         data=[{"id": "new-uuid-123"}]
     )
@@ -45,6 +46,62 @@ def test_save_job_returns_tuple_on_insert(mock_sb, mock_row, mock_find, mock_env
     status, job_id = save_job(_make_job(), "source-id")
     assert status == "added"
     assert job_id == "new-uuid-123"
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_confident_near_duplicate")
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db._job_row", return_value={"job_title": "Test Job"})
+@patch("utils.db.supabase")
+def test_save_job_skips_confident_near_duplicate(mock_sb, mock_row, mock_find, mock_near, mock_env):
+    mock_near.return_value = {
+        "id": "existing-near",
+        "listing_url": "https://ecoworks.eco.ca/jobs/111",
+    }
+    from utils.db import save_job
+
+    status, job_id = save_job(_make_job(), "source-id")
+    assert status == "skipped"
+    assert job_id is None
+    mock_sb.table.return_value.insert.assert_not_called()
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_confident_near_duplicate", side_effect=RuntimeError("db blip"))
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db._job_row", return_value={"job_title": "Test Job"})
+@patch("utils.db.supabase")
+def test_save_job_fail_opens_when_near_dupe_probe_errors(
+    mock_sb, mock_row, mock_find, mock_near, mock_env
+):
+    mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[{"id": "inserted-despite-probe-error"}]
+    )
+    from utils.db import save_job
+
+    status, job_id = save_job(_make_job(), "source-id")
+    assert status == "added"
+    assert job_id == "inserted-despite-probe-error"
+    mock_sb.table.return_value.insert.assert_called_once()
+
+
+@patch("utils.db.is_truthy_env", return_value=False)
+@patch("utils.db._find_confident_near_duplicate", return_value=None)
+@patch("utils.db._find_existing_job", return_value=None)
+@patch("utils.db._job_row", return_value={"job_title": "Test Job"})
+@patch("utils.db.supabase")
+def test_save_job_inserts_when_near_dupe_probe_finds_nothing(
+    mock_sb, mock_row, mock_find, mock_near, mock_env
+):
+    """Empty-shell same-title candidates must not block insert (probe returns None)."""
+    mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
+        data=[{"id": "new-despite-shell"}]
+    )
+    from utils.db import save_job
+
+    status, job_id = save_job(_make_job(), "source-id")
+    assert status == "added"
+    assert job_id == "new-despite-shell"
 
 
 @patch("utils.db.is_truthy_env", return_value=True)  # SHOULD_OVERRIDE_EXISTING=1

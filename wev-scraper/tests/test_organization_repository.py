@@ -114,6 +114,8 @@ class TestFindByNameAndLocation:
 class TestFindByName:
     def test_percent_in_name_is_escaped(self):
         sb = MagicMock()
+        # Force ILIKE fallback path (RPC unavailable in unit tests).
+        sb.rpc.side_effect = Exception("no rpc")
         resp = MagicMock()
         resp.data = [{"id": 10, "name": "100% Organic", "location": "QC"}]
         sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = resp
@@ -121,9 +123,13 @@ class TestFindByName:
         result = repo.find_by_name("100% Organic")
         assert len(result) == 1
         assert result[0]["id"] == 10
+        sb.table.return_value.select.return_value.ilike.assert_called()
+        args, _kwargs = sb.table.return_value.select.return_value.ilike.call_args
+        assert args[1] == r"100\% Organic"
 
     def test_underscore_in_name_is_escaped(self):
         sb = MagicMock()
+        sb.rpc.side_effect = Exception("no rpc")
         resp = MagicMock()
         resp.data = [{"id": 20, "name": "Test_Name", "location": "ON"}]
         sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = resp
@@ -131,6 +137,24 @@ class TestFindByName:
         result = repo.find_by_name("Test_Name")
         assert len(result) == 1
         assert result[0]["id"] == 20
+        args, _kwargs = sb.table.return_value.select.return_value.ilike.call_args
+        assert args[1] == r"Test\_Name"
+
+    def test_rpc_path_returns_alias_hits(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [
+            {
+                "id": 212,
+                "name": "Canadian Cancer Society",
+                "alternative_names": ["Société canadienne du cancer"],
+            }
+        ]
+        sb.rpc.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+        result = repo.find_by_name("Société canadienne du cancer")
+        assert result[0]["id"] == 212
+        sb.table.assert_not_called()
 
 
 class TestFindByDomain:

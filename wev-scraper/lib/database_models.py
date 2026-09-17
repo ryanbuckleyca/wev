@@ -307,6 +307,10 @@ class Organizations(BaseModel):
         None,
         description='Primary public language of the organization (en, fr, or bilingual). Distinct from jobs.language (role/posting requirements).',
     )
+    alternative_names: Optional[List[str]] = Field(
+        None,
+        description='Additional names that identify this organization for matching (former names, other-language legal names, acronyms, short forms). Canonical display name remains name.',
+    )
     description_en: Optional[str] = Field(
         None, description='Public organization description in English.'
     )
