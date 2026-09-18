@@ -70,6 +70,18 @@ def test_extract_job_title_skips_category_h2_without_label(page):
     """)
     assert scraper.extract_job_title(page, {}) == "Unknown"
 
+
+def test_extract_job_title_skips_list_category_h2_with_role_word(page):
+    """List-style category crumb with a role word ('Gardener') is still a category."""
+    scraper = GoodWorkScraper(make_source())
+    page.set_content("""
+        <div id="page">
+            <h2>Eco-Landscaping, Horticulture & Gardener Jobs</h2>
+            <div class="row"><div>No labeled title here.</div></div>
+        </div>
+    """)
+    assert scraper.extract_job_title(page, {}) == "Unknown"
+
 def test_extract_organization(page):
     scraper = GoodWorkScraper(make_source())
     page.set_content("""

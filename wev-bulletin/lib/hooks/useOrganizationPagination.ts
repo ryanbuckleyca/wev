@@ -27,11 +27,15 @@ export function useOrganizationPagination(
 ) {
   const filterSnapshot = JSON.stringify({ filters, sortBy });
   const previousFilterSnapshot = useRef(filterSnapshot);
+  // A filter change schedules page 1; suppress the clamp effect until that
+  // reset lands so it can't replace page 1 with the (larger) last page.
+  const pendingFilterReset = useRef(false);
 
   useEffect(() => {
     if (previousFilterSnapshot.current === filterSnapshot) return;
     previousFilterSnapshot.current = filterSnapshot;
     if (currentPage !== 1) {
+      pendingFilterReset.current = true;
       void setCurrentPage(1);
     }
   }, [filterSnapshot, currentPage, setCurrentPage]);
@@ -39,6 +43,12 @@ export function useOrganizationPagination(
   const totalPages = Math.max(1, Math.ceil(totalOrgs / ORG_JOBS_PER_PAGE));
 
   useEffect(() => {
+    // Filter reset takes precedence: don't clamp this render, just wait for
+    // page 1 to arrive, then resume ordinary clamping.
+    if (pendingFilterReset.current) {
+      if (currentPage === 1) pendingFilterReset.current = false;
+      return;
+    }
     if (currentPage > totalPages && totalPages > 0) {
       void setCurrentPage(totalPages);
     }

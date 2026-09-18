@@ -36,21 +36,32 @@ WAGE_LABEL_PATTERNS = [
     ("Compensation:", r"Compensation:\s*(.+?)(?:\n|$)"),
 ]
 
-# GoodWork listing H2s are often category/campaign crumbs, not the role.
-# e.g. "Eco-Landscaping, Horticulture & Gardener Jobs", "Summer jobs, Student jobs"
-_CATEGORY_TITLE_RE = re.compile(
+# List-style category/campaign crumbs — always categories, even when they
+# happen to contain a role word (e.g. "Eco-Landscaping, Horticulture &
+# Gardener Jobs", "Summer jobs, Student jobs"). Comma/slash-joined lists ending
+# in "Jobs", or two "jobs" mentions, or campaign slogans.
+_LIST_CATEGORY_TITLE_RE = re.compile(
     r"""(?ix)
     ^
     (?:
-        .+?\s+Jobs(?:\s*[,/].*)?$          # "… Jobs" or "… Jobs, …"
-      | (?:Summer|Student|Local)\s+jobs\b  # campaign slogans
+        .+[,/].*\bjobs\b\s*$               # "…, … Jobs" / "…/… Jobs"
       | .+?\bjobs\b.+\bjobs\b              # "X jobs, Y jobs"
+      | (?:Summer|Student|Local)\s+jobs\b  # campaign slogans
+    )
+    """,
+)
+# Single "… Jobs" / "Seasonal Positions" tail — a category unless a role token
+# rescues it (e.g. "Warehouse Attendant - Canada Youth Summer Jobs").
+_CATEGORY_TAIL_RE = re.compile(
+    r"""(?ix)
+    ^
+    (?:
+        .+?\s+Jobs\s*$
       | Seasonal\s+Positions\b
     )
     """,
 )
-# Role-like tokens — if present with "Jobs", treat as a real title
-# (e.g. "Warehouse Attendant - Canada Youth Summer Jobs").
+# Role-like tokens — if present with a single "Jobs" tail, treat as a real title.
 _ROLE_TOKEN_RE = re.compile(
     r"""(?ix)
     \b(
@@ -70,11 +81,13 @@ def looks_like_goodwork_category_title(title: str | None) -> bool:
     if not title or not title.strip():
         return True
     t = title.strip()
-    if not _CATEGORY_TITLE_RE.search(t):
-        return False
-    if _ROLE_TOKEN_RE.search(t):
-        return False
-    return True
+    # List-style crumbs are categories regardless of any embedded role word.
+    if _LIST_CATEGORY_TITLE_RE.search(t):
+        return True
+    # A single "… Jobs" tail is a category unless a role token rescues it.
+    if _CATEGORY_TAIL_RE.search(t):
+        return not _ROLE_TOKEN_RE.search(t)
+    return False
 
 
 class GoodWorkScraper(BaseScraper):

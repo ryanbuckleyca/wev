@@ -47,13 +47,13 @@ def test_normalize_messy_location_and_aliases():
     assert normalize_messy_location("Whitchurch–Stouffville") == "Whitchurch-Stouffville"
 
     assert apply_location_alias("Jane & Eglinton West") == "Toronto, ON"
-    assert apply_location_alias("Kawartha Lakes") == "Kawartha Lakes, ON"
     assert apply_location_alias("Ste-Adèle") == "Sainte-Adèle, QC"
     assert apply_location_alias("Valleyfield") == "Salaberry-de-Valleyfield, QC"
     assert apply_location_alias("Saanich, BC").startswith("Saanich,")
     assert apply_location_alias("Saanich BC").startswith("Saanich,")
     assert apply_location_alias("Ladner").startswith("Ladner,")
     assert apply_location_alias("Ladner BC").startswith("Ladner,")
+    assert apply_location_alias("Montréal and surrounding area") == "Montreal, QC"
     assert apply_location_alias(
         "National Capital Region, occasional travel required within Ontario"
     ) == "Ottawa, ON"

@@ -289,6 +289,15 @@ def relookup_location_from_description(job: dict, *, dry_run: bool) -> bool:
         f"accuracy={updates.get('geocode_accuracy_type')!r}"
     )
 
+    # Never overwrite the row with an empty geo set. Municipality or province
+    # alone is usable; only bail when everything came back None.
+    if all(
+        updates.get(k) is None
+        for k in ("municipality", "province", "lat", "lng")
+    ):
+        print("  geocode produced no usable location — leaving row unchanged.")
+        return False
+
     if dry_run:
         print("  (dry-run — no DB write)")
         job.update(updates)

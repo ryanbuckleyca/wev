@@ -311,6 +311,14 @@ class Organizations(BaseModel):
         None,
         description='Additional names that identify this organization for matching (former names, other-language legal names, acronyms, short forms). Canonical display name remains name.',
     )
+    name_normalized: Optional[str] = Field(
+        None,
+        description='Generated normalize_org_name(name) for indexed equality matching.',
+    )
+    alternative_names_normalized: Optional[List[str]] = Field(
+        None,
+        description='Generated normalize_org_names(alternative_names) for indexed containment matching.',
+    )
     description_en: Optional[str] = Field(
         None, description='Public organization description in English.'
     )

@@ -12,7 +12,7 @@ _LABELED_VALUE_STOP = re.compile(
     r"Term:|Language:|Project:|Organization:|Company:|Farm:|Employer:|Business:|"
     r"Location:|Work Location:|Work location:|Type:|Job Types?:|Hourly Wage:|"
     r"Salary:|Wage:|Compensation:|Reports? to:|Work Arrangement:|Hours:|"
-    r"Start Date:|End Date:|Hiring Process:|Position Overview:|About\b)",
+    r"Start Date:|End Date:|Hiring Process:|Position Overview:)",
     re.IGNORECASE,
 )
 

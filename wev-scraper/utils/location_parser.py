@@ -9,7 +9,6 @@ Two separate methods:
 import logging
 import re
 import time
-import unicodedata
 from typing import Optional
 
 from geocodio import Geocodio
@@ -27,38 +26,25 @@ REMOTE_INDICATORS = [
     r"\bcanada[- ]wide\b",
 ]
 
-# Neighbourhood / county / typo / French short forms → geocodeable "City, PROV".
-# Keys are lowercase NFC after :func:`normalize_messy_location`.
+# Overrides for strings Geocodio mishandles or that are not real city names.
+# Keys: lowercase ASCII after :func:`_alias_lookup_key` (Ste- expanded by
+# :func:`normalize_messy_location` first). Prefix match covers "saanich bc".
 LOCATION_ALIASES: dict[str, str] = {
-    "jane & eglinton west": "Toronto, ON",
+    # Neighbourhood / region / blurbs
     "jane and eglinton west": "Toronto, ON",
-    "kawartha lakes": "Kawartha Lakes, ON",
     "norfolk county": "Simcoe, ON",
     "national capital region": "Ottawa, ON",
-    "ste-adele": "Sainte-Adèle, QC",
-    "ste-adèle": "Sainte-Adèle, QC",
-    "sainte-adele": "Sainte-Adèle, QC",
-    "sainte-adèle": "Sainte-Adèle, QC",
+    "montreal and surrounding area": "Montreal, QC",
+    # French short form / Sainte- after Ste- expand
     "valleyfield": "Salaberry-de-Valleyfield, QC",
-    "salaberry-de-valleyfield": "Salaberry-de-Valleyfield, QC",
-    "saguenay": "Saguenay, QC",
-    "whitchurch-stouffville": "Whitchurch-Stouffville, ON",
-    "whitchurch–stouffville": "Whitchurch-Stouffville, ON",
+    "sainte-adele": "Sainte-Adèle, QC",
+    # Org name used as location
     "collectif bienvenue - welcome collective": "Montreal, QC",
     "welcome collective": "Montreal, QC",
-    "montreal and surrounding area": "Montreal, QC",
-    "montréal and surrounding area": "Montreal, QC",
-    "elora": "Elora, ON",
-    "calgary": "Calgary, AB",
-    # Geocodio mis-resolves bare "Saanich, BC" / "Ladner, BC" to Buick, BC.
-    # Anchor to a nearby place it knows, then keep the alias city name.
+    # Geocodio mis-resolves bare Saanich/Ladner → Buick, BC
     "saanich": "Saanich, Victoria, BC, Canada",
-    "saanich bc": "Saanich, Victoria, BC, Canada",
-    "saanich, bc": "Saanich, Victoria, BC, Canada",
     "ladner": "Ladner, Delta, BC, Canada",
-    "ladner bc": "Ladner, Delta, BC, Canada",
-    "ladner, bc": "Ladner, Delta, BC, Canada",
-    # US HQs (parsed with allow_us)
+    # US HQs (allow_us)
     "peoria": "Peoria, IL, USA",
     "denver": "Denver, CO, USA",
     "malvern": "Malvern, PA, USA",
@@ -148,19 +134,26 @@ def normalize_messy_location(location: Optional[str]) -> str:
     return text.strip()
 
 
+def _alias_lookup_key(location: str) -> str:
+    """Fold accents/& for LOCATION_ALIASES lookup (after messy normalize)."""
+    from utils.slug import nfkd_to_ascii
+
+    key = nfkd_to_ascii(location).lower().replace("&", " and ")
+    return re.sub(r"\s+", " ", key).strip()
+
+
 def apply_location_alias(location: Optional[str]) -> Optional[str]:
     """Map known neighbourhood / typo / short forms to a geocodeable string."""
     if not location or not str(location).strip():
         return None
-    normalized = normalize_messy_location(location)
-    key = unicodedata.normalize("NFC", re.sub(r"\s+", " ", normalized.strip()).lower())
+    key = _alias_lookup_key(normalize_messy_location(location))
+    if not key:
+        return None
     if key in LOCATION_ALIASES:
         return LOCATION_ALIASES[key]
-    # Long blurbs: "National Capital Region, occasional travel…"
+    # "saanich bc", "National Capital Region, occasional travel…"
     for alias_key, target in LOCATION_ALIASES.items():
-        if len(alias_key) < 8:
-            continue
-        if key.startswith(alias_key) or f"{alias_key}," in key or f"{alias_key} " in key:
+        if key.startswith(f"{alias_key},") or key.startswith(f"{alias_key} "):
             return target
     return None
 
@@ -643,9 +636,16 @@ def _extract_explicit_location(location: str) -> Optional[str]:
             for w in text_lower.split()
         ):
             return False
-        # Sentence fragments / clauses never look like a city.
-        if "." in text or ";" in text:
+        # Sentence fragments / clauses never look like a city. Semicolons are
+        # always rejected; periods too — except known place abbreviations such
+        # as "St. John's", "Ste. Agathe", "Mt. Pearl", "Ft. McMurray", "Pt.
+        # Edward" (abbrev dot followed by a capitalized word).
+        if ";" in text:
             return False
+        if "." in text:
+            residual = re.sub(r"\b(?:St|Ste|Mt|Ft|Pt)\.\s+(?=[A-Z])", "", text)
+            if "." in residual:
+                return False
 
         # Province codes/names are not municipalities ("ON, ON", "Nova Scotia, NS").
         # Exception: Quebec / Québec (Quebec City).
