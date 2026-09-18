@@ -14,7 +14,20 @@ MAX_PAGES = 50  # guard against infinite pagination loops
 DATE_POSTED_PATTERN = re.compile(
     r"Date posted:\s*([A-Za-z]{3}\s+\d{1,2}\s+\d{4})", re.IGNORECASE
 )
-TITLE_LABELS = ["Position:", "Role:", "Hiring:"]
+# Prefer explicit role labels. "Positions:" / "Title:" are common on GoodWork.
+# Never rely on the campaign/category H2 ("… Jobs") when these are present.
+TITLE_LABELS = [
+    "Job Title:",
+    "Title:",
+    "Positions:",
+    "Position:",
+    "Role:",
+    "Hiring:",
+    "Job Posting:",
+    "Job Postings:",
+    "Summer job:",
+    "Summer Job:",
+]
 LOCATION_LABELS = ["Location:", "Work Location:", "Work location:"]
 ORG_LABELS = ["Organization:", "Company:", "Farm:", "Employer:", "Business:"]
 WAGE_LABEL_PATTERNS = [
@@ -22,6 +35,59 @@ WAGE_LABEL_PATTERNS = [
     ("Compensation", r"Compensation\s*:\s*(.+?)(?:\n|$)"),
     ("Compensation:", r"Compensation:\s*(.+?)(?:\n|$)"),
 ]
+
+# List-style category/campaign crumbs — always categories, even when they
+# happen to contain a role word (e.g. "Eco-Landscaping, Horticulture &
+# Gardener Jobs", "Summer jobs, Student jobs"). Comma/slash-joined lists ending
+# in "Jobs", or two "jobs" mentions, or campaign slogans.
+_LIST_CATEGORY_TITLE_RE = re.compile(
+    r"""(?ix)
+    ^
+    (?:
+        .+[,/].*\bjobs\b\s*$               # "…, … Jobs" / "…/… Jobs"
+      | .+?\bjobs\b.+\bjobs\b              # "X jobs, Y jobs"
+      | (?:Summer|Student|Local)\s+jobs\b  # campaign slogans
+    )
+    """,
+)
+# Single "… Jobs" / "Seasonal Positions" tail — a category unless a role token
+# rescues it (e.g. "Warehouse Attendant - Canada Youth Summer Jobs").
+_CATEGORY_TAIL_RE = re.compile(
+    r"""(?ix)
+    ^
+    (?:
+        .+?\s+Jobs\s*$
+      | Seasonal\s+Positions\b
+    )
+    """,
+)
+# Role-like tokens — if present with a single "Jobs" tail, treat as a real title.
+_ROLE_TOKEN_RE = re.compile(
+    r"""(?ix)
+    \b(
+        attendant|officer|coordinator|assistant|specialist|technician|
+        manager|analyst|developer|engineer|counsellor|counselor|
+        animateur|animator|labourer|laborer|gardener|porter|intern|
+        director|lead|advisor|consultant|scientist|planner|
+        instructor|supervisor|estimator|motivator
+    )\b
+    | \s-\s
+    """,
+)
+
+
+def looks_like_goodwork_category_title(title: str | None) -> bool:
+    """True for GoodWork category/campaign H2 crumbs, not real role titles."""
+    if not title or not title.strip():
+        return True
+    t = title.strip()
+    # List-style crumbs are categories regardless of any embedded role word.
+    if _LIST_CATEGORY_TITLE_RE.search(t):
+        return True
+    # A single "… Jobs" tail is a category unless a role token rescues it.
+    if _CATEGORY_TAIL_RE.search(t):
+        return not _ROLE_TOKEN_RE.search(t)
+    return False
 
 
 class GoodWorkScraper(BaseScraper):
@@ -98,12 +164,25 @@ class GoodWorkScraper(BaseScraper):
         if not title:
             title = self._search_text_for_label(page, TITLE_LABELS)
         if not title:
+            # Full page body — catches flattened ads missing <p><strong> blocks.
+            page_text = self._get_page_text(page)
+            if page_text:
+                title = extract_labeled_value_from_text(page_text, TITLE_LABELS)
+        if title and looks_like_goodwork_category_title(title):
+            title = None
+        if not title:
             loc = page.locator("h2")
             if loc.count() > 0:
                 try:
-                    title = loc.first.inner_text().strip()
+                    h2 = loc.first.inner_text().strip()
                 except Exception:
-                    pass
+                    h2 = ""
+                if h2 and not looks_like_goodwork_category_title(h2):
+                    title = h2
+                elif h2:
+                    scraper_log(
+                        f"\t\tGoodWork: skipping category H2 as title: {h2!r}"
+                    )
         return title or "Unknown"
 
     def extract_date_posted(self, page, listing_data):
@@ -190,13 +269,11 @@ class GoodWorkScraper(BaseScraper):
         return value
 
     def _search_text_for_label(self, page, labels: list[str]) -> str | None:
-        """Regex-search the first div text for any of the given labels."""
+        """Search the first div text for any of the given labels."""
         text = self._get_first_div_text(page)
         if not text:
             return None
-        label_pattern = "|".join(re.escape(lbl.rstrip(":")) for lbl in labels)
-        match = re.search(rf"(?:{label_pattern}):\s*(.+?)(?:\n|$)", text)
-        return match.group(1).strip() if match else None
+        return extract_labeled_value_from_text(text, labels)
 
     def _extract_wage_from_strong(self, page) -> str | None:
         """Strategy 1: explicit 'Wage:' label inside a <strong> tag."""

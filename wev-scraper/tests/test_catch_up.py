@@ -224,6 +224,91 @@ def test_filter_assessment_update_fields_uses_field_aware_missing_predicate():
     assert filtered == {"language": "en", "values_list": ["Community"]}
 
 
+def test_filter_co_writes_is_sse_when_filling_sse_rating_despite_default_false():
+    """DB default is_sse=false must not block writing true with a yes rating."""
+    org = _complete_org(
+        language=None,
+        values_list=[],
+        is_sse=False,
+        sse_rating=None,
+        sse_details=None,
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "language": "en",
+        "values_list": ["Community"],
+        "sse_rating": "strong_yes",
+        "is_sse": True,
+        "sse_details": {"confidence": 0.95, "reasoning": "Registered nonprofit."},
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["sse_rating"] == "strong_yes"
+    assert filtered["is_sse"] is True
+    assert filtered["sse_details"]["confidence"] == 0.95
+
+
+def test_filter_details_only_preserves_existing_rating_for_is_sse():
+    """Filling sse_details must not flip is_sse against a preserved rating."""
+    org = _complete_org(
+        language=None,
+        is_sse=False,
+        sse_rating="no",
+        sse_details=None,
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "language": "en",
+        "sse_rating": "strong_yes",
+        "is_sse": True,
+        "sse_details": {"confidence": 0.9, "reasoning": "Would say yes if rewritten."},
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert "sse_rating" not in filtered
+    assert filtered["sse_details"]["confidence"] == 0.9
+    assert filtered["is_sse"] is False
+
+
+def test_filter_co_writes_is_sse_false_when_rating_is_no():
+    org = _complete_org(language=None, is_sse=True, sse_rating=None, sse_details=None)
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "language": "en",
+        "sse_rating": "no",
+        "is_sse": False,
+        "sse_details": {"confidence": 0.9, "reasoning": "For-profit consultancy."},
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["sse_rating"] == "no"
+    assert filtered["is_sse"] is False
+
+
 def test_filter_assessment_update_fields_attaches_language_from_name():
     org = _complete_org(language=None, values_list=["Community"])
     outcome = AssessmentOutcome(

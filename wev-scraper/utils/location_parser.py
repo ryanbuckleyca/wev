@@ -22,7 +22,54 @@ REMOTE_INDICATORS = [
     r"\btélétravail\b", r"\btelework\b", r"\bwork from home\b",
     r"\bwork(?:ing)? remotely\b",
     r"\bwfh\b",
+    r"\bhome office\b",
+    r"\bcanada[- ]wide\b",
 ]
+
+# Overrides for strings Geocodio mishandles or that are not real city names.
+# Keys: lowercase ASCII after :func:`_alias_lookup_key` (Ste- expanded by
+# :func:`normalize_messy_location` first). Prefix match covers "saanich bc".
+LOCATION_ALIASES: dict[str, str] = {
+    # Neighbourhood / region / blurbs
+    "jane and eglinton west": "Toronto, ON",
+    "norfolk county": "Simcoe, ON",
+    "national capital region": "Ottawa, ON",
+    "montreal and surrounding area": "Montreal, QC",
+    # French short form / Sainte- after Ste- expand
+    "valleyfield": "Salaberry-de-Valleyfield, QC",
+    "sainte-adele": "Sainte-Adèle, QC",
+    # Org name used as location
+    "collectif bienvenue - welcome collective": "Montreal, QC",
+    "welcome collective": "Montreal, QC",
+    # Geocodio mis-resolves bare Saanich/Ladner → Buick, BC
+    "saanich": "Saanich, Victoria, BC, Canada",
+    "ladner": "Ladner, Delta, BC, Canada",
+    # US HQs (allow_us)
+    "peoria": "Peoria, IL, USA",
+    "denver": "Denver, CO, USA",
+    "malvern": "Malvern, PA, USA",
+}
+
+# Aliases eligible for prefix matching (Geocodio anchors + long-blurb regions).
+# Everything else in LOCATION_ALIASES is matched exact-only.
+_PREFIX_MATCH_ALIASES = ("saanich", "ladner", "national capital region")
+
+# Approx province centroids when Geocodio skips province-only queries.
+_CA_PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
+    "AB": (53.9333, -116.5765),
+    "BC": (53.7267, -127.6476),
+    "MB": (53.7609, -98.8139),
+    "NB": (46.5653, -66.4619),
+    "NL": (53.1355, -57.6604),
+    "NS": (44.6820, -63.7443),
+    "NT": (64.8255, -124.8457),
+    "NU": (70.2998, -83.1076),
+    "ON": (50.445, -86.047),
+    "PE": (46.5107, -63.4168),
+    "QC": (52.9399, -73.5491),
+    "SK": (52.9399, -106.4509),
+    "YT": (64.2823, -135.0000),
+}
 
 HYBRID_INDICATORS = [
     r"\bhybrid\b", r"\bflexible\b", r"\bflex\b",
@@ -63,6 +110,212 @@ def is_remote_location(location: Optional[str]) -> bool:
     return any(
         re.search(pattern, location_lower, re.IGNORECASE)
         for pattern in REMOTE_INDICATORS
+    )
+
+
+# Collapse glued repeated tokens: "CalgaryCalgary" / "EloraEloraElora" → single.
+# A recurring scraper artifact: a page repeats the city across adjacent DOM nodes
+# and Playwright ``inner_text()`` concatenates them with no separator.
+_REPEATED_TOKEN_RE = re.compile(r"\b([A-Za-zÀ-ÿ]{3,}?)(?:\1){1,}\b", re.IGNORECASE)
+
+
+def has_repeated_location_token(location: Optional[str]) -> bool:
+    """True when *location* contains a glued, adjacent duplicated token.
+
+    Detects the "EtobicokeEtobicokeEtobicoke" artifact (same repeats that
+    :func:`normalize_messy_location` collapses). Space-separated repeats
+    ("Etobicoke Etobicoke") are intentionally not treated as artifacts.
+    """
+    if not location:
+        return False
+    return _REPEATED_TOKEN_RE.search(str(location)) is not None
+
+
+def normalize_messy_location(location: Optional[str]) -> str:
+    """Fix common scraper artifacts before alias lookup / Geocodio.
+
+    - Strip trailing ``+`` / junk commas
+    - Unicode dashes → ASCII hyphen
+    - Collapse repeated city tokens (``CalgaryCalgary``, ``EloraEloraElora``)
+    - Expand ``Ste-`` / ``Ste `` → ``Sainte-`` (French Sainte-)
+    """
+    if not location:
+        return ""
+    text = str(location).strip()
+    text = text.replace("\u2013", "-").replace("\u2014", "-").replace("\u2212", "-")
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"[+\s,]+$", "", text).strip()
+    # Collapse CamelCase repeats: CalgaryCalgary → Calgary, EloraEloraElora → Elora
+    text = _REPEATED_TOKEN_RE.sub(r"\1", text)
+    text = re.sub(r"(?i)\bste[\s.\-]+", "Sainte-", text)
+    return text.strip()
+
+
+def _alias_lookup_key(location: str) -> str:
+    """Fold accents/& for LOCATION_ALIASES lookup (after messy normalize)."""
+    from utils.slug import nfkd_to_ascii
+
+    key = nfkd_to_ascii(location).lower().replace("&", " and ")
+    return re.sub(r"\s+", " ", key).strip()
+
+
+def apply_location_alias(location: Optional[str]) -> Optional[str]:
+    """Map known neighbourhood / typo / short forms to a geocodeable string."""
+    if not location or not str(location).strip():
+        return None
+    key = _alias_lookup_key(normalize_messy_location(location))
+    if not key:
+        return None
+    if key in LOCATION_ALIASES:
+        return LOCATION_ALIASES[key]
+    # Prefix matching only for intentionally-incomplete aliases (Geocodio anchor
+    # / long blurbs), e.g. "saanich bc", "National Capital Region, occasional…".
+    # All other aliases (peoria, denver, malvern, …) stay exact-only so that
+    # "Peoria, AZ" is not mapped to "Peoria, IL, USA".
+    for alias_key in _PREFIX_MATCH_ALIASES:
+        if key.startswith(f"{alias_key},") or key.startswith(f"{alias_key} "):
+            return LOCATION_ALIASES[alias_key]
+    return None
+
+
+def _peel_trailing_country_tokens(text: str) -> str:
+    """Strip repeated trailing ``Canada`` / ``CA`` tokens (``Ontario, Canada, CA``)."""
+    out = text
+    while True:
+        nxt = re.sub(r",?\s*canada\s*$", "", out, flags=re.IGNORECASE).strip()
+        nxt = re.sub(r",?\s*ca\s*$", "", nxt, flags=re.IGNORECASE).strip()
+        nxt = nxt.rstrip(",").strip()
+        if nxt == out:
+            return out
+        out = nxt
+
+
+def _province_code_from_province_only_text(text: str) -> Optional[str]:
+    """Normalize a province-only string to a 2-letter code after peeling country tokens."""
+    text = _peel_trailing_country_tokens(normalize_messy_location(text))
+    if not text:
+        return None
+    if "," in text:
+        left, _, right = text.partition(",")
+        left, right = left.strip(), right.strip()
+        if not right:
+            text = left
+        elif _normalize_ca_province_code(left) and (
+            is_province_like_municipality(right) or _normalize_ca_province_code(right)
+        ):
+            text = left
+        else:
+            return None
+    return _normalize_ca_province_code(text)
+
+
+def _province_scoped_from_phrase(location: str) -> Optional[str]:
+    """Extract a province-only code from phrases like 'Must be based in Ontario.'"""
+    text = normalize_messy_location(location)
+    m = re.match(
+        r"(?is)^(?:must be (?:based )?in|across|throughout|based (?:in|within)|"
+        r"within|preferably in)\s+(.+?)(?:\.|$)",
+        text,
+    )
+    if not m:
+        return None
+    rest = m.group(1).strip()
+    rest = _peel_trailing_country_tokens(rest)
+    # Drop trailing preference clauses
+    rest = re.split(r"\b(?:or|and|,|;)\b", rest, maxsplit=1)[0].strip()
+    code = _normalize_ca_province_code(rest)
+    if code:
+        return code
+    if is_province_like_municipality(rest):
+        return _normalize_ca_province_code(rest)
+    return None
+
+
+def is_province_only_location(location: Optional[str]) -> bool:
+    """True when *location* is only a province/territory (no city).
+
+    Accepts ``ON``, ``Ontario``, ``Ontario, Canada``, ``NS, CA``,
+    ``Ontario, Canada +``, ``Must be based in Ontario.``,
+    ``across Newfoundland and Labrador``, etc.
+    Rejects city+province strings and Quebec City (``Quebec`` / ``Québec`` alone
+    is treated as the city via :func:`is_province_like_municipality` exceptions).
+    """
+    if not location or not str(location).strip():
+        return False
+    text = normalize_messy_location(location)
+    if _province_scoped_from_phrase(text):
+        return True
+    text = _peel_trailing_country_tokens(text)
+    if not text:
+        return False
+    if "," in text:
+        # "Ontario, Canada" already stripped; "ON, ON" / "Nova Scotia, Nova Scotia"
+        left, _, right = text.partition(",")
+        left, right = left.strip(), right.strip()
+        if not right:
+            text = left
+        elif _normalize_ca_province_code(left) and (
+            is_province_like_municipality(right) or _normalize_ca_province_code(right)
+        ):
+            text = left
+        else:
+            return False
+    # Same rules as municipality: ON/Ontario yes; Quebec/Québec no (Quebec City).
+    return is_province_like_municipality(text)
+
+
+def is_country_only_location(location: Optional[str]) -> bool:
+    """True for bare ``Canada`` / ``CA`` with no city or province."""
+    if not location or not str(location).strip():
+        return False
+    text = normalize_messy_location(location)
+    text = re.sub(r"[.]+$", "", text).strip()
+    return bool(re.fullmatch(r"(?i)canada|ca", text))
+
+
+def location_has_no_geocodeable_city(location: Optional[str]) -> bool:
+    """True when Geocodio cannot be expected to return a municipality.
+
+    Remote-only, province-only, and country-only strings are "complete enough"
+    without a city — missing municipality is not a data-quality bug.
+    """
+    if not location or not str(location).strip():
+        return True
+    if is_province_only_location(location) or is_country_only_location(location):
+        return True
+    if is_remote_location(location):
+        try:
+            return _extract_explicit_location(location) is None
+        except Exception:
+            return True
+    return False
+
+
+def geo_row_needs_city_geocode(row: dict) -> bool:
+    """Whether a job/org row still needs city-level Geocodio backfill.
+
+    Province-only rows need province (+ optional state-level lat/lng), not a
+    municipality. Remote-only / country-only rows need no geocode fields.
+    """
+    loc = (row.get("location") or "").strip()
+    if not loc:
+        return False
+
+    def _empty(v) -> bool:
+        return v is None or (isinstance(v, str) and not str(v).strip())
+
+    if is_remote_location(loc) and location_has_no_geocodeable_city(loc):
+        return False
+    if is_country_only_location(loc):
+        return False
+    if is_province_only_location(loc):
+        # Municipality intentionally absent. Province code is enough; Geocodio
+        # often skips province-only queries so lat/lng are optional.
+        return _empty(row.get("province"))
+
+    return any(
+        _empty(row.get(k))
+        for k in ("municipality", "province", "lat", "lng", "geocode_accuracy_type")
     )
 
 
@@ -125,20 +378,83 @@ def parse_address_with_geocodio(location: Optional[str]) -> dict:
     _empty = {"municipality": None, "province": None, "lat": None, "lng": None, "geocode_accuracy_type": None}
     if not location or not location.strip():
         return _empty
+
+    cleaned = normalize_messy_location(location)
+    aliased = apply_location_alias(cleaned)
+    query = aliased or cleaned
+
+    # Province-scoped phrases → fill province (+ optional centroid), no city.
+    scoped = _province_scoped_from_phrase(cleaned)
+    if scoped and not aliased:
+        latlng = _CA_PROVINCE_CENTROIDS.get(scoped)
+        out = dict(_empty)
+        out["province"] = scoped
+        if latlng:
+            out["lat"], out["lng"] = latlng
+            out["geocode_accuracy_type"] = "state"
+        return out
+
+    if is_province_only_location(cleaned) and not aliased:
+        code = _province_code_from_province_only_text(cleaned) or _province_scoped_from_phrase(
+            cleaned
+        )
+        if code:
+            latlng = _CA_PROVINCE_CENTROIDS.get(code)
+            out = dict(_empty)
+            out["province"] = code
+            if latlng:
+                out["lat"], out["lng"] = latlng
+                out["geocode_accuracy_type"] = "state"
+            return out
+
+    if is_country_only_location(query):
+        return _empty
+
     # If it's remote-only with no explicit location, skip geocoding entirely.
     try:
-        if is_remote_location(location):
-            explicit_location = _extract_explicit_location(location)
+        if is_remote_location(query):
+            explicit_location = _extract_explicit_location(query)
             if not explicit_location:
+                # Prefer province from "priority … British Columbia" style blurbs
+                for prov_name, code in (
+                    ("british columbia", "BC"),
+                    ("ontario", "ON"),
+                    ("quebec", "QC"),
+                    ("québec", "QC"),
+                ):
+                    if re.search(rf"\b{re.escape(prov_name)}\b", query, re.I):
+                        latlng = _CA_PROVINCE_CENTROIDS.get(code)
+                        out = dict(_empty)
+                        out["province"] = code
+                        if latlng:
+                            out["lat"], out["lng"] = latlng
+                            out["geocode_accuracy_type"] = "state"
+                        return out
                 logger.debug("Skipped geocoding (remote-only location)")
                 return _empty
+            query = explicit_location
     except Exception:
         # Fall through to normal geocoding if checks fail
         pass
 
+    allow_us = bool(re.search(r",\s*USA\s*$", query, re.I)) or query.rstrip().upper().endswith(
+        "USA"
+    )
+
     try:
-        result = _geocode_with_geocodio(location.strip())
-        return result if result else _empty
+        result = _geocode_with_geocodio(query, allow_us=allow_us)
+        if not result:
+            return _empty
+        # Prefer the alias city when Geocodio omits it (regions/counties) or
+        # returns a wrong place (e.g. Saanich/Ladner → Buick).
+        if aliased:
+            city = aliased.split(",")[0].strip()
+            if city and not is_province_like_municipality(city):
+                got = (result.get("municipality") or "").strip()
+                if not got or got.casefold() != city.casefold():
+                    result = dict(result)
+                    result["municipality"] = city
+        return result
     except Exception as e:
         logger.warning(f"Geocodio call failed for location '{location}': {e}")
         return _empty
@@ -207,6 +523,15 @@ _CA_PROVINCE_ALIASES = {
     "YUKON TERRITORY": "YT",
 }
 
+# 2-letter codes only — never valid municipality names.
+_CA_PROVINCE_CODES = frozenset({
+    "AB", "BC", "MB", "NB", "NL", "NS", "NT", "NU", "ON", "PE", "QC", "SK", "YT",
+})
+
+# Quebec / Québec is both a province name and the common English/French label for
+# Quebec City — allow it as a municipality when province is QC.
+_MUNICIPALITY_PROVINCE_NAME_EXCEPTIONS = frozenset({"QUEBEC", "QUÉBEC"})
+
 
 def _normalize_ca_province_code(raw: Optional[str]) -> Optional[str]:
     """Map Geocodio state/province text to a 2-letter Canadian code."""
@@ -214,6 +539,47 @@ def _normalize_ca_province_code(raw: Optional[str]) -> Optional[str]:
         return None
     key = re.sub(r"\s+", " ", str(raw).strip()).upper()
     return _CA_PROVINCE_ALIASES.get(key)
+
+
+def is_province_like_municipality(name: Optional[str]) -> bool:
+    """True when *name* is a province/territory code or name, not a city.
+
+    Rejects ``ON``, ``NB``, ``Ontario``, ``Nova Scotia``, etc. Allows
+    ``Quebec`` / ``Québec`` (Quebec City).
+    """
+    if not name or not str(name).strip():
+        return False
+    key = re.sub(r"\s+", " ", str(name).strip()).upper()
+    if key in _MUNICIPALITY_PROVINCE_NAME_EXCEPTIONS:
+        return False
+    if key in _CA_PROVINCE_CODES:
+        return True
+    return _normalize_ca_province_code(name) is not None
+
+
+def _canonicalize_city_province_query(location: str) -> str:
+    """Rewrite ``City, Ontario`` → ``City, ON`` so Geocodio does not confuse
+    province names with cities (notably ``Quebec`` → Quebec City).
+    """
+    if not location or "," not in location:
+        # Province-only: prefer the 2-letter code when we recognize it.
+        code = _normalize_ca_province_code(location)
+        return code or location.strip()
+
+    city, _, rest = location.partition(",")
+    city = city.strip()
+    rest = rest.strip()
+    # Drop trailing ", Canada" before normalizing the province token.
+    rest_no_country = re.sub(r",?\s*canada\s*$", "", rest, flags=re.IGNORECASE).strip()
+    # Province may itself contain commas ("Newfoundland and Labrador"); take first segment.
+    prov_token = rest_no_country.split(",")[0].strip()
+    code = _normalize_ca_province_code(prov_token)
+    if code and city:
+        if is_province_like_municipality(city):
+            # "ON, ON" / "Nova Scotia, Nova Scotia" → just the province code.
+            return code
+        return f"{city}, {code}"
+    return location.strip()
 
 
 def _extract_explicit_location(location: str) -> Optional[str]:
@@ -275,8 +641,35 @@ def _extract_explicit_location(location: str) -> Optional[str]:
             # Common sentence fragments that get matched as cities
             'please', 'note', 'your', 'location', 'anywhere', 'work', 'home',
             'application', 'office', 'onsite', 'person', 'option',
+            # Country / credential abbreviations mistaken for municipalities
+            # ("US PE license", "UK PE", etc.)
+            'us', 'uk', 'usa', 'eu',
+            # Country / work-mode words that Pattern 2b otherwise captures
+            'canada', 'remote', 'remotely', 'hybrid', 'virtual',
         ]
         if text_lower in non_city_terms:
+            return False
+        # Reject captures that include a country / work-mode token
+        # ("Remote Canada") without blocking compounds like "Peel Region".
+        if any(
+            w in {"canada", "remote", "remotely", "hybrid", "virtual", "us", "uk", "usa"}
+            for w in text_lower.split()
+        ):
+            return False
+        # Sentence fragments / clauses never look like a city. Semicolons are
+        # always rejected; periods too — except known place abbreviations such
+        # as "St. John's", "Ste. Agathe", "Mt. Pearl", "Ft. McMurray", "Pt.
+        # Edward" (abbrev dot followed by a capitalized word).
+        if ";" in text:
+            return False
+        if "." in text:
+            residual = re.sub(r"\b(?:St|Ste|Mt|Ft|Pt)\.\s+(?=[A-Z])", "", text)
+            if "." in residual:
+                return False
+
+        # Province codes/names are not municipalities ("ON, ON", "Nova Scotia, NS").
+        # Exception: Quebec / Québec (Quebec City).
+        if is_province_like_municipality(text):
             return False
 
         # Filter out street addresses (purely numeric or starting with numbers)
@@ -396,24 +789,46 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                 if is_valid_city_name(city):
                     return f"{city}, {province}"
 
-    # Pattern 2b: "in/at/headquarter_in City" followed by non-province words, but province exists explicitly
-    # E.g., "office in Ottawa if desired" - only return if a province is also mentioned
-    # This avoids false positives where we extract a city but no province is stated
+    # Pattern 2b: "based in City supporting … Province" within the same sentence.
+    # Do not search the rest of a multi-sentence blob for a province.
+    _city_1_2 = (
+        r"([A-Z][A-Za-zÀ-ÿ\'\-]+(?:\s+[A-Z][A-Za-zÀ-ÿ\'\-]+)?)"
+    )
+
+    def _same_sentence(text: str, start: int, end: int) -> str:
+        left = 0
+        for i in range(start - 1, -1, -1):
+            if text[i] in ".!?;":
+                left = i + 1
+                break
+        right = len(text)
+        for i in range(end, len(text)):
+            if text[i] in ".!?;":
+                right = i
+                break
+        return text[left:right]
+
     for prep in prepositions:
-        # Match: preposition + city (allowing accents, hyphens) + (non-province word or end)
-        # Use flexible city pattern that handles French names
-        pattern = rf'{re.escape(prep)}\s*([A-Z][A-Za-zÀ-ÿ\-\'\.\ ]+?)\s+(?:if|or|and|when|where|$)'
-        match = re.search(pattern, location, re.IGNORECASE)
+        # Prep case-insensitive; city capture stays case-sensitive so [A-Z] is real.
+        pattern = (
+            rf"(?i)(?:{re.escape(prep)})\s+"
+            rf"(?-i:{_city_1_2})\b"
+            rf"(?:\s+(?i:if|or|and|when|where|supporting|for|with|to|on)\b|\s*[.;,]|\s*$)"
+        )
+        match = re.search(pattern, location)
         if match:
             city = match.group(1).strip()
             if is_valid_city_name(city):
-                # Only return if a province is explicitly mentioned in the full location
+                # Bound the sentence on the city span — not trailing .;, which would
+                # push the window into the next sentence.
+                sentence = _same_sentence(location, match.start(), match.end(1))
                 for province in provinces:
-                    # Use strict word boundaries for 2-letter abbreviations
-                    province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'\b{re.escape(province)}\b'
-                    if re.search(province_pattern, location, re.IGNORECASE):
+                    province_pattern = rf"\b{re.escape(province)}\b"
+                    if re.search(province_pattern, sentence, re.IGNORECASE):
                         return f"{city}, {province}"
-                # If no province found in location string, don't guess - skip this extraction
+
+    # Pattern 2c removed: Pattern 2b now covers "based in City supporting … Province"
+    # without matching across sentence boundaries.
 
 
     # Pattern 1: "City, Province" or "City, ON" (less specific, but limited to 1-2 words)
@@ -446,6 +861,24 @@ def _extract_explicit_location(location: str) -> Optional[str]:
                     return f"{city}, {province}"
 
     return None
+
+
+def infer_location_string_from_text(text: Optional[str]) -> Optional[str]:
+    """Infer a geocodeable 'City, Province' string from free text (e.g. job description).
+
+    Strips light HTML/whitespace, then reuses the explicit-location patterns
+    (based in / located in / City, ON, etc.).
+    """
+    if not text or not str(text).strip():
+        return None
+    cleaned = re.sub(r"(?i)<br\s*/?>", " ", str(text))
+    cleaned = re.sub(r"(?i)</p\s*>", " ", cleaned)
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if not cleaned:
+        return None
+    # Early body usually has "based in …"; keep enough trailing text for province.
+    return _extract_explicit_location(cleaned[:4000])
 
 
 def _clean_location_for_geocoding(location: str) -> str:
@@ -486,7 +919,7 @@ def _clean_location_for_geocoding(location: str) -> str:
     return cleaned
 
 
-def _geocode_with_geocodio(location: str) -> Optional[dict]:
+def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional[dict]:
     """
     Use Geocodio to parse location.
     Strategy:
@@ -498,19 +931,27 @@ def _geocode_with_geocodio(location: str) -> Optional[dict]:
     """
     global _last_request_time
 
+    cache_key = f"{location}|us={int(allow_us)}"
     # Return cached result if we've seen this location string before
-    if location in _geocode_cache:
+    if cache_key in _geocode_cache:
+        cached = _geocode_cache[cache_key]
+        if cached:
+            print(f"\tGeocoding '{location}'... ✓ (cached)")
+        return cached
+    # Also check legacy key without us flag for CA-only callers
+    if not allow_us and location in _geocode_cache:
         cached = _geocode_cache[location]
         if cached:
             print(f"\tGeocoding '{location}'... ✓ (cached)")
         return cached
 
-    result = _geocode_with_geocodio_uncached(location)
+    result = _geocode_with_geocodio_uncached(location, allow_us=allow_us)
+    _geocode_cache[cache_key] = result
     _geocode_cache[location] = result
     return result
 
 
-def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
+def _geocode_with_geocodio_uncached(location: str, *, allow_us: bool = False) -> Optional[dict]:
     """Internal: perform the actual Geocodio API call without cache."""
     global _last_request_time
 
@@ -551,9 +992,22 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
         # Record start time for this request (for rate limiting)
         request_start = time.time()
 
-        # Use the location (either explicit or cleaned) for geocoding
-        # Add ", Canada" back to help with country detection and avoid US matches
-        query = location_to_geocode if ", Canada" in location_to_geocode else f"{location_to_geocode}, Canada"
+        # Normalize "City, Quebec" → "City, QC" before the API call. Geocodio
+        # resolves "Montreal, Quebec, Canada" to Quebec City; codes are reliable.
+        location_to_geocode = _canonicalize_city_province_query(location_to_geocode)
+
+        # Strip trailing USA marker for the query builder
+        us_query = re.sub(r",?\s*USA\s*$", "", location_to_geocode, flags=re.IGNORECASE).strip()
+        if allow_us:
+            query = us_query
+            if not re.search(r"\bUSA\b|\bUnited States\b", query, re.I):
+                query = f"{query}, USA"
+        else:
+            query = (
+                location_to_geocode
+                if ", Canada" in location_to_geocode
+                else f"{location_to_geocode}, Canada"
+            )
         response = client.geocode(query)
 
         # Handle different response structures
@@ -579,17 +1033,27 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
         # Access address_components using safe getter
         address_components: dict = _safe_get(result, "address_components", {})
 
-        # Validate that this is a Canadian address (reject US addresses)
+        # Validate country
         country = _safe_get(address_components, "country")
         country_code = _safe_get(address_components, "country_code")
-        if country and country.upper() not in ["CANADA", "CA"]:
-            print(f"Skipped (not Canadian: {country})")
-            _last_request_time = time.time()
-            return None
-        if country_code and country_code.upper() != "CA":
-            print(f"Skipped (not Canadian: country_code={country_code})")
-            _last_request_time = time.time()
-            return None
+        country_u = (country or "").upper()
+        code_u = (country_code or "").upper()
+        is_ca = country_u in {"CANADA", "CA"} or code_u == "CA"
+        is_us = country_u in {"UNITED STATES", "US", "USA"} or code_u == "US"
+        if allow_us:
+            if country and not (is_ca or is_us):
+                print(f"Skipped (unsupported country: {country})")
+                _last_request_time = time.time()
+                return None
+        else:
+            if country and not is_ca:
+                print(f"Skipped (not Canadian: {country})")
+                _last_request_time = time.time()
+                return None
+            if country_code and code_u != "CA":
+                print(f"Skipped (not Canadian: country_code={country_code})")
+                _last_request_time = time.time()
+                return None
 
         # Extract municipality (city/town/village) using safe getter
         municipality = (
@@ -606,6 +1070,17 @@ def _geocode_with_geocodio_uncached(location: str) -> Optional[dict]:
             or _safe_get(address_components, "province")
         )
         province = _normalize_ca_province_code(province_raw)
+        if not province and allow_us and is_us and province_raw:
+            # Keep US state abbreviation as-is
+            prov_token = str(province_raw).strip().upper()
+            if re.fullmatch(r"[A-Z]{2}", prov_token):
+                province = prov_token
+
+
+        # Never persist province codes/names as municipality ("ON"/"NS"/…).
+        # Quebec/Québec is allowed (Quebec City).
+        if is_province_like_municipality(municipality):
+            municipality = None
 
         # Ensure total time (including API call) is at least 1 second
         request_duration = time.time() - request_start

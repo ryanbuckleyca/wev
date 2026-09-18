@@ -11,6 +11,7 @@ from utils.organization_cache import (
     canonical_location,
     extract_org_identity,
     make_cache_key,
+    names_equivalent,
 )
 from utils.organization_repository import OrganizationRepository, escape_like
 from utils.slug import generate_slug, generate_unique_slug, nfkd_to_ascii
@@ -198,7 +199,7 @@ class OrganizationResolver:
             try:
                 resp = (
                     self._repo._supabase.table("organizations")
-                    .select("id, name, location, website")
+                    .select("id, name, location, website, alternative_names")
                     .ilike("website", f"%{escape_like(identity)}%")
                     .execute()
                 )
@@ -218,8 +219,7 @@ class OrganizationResolver:
         return list(by_id.values())
 
     def _names_match(self, organization: dict, ctx: JobContext) -> bool:
-        org_name = (organization.get("name") or "").strip()
-        return make_cache_key(org_name) == make_cache_key(ctx.raw_name)
+        return names_equivalent(organization, ctx.raw_name)
 
     @staticmethod
     def _location_token_match(needle: str, haystack: str) -> bool:

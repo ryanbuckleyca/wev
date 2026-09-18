@@ -8,7 +8,7 @@ import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import { useOrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import { useOrganizationData } from '@/lib/hooks/useOrganizationData';
-import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
+import { useOrganizationPagination } from '@/lib/hooks/useOrganizationPagination';
 import { resolveOrgSortBy } from '@/lib/organizations/utils';
 import { useTranslations } from 'next-intl';
 import ListEmptyState from './ListEmptyState';
@@ -56,9 +56,15 @@ export default function OrganizationIndexClient({
     initialData,
   );
 
+  const { totalPages, itemsPerPage } = useOrganizationPagination(total, {
+    filters: controls.filters,
+    sortBy: effectiveSortBy,
+    currentPage: controls.currentPage,
+    setCurrentPage: controls.setCurrentPage,
+  });
+
   const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
 
-  const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
   const showCountSkeleton = loading && orgs.length === 0;
 
   return (
@@ -85,7 +91,6 @@ export default function OrganizationIndexClient({
           sortBy={effectiveSortBy}
           onSortChange={(val) => {
             controls.setSortBy(val);
-            controls.setCurrentPage(1);
           }}
         />
 
@@ -135,7 +140,7 @@ export default function OrganizationIndexClient({
                   }}
                   totalPages={totalPages}
                   totalItems={total}
-                  itemsPerPage={ORG_JOBS_PER_PAGE}
+                  itemsPerPage={itemsPerPage}
                   singularKey="organizations.organization"
                   pluralKey="organizations.organizations"
                 />

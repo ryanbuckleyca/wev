@@ -16,6 +16,11 @@ from utils.slug import nfkd_to_ascii
 
 _WWW_PREFIX = re.compile(r"^www\.", re.IGNORECASE)
 
+# Trailing "(CCFE)" / "[YMCA]" — strip only all-caps acronym-like tokens.
+_TRAILING_ACRONYM = re.compile(
+    r"\s*[\(\[]([A-Za-z][A-Za-z0-9.&/\-]{0,14})[\)\]]\s*$"
+)
+
 
 class OrganizationCache:
     """In-process LRU cache mapping normalized org keys to organization IDs.
@@ -57,10 +62,32 @@ class OrganizationCache:
         self._blocked.clear()
 
 
+def _strip_trailing_acronym(name: str) -> str:
+    """Drop a trailing parenthetical acronym, e.g. '… Ecology (CCFE)' → '… Ecology'."""
+    match = _TRAILING_ACRONYM.search(name)
+    if not match:
+        return name
+    token = re.sub(r"[^A-Za-z]", "", match.group(1))
+    if len(token) >= 2 and token.isalpha() and token == token.upper():
+        return name[: match.start()].rstrip()
+    return name
+
+
 def _normalize(s: str) -> str:
-    ascii_str = nfkd_to_ascii(s)
-    lowered = ascii_str.lower()
-    return "".join(c for c in lowered if c.isascii() and (c.isalpha() or c.isdigit() or c == " "))
+    """Normalize an org name for equality / cache keys.
+
+    Collapses common scrape noise: accents, ``&``/``et`` ↔ and, hyphens/slashes,
+    trailing ``(ACRONYM)``, punctuation, and whitespace.
+    """
+    stripped = _strip_trailing_acronym((s or "").strip())
+    ascii_str = nfkd_to_ascii(stripped).lower()
+    ascii_str = ascii_str.replace("&", " and ")
+    ascii_str = re.sub(r"\bet\b", " and ", ascii_str)
+    ascii_str = re.sub(r"[-_/]+", " ", ascii_str)
+    cleaned = "".join(
+        c for c in ascii_str if c.isascii() and (c.isalpha() or c.isdigit() or c == " ")
+    )
+    return " ".join(cleaned.split())
 
 
 def canonical_location(
@@ -82,6 +109,53 @@ def canonical_location(
 def make_cache_key(name: str) -> str:
     """Cache identity is organization name only — location is not part of identity."""
     return _normalize(name or "")
+
+
+def organization_name_keys(organization: dict | str) -> set[str]:
+    """Normalized keys for an org's canonical name plus alternative_names."""
+    if isinstance(organization, str):
+        key = make_cache_key(organization)
+        return {key} if key else set()
+    keys: set[str] = set()
+    for part in [organization.get("name"), *(organization.get("alternative_names") or [])]:
+        key = make_cache_key(part or "")
+        if key:
+            keys.add(key)
+    return keys
+
+
+def names_equivalent(organization: dict | str, raw_name: str) -> bool:
+    """True when *raw_name* matches the org name or any alternative_name."""
+    needle = make_cache_key(raw_name)
+    return bool(needle) and needle in organization_name_keys(organization)
+
+
+def merge_alternative_names(
+    survivor_name: str,
+    survivor_alts: list[str] | None,
+    absorbed_rows: list[dict],
+) -> list[str]:
+    """Build alternative_names for a merge survivor (excludes the canonical name)."""
+    seen = organization_name_keys(survivor_name)
+    out: list[str] = []
+
+    def _add(raw: str | None) -> None:
+        if not raw or not str(raw).strip():
+            return
+        display = str(raw).strip()
+        key = make_cache_key(display)
+        if not key or key in seen:
+            return
+        seen.add(key)
+        out.append(display)
+
+    for alt in survivor_alts or []:
+        _add(alt)
+    for row in absorbed_rows:
+        _add(row.get("name"))
+        for alt in row.get("alternative_names") or []:
+            _add(alt)
+    return out
 
 
 def extract_domain(website: str | None) -> str | None:

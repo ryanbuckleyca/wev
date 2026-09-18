@@ -24,7 +24,7 @@ from llm.factory import get_sse_provider
 from llm.tavily_grounding import entity_require_terms
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
-from utils.location_parser import parse_address_with_geocodio
+from utils.location_parser import is_province_like_municipality, parse_address_with_geocodio
 from utils.organization_cache import evidence_domain, extract_domain
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
@@ -2506,6 +2506,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
             province = geo_data.get("province") or llm_prov
             # Keep province canonical: apply name→code cleanup if missing a code
             province = _validate_province_code(province) or province
+            if is_province_like_municipality(municipality):
+                municipality = None
         else:
             # Province-only or no-HQ path: keep the job's canonical location
             # string and geocode that for lat/lng. When only llm_prov exists we
@@ -2515,6 +2517,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
             municipality = geo_data.get("municipality") or municipality
             province = geo_data.get("province") or (llm_prov or province)
             province = _validate_province_code(province) or province
+            if is_province_like_municipality(municipality):
+                municipality = None
 
         # Build the row with all fields
         row = {
