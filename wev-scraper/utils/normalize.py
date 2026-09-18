@@ -8,7 +8,11 @@ from typing import Optional
 from dateutil import parser
 
 from utils.env import is_truthy_env
-from utils.location_parser import determine_work_type, parse_address_with_geocodio
+from utils.location_parser import (
+    determine_work_type,
+    normalize_messy_location,
+    parse_address_with_geocodio,
+)
 from utils.log import scraper_log
 from utils.municipality_canonical import canonicalize_municipality
 
@@ -90,7 +94,13 @@ def normalize_job_data(job_data: dict) -> dict:
     normalized = {}
     normalized["job_title"] = normalize_text(job_data.get("job_title"))
     normalized["organization"] = normalize_organization(job_data.get("organization"))
-    normalized["location"] = normalize_text(job_data.get("location"))
+    cleaned_location = normalize_text(job_data.get("location"))
+    if cleaned_location:
+        # Collapse scraper artifacts (e.g. repeated city tokens produced when
+        # inner_text() concatenates adjacent DOM nodes) so the stored/display
+        # value matches the parsed municipality.
+        cleaned_location = normalize_messy_location(cleaned_location) or None
+    normalized["location"] = cleaned_location
     
     # Parse location (Geocodio call with rate limiting)
     location = normalized["location"]

@@ -50,6 +50,10 @@ LOCATION_ALIASES: dict[str, str] = {
     "malvern": "Malvern, PA, USA",
 }
 
+# Aliases eligible for prefix matching (Geocodio anchors + long-blurb regions).
+# Everything else in LOCATION_ALIASES is matched exact-only.
+_PREFIX_MATCH_ALIASES = ("saanich", "ladner", "national capital region")
+
 # Approx province centroids when Geocodio skips province-only queries.
 _CA_PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
     "AB": (53.9333, -116.5765),
@@ -109,6 +113,24 @@ def is_remote_location(location: Optional[str]) -> bool:
     )
 
 
+# Collapse glued repeated tokens: "CalgaryCalgary" / "EloraEloraElora" → single.
+# A recurring scraper artifact: a page repeats the city across adjacent DOM nodes
+# and Playwright ``inner_text()`` concatenates them with no separator.
+_REPEATED_TOKEN_RE = re.compile(r"\b([A-Za-zÀ-ÿ]{3,}?)(?:\1){1,}\b", re.IGNORECASE)
+
+
+def has_repeated_location_token(location: Optional[str]) -> bool:
+    """True when *location* contains a glued, adjacent duplicated token.
+
+    Detects the "EtobicokeEtobicokeEtobicoke" artifact (same repeats that
+    :func:`normalize_messy_location` collapses). Space-separated repeats
+    ("Etobicoke Etobicoke") are intentionally not treated as artifacts.
+    """
+    if not location:
+        return False
+    return _REPEATED_TOKEN_RE.search(str(location)) is not None
+
+
 def normalize_messy_location(location: Optional[str]) -> str:
     """Fix common scraper artifacts before alias lookup / Geocodio.
 
@@ -124,12 +146,7 @@ def normalize_messy_location(location: Optional[str]) -> str:
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[+\s,]+$", "", text).strip()
     # Collapse CamelCase repeats: CalgaryCalgary → Calgary, EloraEloraElora → Elora
-    text = re.sub(
-        r"\b([A-Za-zÀ-ÿ]{3,}?)(?:\1){1,}\b",
-        r"\1",
-        text,
-        flags=re.IGNORECASE,
-    )
+    text = _REPEATED_TOKEN_RE.sub(r"\1", text)
     text = re.sub(r"(?i)\bste[\s.\-]+", "Sainte-", text)
     return text.strip()
 
@@ -151,10 +168,13 @@ def apply_location_alias(location: Optional[str]) -> Optional[str]:
         return None
     if key in LOCATION_ALIASES:
         return LOCATION_ALIASES[key]
-    # "saanich bc", "National Capital Region, occasional travel…"
-    for alias_key, target in LOCATION_ALIASES.items():
+    # Prefix matching only for intentionally-incomplete aliases (Geocodio anchor
+    # / long blurbs), e.g. "saanich bc", "National Capital Region, occasional…".
+    # All other aliases (peoria, denver, malvern, …) stay exact-only so that
+    # "Peoria, AZ" is not mapped to "Peoria, IL, USA".
+    for alias_key in _PREFIX_MATCH_ALIASES:
         if key.startswith(f"{alias_key},") or key.startswith(f"{alias_key} "):
-            return target
+            return LOCATION_ALIASES[alias_key]
     return None
 
 

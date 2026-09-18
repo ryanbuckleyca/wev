@@ -41,6 +41,7 @@ def test_normalize_messy_location_and_aliases():
 
     assert normalize_messy_location("CalgaryCalgary") == "Calgary"
     assert normalize_messy_location("EloraEloraElora") == "Elora"
+    assert normalize_messy_location("EtobicokeEtobicokeEtobicokeEtobicoke") == "Etobicoke"
     assert normalize_messy_location("Canada +") == "Canada"
     assert normalize_messy_location("Ontario, Canada +") == "Ontario, Canada"
     assert "Sainte-" in normalize_messy_location("Ste-Adèle")
@@ -57,12 +58,31 @@ def test_normalize_messy_location_and_aliases():
     assert apply_location_alias(
         "National Capital Region, occasional travel required within Ontario"
     ) == "Ottawa, ON"
+    # Exact US-HQ aliases must not prefix-match a different same-named city.
+    assert apply_location_alias("Peoria") == "Peoria, IL, USA"
+    assert apply_location_alias("Peoria, AZ") is None
+    assert apply_location_alias("Denver, NC") is None
 
     assert is_province_only_location("Ontario, Canada +") is True
     assert is_province_only_location("Ontario, Canada, CA") is True
     assert is_province_only_location("Must be based in Ontario.") is True
     assert is_province_only_location("across Newfoundland and Labrador") is True
     assert is_country_only_location("Canada +") is True
+
+
+def test_has_repeated_location_token():
+    from utils.location_parser import has_repeated_location_token
+
+    # Glued repeats are artifacts.
+    assert has_repeated_location_token("EtobicokeEtobicokeEtobicokeEtobicoke") is True
+    assert has_repeated_location_token("CalgaryCalgary") is True
+    # Single names and space-separated forms are not treated as artifacts.
+    assert has_repeated_location_token("Etobicoke") is False
+    assert has_repeated_location_token("Toronto, ON") is False
+    assert has_repeated_location_token("Etobicoke Etobicoke") is False
+    assert has_repeated_location_token("Baden-Baden") is False
+    assert has_repeated_location_token(None) is False
+    assert has_repeated_location_token("") is False
 
 
 def test_parse_province_only_canada_ca_and_saanich_alias():

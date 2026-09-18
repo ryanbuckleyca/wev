@@ -209,6 +209,52 @@ def _make_repo_sb(data: list | None = None) -> MagicMock:
     return sb
 
 
+# ── generated-column stripping ───────────────────────────────────────────────
+
+
+class TestGeneratedColumnStripping:
+    def test_insert_strips_generated_columns(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [{"id": 5}]
+        sb.table.return_value.insert.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+
+        repo.insert(
+            {
+                "name": "Foo",
+                "slug": "foo",
+                "name_normalized": "foo",
+                "alternative_names_normalized": ["foo"],
+            }
+        )
+
+        forwarded = sb.table.return_value.insert.call_args[0][0]
+        assert "name_normalized" not in forwarded
+        assert "alternative_names_normalized" not in forwarded
+        assert forwarded == {"name": "Foo", "slug": "foo"}
+
+    def test_update_org_strips_generated_columns(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [{"id": 7}]
+        sb.table.return_value.update.return_value.eq.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+
+        repo.update_org(7, website="https://x.io", name_normalized="x")
+
+        forwarded = sb.table.return_value.update.call_args[0][0]
+        assert forwarded == {"website": "https://x.io"}
+
+    def test_update_org_noop_when_only_generated_columns(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+
+        repo.update_org(7, name_normalized="x", alternative_names_normalized=["x"])
+
+        sb.table.return_value.update.assert_not_called()
+
+
 # ── sse methods ─────────────────────────────────────────────────────────────
 
 class TestSSEMethods:

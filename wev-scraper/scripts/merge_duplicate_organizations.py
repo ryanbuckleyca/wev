@@ -555,8 +555,9 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
     print(f"\nApplying {len(autos)} auto-merge clusters...")
     for d in autos:
         survivor = d.survivor_id
-        deleted_ids: list[int] = []
 
+        # 1. Reassign jobs. Only orgs whose jobs moved become delete candidates.
+        reassigned_ids: list[int] = []
         for merge_id in d.merge_ids:
             try:
                 resp = (
@@ -567,22 +568,17 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
                 )
                 n = len(resp.data) if resp.data else 0
                 print(f"  jobs {merge_id} → {survivor}: updated {n}")
+                reassigned_ids.append(merge_id)
             except Exception as exc:
                 print(f"  ERROR updating jobs {merge_id} → {survivor}: {exc}")
                 continue
 
-            try:
-                supabase.table("organizations").delete().eq("id", merge_id).execute()
-                print(f"  deleted organization {merge_id}")
-                deleted_ids.append(merge_id)
-            except Exception as exc:
-                print(f"  ERROR deleting organization {merge_id}: {exc}")
-
-        if not deleted_ids:
+        if not reassigned_ids:
             continue
 
-        # Promote absorbed names only after those orgs were actually deleted,
-        # so a failed job reassign cannot leave two live orgs sharing a name.
+        # 2. Promote absorbed names onto the survivor BEFORE deleting the source
+        # rows. If this alias write fails we skip all deletes, so a committed
+        # deletion can never be left with the absorbed names lost.
         try:
             resp = (
                 supabase.table("organizations")
@@ -601,7 +597,7 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
                     (r for r in d.rows if r.get("id") == mid),
                     {"name": None, "alternative_names": []},
                 )
-                for mid in deleted_ids
+                for mid in reassigned_ids
             ]
             new_alts = merge_alternative_names(
                 survivor_row.get("name") or "",
@@ -614,7 +610,19 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
                 ).eq("id", survivor).execute()
                 print(f"  survivor {survivor} alternative_names → {new_alts}")
         except Exception as exc:
-            print(f"  WARNING: alternative_names promote failed for {survivor}: {exc}")
+            print(
+                f"  ERROR: alternative_names promote failed for {survivor}: {exc} "
+                f"— skipping deletes to preserve absorbed names"
+            )
+            continue
+
+        # 3. Names are safely persisted → delete the absorbed org rows.
+        for merge_id in reassigned_ids:
+            try:
+                supabase.table("organizations").delete().eq("id", merge_id).execute()
+                print(f"  deleted organization {merge_id}")
+            except Exception as exc:
+                print(f"  ERROR deleting organization {merge_id}: {exc}")
 
 
 def main() -> None:

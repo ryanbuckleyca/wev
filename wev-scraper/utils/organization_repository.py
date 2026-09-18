@@ -22,6 +22,15 @@ _LIKE_SPECIAL = re.compile(r"[%_\\]")
 
 _ORG_MATCH_COLUMNS = "id, name, location, website, alternative_names"
 
+# DB-populated GENERATED ALWAYS columns — Postgres rejects any attempt to write
+# them, so strip them from insert/update payloads before forwarding.
+_GENERATED_ORG_COLUMNS = ("name_normalized", "alternative_names_normalized")
+
+
+def _without_generated_columns(payload: dict) -> dict:
+    """Drop generated columns so the DB stays responsible for populating them."""
+    return {k: v for k, v in payload.items() if k not in _GENERATED_ORG_COLUMNS}
+
 
 def escape_like(s: str) -> str:
     """Escape % and _ for ILIKE so they're treated literally.
@@ -157,6 +166,7 @@ class OrganizationRepository:
             return set()
 
     def insert(self, row: dict) -> dict | None:
+        row = _without_generated_columns(row)
         resp = self._supabase.table("organizations").insert(row).execute()
         data = (resp.data or [{}])[0] if resp.data else {}
         if data.get("id"):
@@ -177,10 +187,11 @@ class OrganizationRepository:
 
         Used by backfill Phase 2 to write values + SSE fields.
         """
+        updates = _without_generated_columns(dict(updates))
         if not updates:
             return
         try:
-            resp = self._supabase.table("organizations").update(dict(updates)).eq("id", org_id).execute()
+            resp = self._supabase.table("organizations").update(updates).eq("id", org_id).execute()
             if not resp.data:
                 logger.warning(
                     "OrganizationRepository: update_org matched no rows for org_id=%s — updates=%s",

@@ -301,6 +301,100 @@ def test_print_report_needs_review_filters_buckets(capsys):
     assert "Showing" in out
 
 
+def _auto_merge_decision():
+    from scripts.merge_duplicate_organizations import ClusterDecision
+
+    return ClusterDecision(
+        bucket="auto-merge",
+        normalized_name="dupe",
+        reason="same domain",
+        survivor_id=1,
+        merge_ids=[2],
+        domains=[None, None],
+        rows=[
+            {"id": 1, "name": "Survivor", "alternative_names": []},
+            {"id": 2, "name": "Dupe Co", "alternative_names": []},
+        ],
+    )
+
+
+def _org_table_mock(calls, *, update_raises=False):
+    from unittest.mock import MagicMock
+
+    orgs = MagicMock()
+    orgs.select.return_value.eq.return_value.limit.return_value.execute.return_value = (
+        MagicMock(data=[{"id": 1, "name": "Survivor", "alternative_names": []}])
+    )
+
+    def _update(payload):
+        calls.append(("update_alts", payload))
+        if update_raises:
+            raise RuntimeError("alias write failed")
+        m = MagicMock()
+        m.eq.return_value.execute.return_value = MagicMock(data=[{"id": 1}])
+        return m
+
+    def _delete():
+        calls.append(("delete",))
+        m = MagicMock()
+        m.eq.return_value.execute.return_value = MagicMock(data=[{"id": 2}])
+        return m
+
+    orgs.update.side_effect = _update
+    orgs.delete.side_effect = _delete
+    return orgs
+
+
+def test_apply_auto_merges_persists_alts_before_delete(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from scripts import merge_duplicate_organizations as mod
+
+    calls: list[tuple] = []
+    jobs = MagicMock()
+    jobs.update.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"id": "j1"}]
+    )
+    orgs = _org_table_mock(calls)
+
+    fake_sb = MagicMock()
+    fake_sb.table.side_effect = lambda name: jobs if name == "jobs" else orgs
+    monkeypatch.setattr(mod, "supabase", fake_sb)
+
+    mod.apply_auto_merges([_auto_merge_decision()])
+
+    kinds = [c[0] for c in calls]
+    assert "update_alts" in kinds and "delete" in kinds
+    # Alias promotion must happen before the destructive delete.
+    assert kinds.index("update_alts") < kinds.index("delete")
+    payload = next(c[1] for c in calls if c[0] == "update_alts")
+    assert "Dupe Co" in payload["alternative_names"]
+
+
+def test_apply_auto_merges_skips_delete_when_alias_write_fails(monkeypatch):
+    from unittest.mock import MagicMock
+
+    from scripts import merge_duplicate_organizations as mod
+
+    calls: list[tuple] = []
+    jobs = MagicMock()
+    jobs.update.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"id": "j1"}]
+    )
+    orgs = _org_table_mock(calls, update_raises=True)
+
+    fake_sb = MagicMock()
+    fake_sb.table.side_effect = lambda name: jobs if name == "jobs" else orgs
+    monkeypatch.setattr(mod, "supabase", fake_sb)
+
+    mod.apply_auto_merges([_auto_merge_decision()])
+
+    kinds = [c[0] for c in calls]
+    # Alias write was attempted and failed → no delete may run (names preserved).
+    assert "update_alts" in kinds
+    assert "delete" not in kinds
+
+
 def test_review_interactively_stops_on_quit(monkeypatch, capsys):
     from scripts.merge_duplicate_organizations import review_interactively
 
