@@ -307,16 +307,16 @@ class Organizations(BaseModel):
         None,
         description='Primary public language of the organization (en, fr, or bilingual). Distinct from jobs.language (role/posting requirements).',
     )
-    alternative_names: Optional[List[str]] = Field(
-        None,
-        description='Additional names that identify this organization for matching (former names, other-language legal names, acronyms, short forms). Canonical display name remains name.',
+    alternative_names: List[str] = Field(
+        default_factory=list,
+        description='Additional names that identify this organization for matching (former names, other-language legal names, acronyms, short forms). Canonical display name remains name. NOT NULL in the DB (defaults to an empty array).',
     )
     name_normalized: Optional[str] = Field(
         None,
         description='Generated normalize_org_name(name) for indexed equality matching.',
     )
-    alternative_names_normalized: Optional[List[str]] = Field(
-        None,
+    alternative_names_normalized: List[str] = Field(
+        default_factory=list,
         description='Generated normalize_org_names(alternative_names) for indexed containment matching.',
     )
     description_en: Optional[str] = Field(
