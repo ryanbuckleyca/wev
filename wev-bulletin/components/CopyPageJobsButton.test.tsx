@@ -168,4 +168,42 @@ describe('CopyPageJobsButton', () => {
     const btn = screen.getByRole('button', { name: 'Copy This Page' });
     expect(btn).toBeDisabled();
   });
+
+  it('copies structured hourly pay with / hour, not the raw wage string', async () => {
+    const job = makeJob({
+      id: 'hourly',
+      wage: '$25.64 to $29.86',
+      unit_text: 'HOUR',
+      min_value: 2564,
+      max_value: 2986,
+      hours_per_week: null,
+    });
+
+    render(<CopyPageJobsButton jobs={[job]} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
+    });
+
+    expect(capturedPlainText).toContain('/ hour');
+    expect(capturedPlainText).not.toContain('$25.64 to $29.86');
+  });
+
+  it('copies structured yearly pay with / year', async () => {
+    const job = makeJob({
+      id: 'yearly',
+      wage: '$57,000.00',
+      unit_text: 'YEAR',
+      min_value: 5_700_000,
+      max_value: null,
+    });
+
+    render(<CopyPageJobsButton jobs={[job]} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
+    });
+
+    expect(capturedPlainText).toMatch(/\/ year/);
+  });
 });

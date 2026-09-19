@@ -1,6 +1,7 @@
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
+from scrapers.winp import WinpJobsScraper, WinpVolunteerScraper
 from scrapers.registry import (
     canonical_slug,
     get_scraper_class,
@@ -43,6 +44,16 @@ def test_get_scraper_class_by_prod_display_name():
 
 def test_get_scraper_class_unknown_source():
     assert get_scraper_class({"slug": "unknown", "name": "Unknown"}) is None
+
+
+def test_get_scraper_class_winp_boards():
+    assert get_scraper_class({"slug": "winpvol"}) is WinpVolunteerScraper
+    assert (
+        get_scraper_class({"name": "WorkInNonProfits Volunteer"})
+        is WinpVolunteerScraper
+    )
+    assert get_scraper_class({"slug": "winpjobs"}) is WinpJobsScraper
+    assert get_scraper_class({"name": "WorkInNonProfits Jobs"}) is WinpJobsScraper
 
 
 def test_source_matches_slug_by_legacy_slug():

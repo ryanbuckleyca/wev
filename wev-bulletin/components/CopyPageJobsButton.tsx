@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { JobPosting } from '@/lib/supabase';
+import { formatCompensation } from '@/lib/compensation/helpers';
 import Button from './Button';
 
 function formatDate(dateString: string, locale?: string): string {
@@ -25,6 +26,25 @@ function formatDate(dateString: string, locale?: string): string {
   });
 }
 
+function compensationTranslations(t: ReturnType<typeof useTranslations>) {
+  return {
+    perYear: t('jobCard.perYear'),
+    perHour: t('jobCard.perHour'),
+    statedHoursPerWeek: (hours: number) => t('jobCard.statedHoursPerWeek', { hours }),
+    volunteer: t('jobCard.volunteer'),
+    internship: t('jobCard.internship'),
+  };
+}
+
+function formatHowMuch(
+  job: JobPosting,
+  t: ReturnType<typeof useTranslations>,
+  locale?: string,
+): string {
+  const display = formatCompensation(job, locale || 'en-CA', compensationTranslations(t));
+  return display.secondary ? `${display.primary} (${display.secondary})` : display.primary;
+}
+
 function formatJobsAsText(
   jobs: JobPosting[],
   t: ReturnType<typeof useTranslations>,
@@ -38,7 +58,7 @@ function formatJobsAsText(
         `${t('jobCard.where')} ${job.location || t('jobCard.nA')}`,
         ...(job.summary ? [`${t('jobCard.why')} ${job.summary}`] : []),
         `${t('jobCard.when')} ${t('jobCard.posted')} ${formatDate(job.date_posted, locale)}`,
-        `${t('jobCard.howMuch')} ${job.wage || t('jobCard.nA')}`,
+        `${t('jobCard.howMuch')} ${formatHowMuch(job, t, locale)}`,
       ];
       return lines.join('\n');
     })
@@ -69,7 +89,7 @@ function formatJobsAsHTML(
         `<b>${t('jobCard.where')}</b> ${escapeHtml(job.location || t('jobCard.nA'))}`,
         ...(job.summary ? [`<b>${t('jobCard.why')}</b> ${escapeHtml(job.summary)}`] : []),
         `<b>${t('jobCard.when')}</b> ${t('jobCard.posted')} ${escapeHtml(formatDate(job.date_posted, locale))}`,
-        `<b>${t('jobCard.howMuch')}</b> ${escapeHtml(job.wage || t('jobCard.nA'))}`,
+        `<b>${t('jobCard.howMuch')}</b> ${escapeHtml(formatHowMuch(job, t, locale))}`,
       ];
       return lines.join('<br>');
     })
