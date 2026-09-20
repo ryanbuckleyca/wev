@@ -13,6 +13,7 @@ import html
 import json
 import os
 import re
+from datetime import datetime, timedelta, timezone
 
 from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text, first_nonempty
@@ -81,55 +82,120 @@ class WinpBaseScraper(BaseScraper):
     def fetch_jobs(self, headless=True):
         if not self._should_collect_full_board():
             return super().fetch_jobs(headless=headless)
-        scraper_log("\tWINP: first scrape of this board — collecting all listings")
+        scraper_log("\tWINP: archive walk — collecting listings beyond the two-week cutoff")
         previous = os.environ.get("WITHIN_WEEKS")
         os.environ["WITHIN_WEEKS"] = "9999"
+        self._winp_pagination_failed = False
         try:
-            return super().fetch_jobs(headless=headless)
+            jobs = super().fetch_jobs(headless=headless)
+            if self.should_quit_list or self._winp_pagination_failed:
+                scraper_log(
+                    "\t⚠️ WINP: archive walk stopped early (job cap or pagination error). "
+                    "The next uncapped run will keep collecting older listings."
+                )
+            return jobs
         finally:
             if previous is None:
                 os.environ.pop("WITHIN_WEEKS", None)
             else:
                 os.environ["WITHIN_WEEKS"] = previous
 
-    def _should_collect_full_board(self) -> bool:
+    def go_next_page(self, page):
+        next_num = self.current_page_number + 1
+        next_link = page.locator("li.page-item:not(.disabled) a.next_job_page").first
+        scraper_log(f"\tWINP: page {next_num}")
+        try:
+            with page.expect_navigation():
+                next_link.click()
+            page.wait_for_selector(self.listing_selector, state="attached", timeout=15_000)
+            self.current_page_number = next_num
+        except Exception:
+            self._winp_pagination_failed = True
+            raise
+
+    def _board_has_existing_urls(self) -> bool:
         volunteer = "/volunteer-jobs/" in self.get_listings_url()
         for url in self.existing_urls:
             if "workinnonprofits.ca" not in (url or ""):
                 continue
             if volunteer and "/volunteer-jobs/" in url:
-                return False
+                return True
             if not volunteer and "/jobs/" in url and "/volunteer-jobs/" not in url:
-                return False
-        return True
+                return True
+        return False
+
+    def _oldest_existing_date_posted(self) -> str | None:
+        if hasattr(self, "_oldest_posted_override"):
+            return self._oldest_posted_override
+        source_id = (self.source or {}).get("id")
+        if not source_id:
+            return None
+        try:
+            from utils.db import supabase
+
+            resp = (
+                supabase.table("jobs")
+                .select("date_posted")
+                .eq("source_id", source_id)
+                .not_.is_("date_posted", "null")
+                .order("date_posted")
+                .limit(1)
+                .execute()
+            )
+            rows = resp.data or []
+            return rows[0].get("date_posted") if rows else None
+        except Exception as exc:
+            scraper_log(f"\tWINP: could not read oldest date_posted ({exc}); keeping archive walk")
+            return None
+
+    def _should_collect_full_board(self) -> bool:
+        """Keep walking the archive until a stored job is older than WITHIN_WEEKS.
+
+        Presence of any URL is not enough: a capped or failed first scrape would
+        otherwise permanently disable the backfill.
+        """
+        if not self._board_has_existing_urls():
+            return True
+        oldest = self._oldest_existing_date_posted()
+        if not oldest:
+            return True
+        try:
+            from dateutil import parser as date_parser
+
+            posted = date_parser.parse(str(oldest))
+            if posted.tzinfo is None:
+                posted = posted.replace(tzinfo=timezone.utc)
+            else:
+                posted = posted.astimezone(timezone.utc)
+        except (ValueError, TypeError, OverflowError):
+            return True
+        from utils.date_utils import get_within_weeks
+
+        cutoff = datetime.now(timezone.utc) - timedelta(weeks=get_within_weeks())
+        return posted >= cutoff
 
     def open_listings_page(self, page):
         def _load_page():
             self._goto_with_networkidle(page, self.get_listings_url())
             self._is_error_page(page)
-            sort = page.locator("#sort_jobs_byPD")
-            if sort.count() > 0:
-                sort.first.click(force=True)
+            self._require_posted_date_sort(page)
             page.locator("form button.btn-primary[type=submit]").first.click()
             page.wait_for_selector(self.listing_selector, state="attached", timeout=15_000)
             self._is_error_page(page)
 
         self._retry(_load_page)
 
+    def _require_posted_date_sort(self, page) -> None:
+        sort = page.locator("#sort_jobs_byPD")
+        if sort.count() == 0:
+            raise RuntimeError("WINP posted-date sort control #sort_jobs_byPD not found")
+        sort.first.click(force=True)
+
     def has_next_page(self, page) -> bool:
         try:
             return page.locator("li.page-item:not(.disabled) a.next_job_page").count() > 0
         except Exception:
             return False
-
-    def go_next_page(self, page):
-        next_num = self.current_page_number + 1
-        next_link = page.locator("li.page-item:not(.disabled) a.next_job_page").first
-        scraper_log(f"\tWINP: page {next_num}")
-        with page.expect_navigation():
-            next_link.click()
-        page.wait_for_selector(self.listing_selector, state="attached", timeout=15_000)
-        self.current_page_number = next_num
 
     def get_job_url(self, item):
         loc = item.locator("span.lj_title a[href*='/E/']")
@@ -177,7 +243,18 @@ class WinpBaseScraper(BaseScraper):
         return _clean_text(name) or self._extract_text(page, ".vj_orgname")
 
     def extract_date_posted(self, page, listing_data):
-        return _iso_date(self._jobposting(page).get("datePosted"))
+        posted = first_nonempty(
+            _iso_date(self._jobposting(page).get("datePosted")),
+            _iso_date(self.extract_meta_date(page)),
+            _iso_date(listing_data.get("date_posted")),
+        )
+        if posted:
+            return posted
+        url = listing_data.get("listing_url") or getattr(page, "url", "") or ""
+        scraper_log(
+            f"\t\tWarning: no date_posted for {url or 'listing'} — using scrape date so the bulletin can show it"
+        )
+        return datetime.now(timezone.utc).date().isoformat()
 
     def extract_close_date(self, page, listing_data):
         return _iso_date(self._jobposting(page).get("validThrough"))
@@ -266,6 +343,9 @@ class WinpBaseScraper(BaseScraper):
 
 class WinpVolunteerScraper(WinpBaseScraper):
     default_employment_type = "volunteer"
+
+    def extract_employment_type(self, page, listing_data):
+        return "volunteer"
 
 
 class WinpJobsScraper(WinpBaseScraper):

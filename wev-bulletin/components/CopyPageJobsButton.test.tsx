@@ -206,4 +206,22 @@ describe('CopyPageJobsButton', () => {
 
     expect(capturedPlainText).toMatch(/\/ year/);
   });
+
+  it('copies translated N/A when there is no structured pay and no wage', async () => {
+    const job = makeJob({
+      id: 'unpaid',
+      wage: null,
+      unit_text: null,
+      min_value: null,
+      employment_type: 'Full-time',
+    });
+
+    render(<CopyPageJobsButton jobs={[job]} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
+    });
+
+    expect(capturedPlainText).toContain('How much: N/A');
+  });
 });

@@ -1,5 +1,8 @@
+from datetime import datetime, timezone
 import json
+import os
 
+from scrapers.base import BaseScraper
 from scrapers.winp import (
     WinpBaseScraper,
     WinpJobsScraper,
@@ -105,7 +108,7 @@ def test_boards_share_base_and_listings_url():
     assert jobs.is_chronological is True
 
 
-def test_first_scrape_collects_full_board_until_this_board_has_urls():
+def test_first_scrape_collects_full_board_until_archive_job_exists():
     volunteer = WinpVolunteerScraper(volunteer_source())
     jobs = WinpJobsScraper(jobs_source())
     volunteer.existing_urls = set()
@@ -116,9 +119,13 @@ def test_first_scrape_collects_full_board_until_this_board_has_urls():
     volunteer.existing_urls = {
         "https://workinnonprofits.ca/volunteer-jobs/view/2606/E/youth-educator"
     }
+    volunteer._oldest_posted_override = datetime.now(timezone.utc).date().isoformat()
     jobs.existing_urls = volunteer.existing_urls
-    assert volunteer._should_collect_full_board() is False
+    assert volunteer._should_collect_full_board() is True
     assert jobs._should_collect_full_board() is True
+
+    volunteer._oldest_posted_override = "2020-01-01"
+    assert volunteer._should_collect_full_board() is False
 
     jobs.existing_urls = {
         "https://www.charityvillage.com/jobs",
@@ -129,6 +136,9 @@ def test_first_scrape_collects_full_board_until_this_board_has_urls():
     jobs.existing_urls = {
         "https://workinnonprofits.ca/jobs/view/112501/E/respite-worker"
     }
+    jobs._oldest_posted_override = None
+    assert jobs._should_collect_full_board() is True
+    jobs._oldest_posted_override = "2020-01-01"
     assert jobs._should_collect_full_board() is False
 
 
@@ -158,7 +168,7 @@ def test_html_fallback_when_jsonld_missing(page):
     page.set_content(WFH_HTML)
     assert scraper.extract_job_title(page, {}) == "Social Media Manager"
     assert scraper.extract_organization(page, {}) == "The Power of Play Foundation"
-    assert scraper.extract_date_posted(page, {}) is None
+    assert scraper.extract_date_posted(page, {}) == datetime.now(timezone.utc).date().isoformat()
     assert scraper.extract_employment_type(page, {}) == "volunteer"
     loc = scraper.extract_location(page, {})
     assert "Work From Home" in loc
@@ -309,6 +319,65 @@ def test_volunteer_does_not_use_vj_type_as_employment(page):
     scraper = WinpVolunteerScraper(volunteer_source())
     page.set_content('<span class="vj_type">flexible / as needed</span>')
     assert scraper.extract_employment_type(page, {}) == "volunteer"
+
+
+def test_volunteer_board_ignores_schema_part_time(page):
+    scraper = WinpVolunteerScraper(volunteer_source())
+    page.set_content(
+        '<script type="application/ld+json">'
+        '{"@type":"JobPosting","employmentType":"PART_TIME"}'
+        "</script>"
+    )
+    assert scraper.extract_employment_type(page, {}) == "volunteer"
+
+
+def test_date_posted_falls_back_to_article_meta(page):
+    scraper = WinpJobsScraper(jobs_source())
+    page.set_content(
+        '<meta property="article:published_time" content="2026-09-01T12:00:00Z">'
+        '<span class="vj_title">Untitled</span>'
+    )
+    assert scraper.extract_date_posted(page, {}) == "2026-09-01"
+
+
+def test_require_posted_date_sort_clicks_control(page):
+    scraper = WinpVolunteerScraper(volunteer_source())
+    page.set_content('<input type="radio" id="sort_jobs_byPD" name="sort">')
+    scraper._require_posted_date_sort(page)
+    assert page.locator("#sort_jobs_byPD").count() == 1
+
+
+def test_require_posted_date_sort_raises_when_missing(page):
+    scraper = WinpVolunteerScraper(volunteer_source())
+    page.set_content("<form></form>")
+    try:
+        scraper._require_posted_date_sort(page)
+    except RuntimeError as exc:
+        assert "#sort_jobs_byPD" in str(exc)
+    else:
+        raise AssertionError("expected RuntimeError when sort control is missing")
+
+
+def test_full_board_lifts_and_restores_within_weeks(monkeypatch):
+    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper.existing_urls = set()
+    seen: dict[str, object] = {}
+
+    def fake_fetch(self, headless=True):
+        from utils.date_utils import get_within_weeks
+
+        seen["during"] = get_within_weeks()
+        return []
+
+    monkeypatch.setattr(BaseScraper, "fetch_jobs", fake_fetch)
+    monkeypatch.delenv("WITHIN_WEEKS", raising=False)
+    scraper.fetch_jobs()
+    assert seen["during"] == 9999
+    assert "WITHIN_WEEKS" not in os.environ
+
+    monkeypatch.setenv("WITHIN_WEEKS", "2")
+    scraper.fetch_jobs()
+    assert os.environ["WITHIN_WEEKS"] == "2"
 
 
 def test_helpers():
