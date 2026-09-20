@@ -42,11 +42,8 @@ function formatHowMuch(
   locale?: string,
 ): string {
   const display = formatCompensation(job, locale || 'en-CA', compensationTranslations(t));
-  if (
-    !display.isStructured &&
-    !(job.wage || '').trim() &&
-    (display.primary === 'N/A' || !display.primary)
-  ) {
+  const primary = (display.primary || '').trim();
+  if (!display.isStructured && !(job.wage || '').trim() && (primary === 'N/A' || !primary)) {
     return t('jobCard.nA');
   }
   return display.secondary ? `${display.primary} (${display.secondary})` : display.primary;
@@ -154,7 +151,7 @@ export default function CopyPageJobsButton({ jobs, buttonClassName }: CopyPageJo
       console.error('Failed to copy with ClipboardItem, trying plain text:', err);
       // Fallback to plain text if ClipboardItem fails
       try {
-        const text = formatJobsAsText(jobs, t);
+        const text = formatJobsAsText(jobs, t, locale);
         await navigator.clipboard.writeText(text);
         setCopied(true);
 
@@ -166,7 +163,7 @@ export default function CopyPageJobsButton({ jobs, buttonClassName }: CopyPageJo
         console.error('Failed to copy:', textErr);
         // Final fallback for older browsers
         const textArea = document.createElement('textarea');
-        textArea.value = formatJobsAsText(jobs, t);
+        textArea.value = formatJobsAsText(jobs, t, locale);
         document.body.appendChild(textArea);
         textArea.select();
         try {

@@ -224,4 +224,22 @@ describe('CopyPageJobsButton', () => {
 
     expect(capturedPlainText).toContain('How much: N/A');
   });
+
+  it('copies translated N/A when wage is whitespace-only', async () => {
+    const job = makeJob({
+      id: 'blank-wage',
+      wage: '   ',
+      unit_text: null,
+      min_value: null,
+      employment_type: 'Full-time',
+    });
+
+    render(<CopyPageJobsButton jobs={[job]} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy This Page' }));
+    });
+
+    expect(capturedPlainText).toContain('How much: N/A');
+  });
 });
