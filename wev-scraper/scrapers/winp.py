@@ -1,7 +1,8 @@
-"""WorkInNonProfits.ca scrapers.
+"""WorkInNonProfits.ca scraper.
 
 Paid (`/jobs/`) and volunteer (`/volunteer-jobs/`) boards share listing cards,
-pagination, JSON-LD JobPosting, and `.vj_*` detail fields. Listings require a
+pagination, JSON-LD JobPosting, and `.vj_*` detail fields. One class handles
+both source URLs (same pattern as MaCommunauteScraper). Listings require a
 search form POST (GET /list redirects to /search). We sort by posted date so
 ongoing scrapes can stop at the two-week cutoff; a first scrape of the board
 collects the full listing.
@@ -73,11 +74,14 @@ def _visible_description(*chunks: str | None) -> str | None:
     return "\n\n".join(parts) or None
 
 
-class WinpBaseScraper(BaseScraper):
+class WinpScraper(BaseScraper):
     is_chronological = True
     listing_selector = "div.job_item.card"
     job_wait_selector = ".vj_title"
-    default_employment_type: str | None = None
+
+    def _is_volunteer_board(self) -> bool:
+        url = (self.source or {}).get("url") or ""
+        return "/volunteer-jobs/" in url
 
     def fetch_jobs(self, headless=True):
         if not self._should_collect_full_board():
@@ -114,7 +118,7 @@ class WinpBaseScraper(BaseScraper):
             raise
 
     def _board_has_existing_urls(self) -> bool:
-        volunteer = "/volunteer-jobs/" in self.get_listings_url()
+        volunteer = self._is_volunteer_board()
         for url in self.existing_urls:
             if "workinnonprofits.ca" not in (url or ""):
                 continue
@@ -260,11 +264,11 @@ class WinpBaseScraper(BaseScraper):
         return _iso_date(self._jobposting(page).get("validThrough"))
 
     def extract_employment_type(self, page, listing_data):
+        if self._is_volunteer_board():
+            return "volunteer"
         mapped = _schema_employment(self._jobposting(page).get("employmentType"))
         if mapped:
             return mapped
-        if self.default_employment_type:
-            return self.default_employment_type
         return self._extract_text(page, ".vj_type")
 
     def extract_location(self, page, listing_data):
@@ -339,17 +343,6 @@ class WinpBaseScraper(BaseScraper):
         except Exception as e:
             scraper_log(f"\t\tWarning: {selector}: {e}")
             return None
-
-
-class WinpVolunteerScraper(WinpBaseScraper):
-    default_employment_type = "volunteer"
-
-    def extract_employment_type(self, page, listing_data):
-        return "volunteer"
-
-
-class WinpJobsScraper(WinpBaseScraper):
-    pass
 
 
 def _schema_employment(value) -> str | None:

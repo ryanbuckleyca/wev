@@ -7,7 +7,7 @@ from scrapers.registry import (
     source_canonical_slug,
     source_matches_slug,
 )
-from scrapers.winp import WinpJobsScraper, WinpVolunteerScraper
+from scrapers.winp import WinpScraper
 
 
 def test_get_scraper_class_by_canonical_slug():
@@ -47,13 +47,10 @@ def test_get_scraper_class_unknown_source():
 
 
 def test_get_scraper_class_winp_boards():
-    assert get_scraper_class({"slug": "winpvol"}) is WinpVolunteerScraper
-    assert (
-        get_scraper_class({"name": "WorkInNonProfits Volunteer"})
-        is WinpVolunteerScraper
-    )
-    assert get_scraper_class({"slug": "winpjobs"}) is WinpJobsScraper
-    assert get_scraper_class({"name": "WorkInNonProfits Jobs"}) is WinpJobsScraper
+    assert get_scraper_class({"slug": "winpvol"}) is WinpScraper
+    assert get_scraper_class({"name": "WorkInNonProfits Volunteer"}) is WinpScraper
+    assert get_scraper_class({"slug": "winpjobs"}) is WinpScraper
+    assert get_scraper_class({"name": "WorkInNonProfits Jobs"}) is WinpScraper
 
 
 def test_source_matches_slug_by_legacy_slug():

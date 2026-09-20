@@ -4,10 +4,8 @@ from datetime import datetime, timezone
 
 from scrapers.base import BaseScraper
 from scrapers.winp import (
+    WinpScraper,
     _VIEW_LANG,
-    WinpBaseScraper,
-    WinpJobsScraper,
-    WinpVolunteerScraper,
     _as_jobposting,
     _html_to_visible_text,
     _iso_date,
@@ -96,21 +94,21 @@ LISTING_CARD = """
 """
 
 
-def test_boards_share_base_and_listings_url():
-    volunteer = WinpVolunteerScraper(volunteer_source())
-    jobs = WinpJobsScraper(jobs_source())
-    assert issubclass(WinpVolunteerScraper, WinpBaseScraper)
-    assert issubclass(WinpJobsScraper, WinpBaseScraper)
+def test_boards_share_class_and_listings_url():
+    volunteer = WinpScraper(volunteer_source())
+    jobs = WinpScraper(jobs_source())
     assert volunteer.get_listings_url().endswith("/volunteer-jobs/search")
     assert jobs.get_listings_url().endswith("/jobs/search")
     assert volunteer.listing_selector == jobs.listing_selector
     assert volunteer.is_chronological is True
     assert jobs.is_chronological is True
+    assert volunteer._is_volunteer_board() is True
+    assert jobs._is_volunteer_board() is False
 
 
 def test_first_scrape_collects_full_board_until_archive_job_exists():
-    volunteer = WinpVolunteerScraper(volunteer_source())
-    jobs = WinpJobsScraper(jobs_source())
+    volunteer = WinpScraper(volunteer_source())
+    jobs = WinpScraper(jobs_source())
     volunteer.existing_urls = set()
     jobs.existing_urls = set()
     assert volunteer._should_collect_full_board() is True
@@ -143,7 +141,7 @@ def test_first_scrape_collects_full_board_until_archive_job_exists():
 
 
 def test_extract_prefers_jsonld(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(BINGO_HTML)
     listing = {}
     assert scraper.extract_job_title(page, listing) == "Bingo Volunteer"
@@ -156,7 +154,7 @@ def test_extract_prefers_jsonld(page):
 
 
 def test_extract_location_from_html_not_jsonld(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(BINGO_HTML)
     loc = scraper.extract_location(page, {})
     assert "Mississauga" in loc
@@ -164,7 +162,7 @@ def test_extract_location_from_html_not_jsonld(page):
 
 
 def test_html_fallback_when_jsonld_missing(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(WFH_HTML)
     assert scraper.extract_job_title(page, {}) == "Social Media Manager"
     assert scraper.extract_organization(page, {}) == "The Power of Play Foundation"
@@ -176,7 +174,7 @@ def test_html_fallback_when_jsonld_missing(page):
 
 
 def test_generic_location_uses_card_location(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content('<span class="vj_loc">International</span>')
     loc = scraper.extract_location(page, {"card_location": "Yaoundé, Cameroun"})
     assert "Yaoundé" in loc
@@ -184,7 +182,7 @@ def test_generic_location_uses_card_location(page):
 
 
 def test_description_includes_how_to_apply(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(BINGO_HTML)
     desc = scraper.extract_description(page, {})
     assert "volunteer opportunity" in desc
@@ -193,7 +191,7 @@ def test_description_includes_how_to_apply(page):
 
 
 def test_description_strips_word_vml(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(
         """
         <div class="vj_desc">
@@ -220,7 +218,7 @@ def test_html_to_visible_text_drops_office_smart_tags():
 
 
 def test_get_listing_data(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(LISTING_CARD)
     data = scraper.get_listing_data(page.locator("div.job_item.card").first)
     assert data["job_title"] == "Bingo Volunteer"
@@ -229,14 +227,14 @@ def test_get_listing_data(page):
 
 
 def test_get_job_url(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(LISTING_CARD)
     url = scraper.get_job_url(page.locator("div.job_item.card").first)
     assert url.endswith("/volunteer-jobs/view/2590/E/bingo-volunteer")
 
 
 def test_get_job_url_prefers_english_on_bilingual_card(page):
-    scraper = WinpJobsScraper(jobs_source())
+    scraper = WinpScraper(jobs_source())
     page.set_content(
         """
         <div class="job_item card">
@@ -253,7 +251,7 @@ def test_get_job_url_prefers_english_on_bilingual_card(page):
 
 
 def test_has_next_page(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(
         """
         <ul class="pagination">
@@ -278,7 +276,7 @@ def test_has_next_page(page):
 
 
 def test_language_from_view_url():
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     en = scraper.create_job_dict(
         job_title="Bingo Volunteer",
         listing_url="https://workinnonprofits.ca/volunteer-jobs/view/2590/E/bingo-volunteer",
@@ -300,7 +298,7 @@ def test_language_from_view_url():
 
 
 def test_paid_job_extracts_wage_and_schema_employment(page):
-    scraper = WinpJobsScraper(jobs_source())
+    scraper = WinpScraper(jobs_source())
     page.set_content(RESPITE_HTML)
     assert scraper.extract_job_title(page, {}) == "Respite Worker"
     assert scraper.extract_employment_type(page, {}) == "part-time"
@@ -309,20 +307,20 @@ def test_paid_job_extracts_wage_and_schema_employment(page):
 
 
 def test_paid_job_falls_back_to_vj_type_when_jsonld_missing(page):
-    scraper = WinpJobsScraper(jobs_source())
+    scraper = WinpScraper(jobs_source())
     page.set_content('<span class="vj_type">full time</span>')
     assert scraper.extract_employment_type(page, {}) == "full time"
     assert scraper.extract_wage(page, {}) is None
 
 
 def test_volunteer_does_not_use_vj_type_as_employment(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content('<span class="vj_type">flexible / as needed</span>')
     assert scraper.extract_employment_type(page, {}) == "volunteer"
 
 
 def test_volunteer_board_ignores_schema_part_time(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content(
         '<script type="application/ld+json">'
         '{"@type":"JobPosting","employmentType":"PART_TIME"}'
@@ -332,7 +330,7 @@ def test_volunteer_board_ignores_schema_part_time(page):
 
 
 def test_date_posted_falls_back_to_article_meta(page):
-    scraper = WinpJobsScraper(jobs_source())
+    scraper = WinpScraper(jobs_source())
     page.set_content(
         '<meta property="article:published_time" content="2026-09-01T12:00:00Z">'
         '<span class="vj_title">Untitled</span>'
@@ -341,14 +339,14 @@ def test_date_posted_falls_back_to_article_meta(page):
 
 
 def test_require_posted_date_sort_clicks_control(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content('<input type="radio" id="sort_jobs_byPD" name="sort">')
     scraper._require_posted_date_sort(page)
     assert page.locator("#sort_jobs_byPD").count() == 1
 
 
 def test_require_posted_date_sort_raises_when_missing(page):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     page.set_content("<form></form>")
     try:
         scraper._require_posted_date_sort(page)
@@ -359,7 +357,7 @@ def test_require_posted_date_sort_raises_when_missing(page):
 
 
 def test_full_board_lifts_and_restores_within_weeks(monkeypatch):
-    scraper = WinpVolunteerScraper(volunteer_source())
+    scraper = WinpScraper(volunteer_source())
     scraper.existing_urls = set()
     seen: dict[str, object] = {}
 

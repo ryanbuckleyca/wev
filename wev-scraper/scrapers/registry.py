@@ -9,7 +9,7 @@ from scrapers.cwc import CWCScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
-from scrapers.winp import WinpJobsScraper, WinpVolunteerScraper
+from scrapers.winp import WinpScraper
 from scrapers.workinculture import WorkInCultureScraper
 
 # Canonical slug → scraper class.
@@ -24,8 +24,8 @@ SCRAPER_MAP: Dict[str, Type] = {
     "charityvillage": CharityVillageScraper,
     "cwc": CWCScraper,
     "workinculture": WorkInCultureScraper,
-    "winpvol": WinpVolunteerScraper,
-    "winpjobs": WinpJobsScraper,
+    "winpvol": WinpScraper,
+    "winpjobs": WinpScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -45,6 +45,8 @@ PROD_SOURCE_CANONICAL_SLUG: Dict[str, str] = {
     "c068cbc6-90a5-45cb-95a1-a7281dd76198": "cent",
     "01a58f5e-f47c-4310-a2d1-6627a57e2071": "mac",
     "394fd635-bf74-463a-9e74-b17405a8b688": "macb",
+    "16fe1b1b-a65f-4ae6-9e9f-9f1b86d7e3d0": "winpvol",
+    "6367e213-f85e-42bc-976f-dbe5a2c03924": "winpjobs",
 }
 
 PROD_SOURCE_ID_MAP: Dict[str, Type] = {
