@@ -411,9 +411,9 @@ export type Database = {
       };
       organizations: {
         Row: {
-          assessment_skip_reason: string | null;
           alternative_names: string[];
-          alternative_names_normalized: string[];
+          alternative_names_normalized: string[] | null;
+          assessment_skip_reason: string | null;
           created_at: string;
           description: string | null;
           description_en: string | null;
@@ -444,8 +444,9 @@ export type Database = {
           website: string | null;
         };
         Insert: {
-          assessment_skip_reason?: string | null;
           alternative_names?: string[];
+          alternative_names_normalized?: string[] | null;
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;
@@ -463,6 +464,7 @@ export type Database = {
           mission_statement_fr?: string | null;
           municipality?: string | null;
           name: string;
+          name_normalized?: string | null;
           province?: string | null;
           sector_id?: string | null;
           slug: string;
@@ -475,8 +477,9 @@ export type Database = {
           website?: string | null;
         };
         Update: {
-          assessment_skip_reason?: string | null;
           alternative_names?: string[];
+          alternative_names_normalized?: string[] | null;
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;
@@ -494,6 +497,7 @@ export type Database = {
           mission_statement_fr?: string | null;
           municipality?: string | null;
           name?: string;
+          name_normalized?: string | null;
           province?: string | null;
           sector_id?: string | null;
           slug?: string;
@@ -773,6 +777,16 @@ export type Database = {
         Returns: undefined;
       };
       f_unaccent: { Args: { '': string }; Returns: string };
+      find_organizations_by_name: {
+        Args: { p_name: string };
+        Returns: {
+          alternative_names: string[];
+          id: number;
+          location: string;
+          name: string;
+          website: string;
+        }[];
+      };
       get_active_organizations: {
         Args: {
           min_date: string;
@@ -872,6 +886,8 @@ export type Database = {
               similarity: number;
             }[];
           };
+      normalize_org_name: { Args: { p_name: string }; Returns: string };
+      normalize_org_names: { Args: { p_names: string[] }; Returns: string[] };
       process_job_match_recalc_queue: {
         Args: {
           p_attempts_max?: number;
