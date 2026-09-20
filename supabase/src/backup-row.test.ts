@@ -27,4 +27,24 @@ describe("sanitizeBackupRow", () => {
       province: "QC",
     });
   });
+
+  it("strips generated org name_normalized columns", () => {
+    for (const col of ["name_normalized", "alternative_names_normalized"]) {
+      assert.equal(isGeneratedBackupColumn(col), true);
+    }
+
+    const clean = sanitizeBackupRow({
+      id: 1,
+      name: "Crisis Centre of BC",
+      alternative_names: [],
+      name_normalized: "crisis centre of bc",
+      alternative_names_normalized: [],
+    });
+
+    assert.deepEqual(clean, {
+      id: 1,
+      name: "Crisis Centre of BC",
+      alternative_names: [],
+    });
+  });
 });
