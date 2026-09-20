@@ -1,13 +1,13 @@
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.macommunaute import MaCommunauteScraper
-from scrapers.winp import WinpJobsScraper, WinpVolunteerScraper
 from scrapers.registry import (
     canonical_slug,
     get_scraper_class,
     source_canonical_slug,
     source_matches_slug,
 )
+from scrapers.winp import WinpJobsScraper, WinpVolunteerScraper
 
 
 def test_get_scraper_class_by_canonical_slug():

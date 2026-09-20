@@ -42,7 +42,11 @@ function formatHowMuch(
   locale?: string,
 ): string {
   const display = formatCompensation(job, locale || 'en-CA', compensationTranslations(t));
-  if (!display.isStructured && !(job.wage || '').trim() && (display.primary === 'N/A' || !display.primary)) {
+  if (
+    !display.isStructured &&
+    !(job.wage || '').trim() &&
+    (display.primary === 'N/A' || !display.primary)
+  ) {
     return t('jobCard.nA');
   }
   return display.secondary ? `${display.primary} (${display.secondary})` : display.primary;

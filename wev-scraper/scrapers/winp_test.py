@@ -1,13 +1,13 @@
-from datetime import datetime, timezone
 import json
 import os
+from datetime import datetime, timezone
 
 from scrapers.base import BaseScraper
 from scrapers.winp import (
+    _VIEW_LANG,
     WinpBaseScraper,
     WinpJobsScraper,
     WinpVolunteerScraper,
-    _VIEW_LANG,
     _as_jobposting,
     _html_to_visible_text,
     _iso_date,
