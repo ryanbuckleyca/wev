@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 
 from scrapers.base import BaseScraper
 from scrapers.winp import (
-    WinpScraper,
     _VIEW_LANG,
+    WinpScraper,
     _as_jobposting,
     _html_to_visible_text,
     _iso_date,
