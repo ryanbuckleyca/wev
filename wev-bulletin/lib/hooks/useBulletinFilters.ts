@@ -17,6 +17,7 @@ import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileFilterDefaults } from './useProfileFilterDefaults';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
+import { canonicalizeSourceSelection } from '@/lib/bulletin/source-brands';
 import {
   JOB_SORT_OPTIONS,
   POSTED_WITHIN_FILTER_OPTIONS,
@@ -132,9 +133,19 @@ export function useBulletinFilters(
     'employment',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
-  const [selectedSources, setSelectedSources] = useQueryState(
+  const [selectedSourcesRaw, setSelectedSourcesRaw] = useQueryState(
     'source',
     parseAsArrayOf(parseAsString).withDefault([]),
+  );
+  const selectedSources = useMemo(
+    () => canonicalizeSourceSelection(selectedSourcesRaw),
+    [selectedSourcesRaw],
+  );
+  const setSelectedSources = useCallback(
+    (value: string[]) => {
+      void setSelectedSourcesRaw(canonicalizeSourceSelection(value));
+    },
+    [setSelectedSourcesRaw],
   );
   const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
     'workType',

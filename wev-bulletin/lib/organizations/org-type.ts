@@ -43,6 +43,40 @@ export function isOrgType(value: string): value is OrgType {
 }
 
 /**
+ * Expand canonical type filter values to stored DB spellings that should match.
+ * matched_jobs.org_type is the raw organizations.type string; UI sends canonical
+ * ORG_TYPES (e.g. nonprofit). Include hyphen/underscore/space variants so
+ * `.in('org_type', …)` behaves like normalizeOrgType matching.
+ */
+export function expandOrgTypeFilterSelection(selected: readonly string[]): string[] {
+  if (selected.length === 0) return [];
+
+  const expanded = new Set<string>();
+  for (const value of selected) {
+    const canonical = normalizeOrgType(value) ?? value;
+    expanded.add(canonical);
+
+    for (const [aliasKey, mapped] of Object.entries(ORG_TYPE_ALIASES)) {
+      if (mapped !== canonical) continue;
+      expanded.add(aliasKey);
+    }
+
+    if (canonical === 'nonprofit') {
+      expanded.add('non-profit');
+      expanded.add('non_profit');
+      expanded.add('Non-Profit');
+    }
+    if (canonical === 'cooperative') {
+      expanded.add('co-operative');
+      expanded.add('co_operative');
+      expanded.add('Co-operative');
+    }
+  }
+
+  return Array.from(expanded);
+}
+
+/**
  * Maps a raw org type string to a translated display label.
  * Returns the raw value unchanged for unrecognised types, null for empty.
  */

@@ -726,6 +726,8 @@ export type Database = {
           municipality: string | null;
           organization: string | null;
           organization_id: number | null;
+          org_sector_id: string | null;
+          org_type: string | null;
           province: string | null;
           scraped_at: string | null;
           search_municipality: string | null;

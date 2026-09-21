@@ -92,7 +92,10 @@
     "values": "Valeurs",
     "sector": "Secteur",
     "noSector": "Secteur non précisé",
-    "noOrganizationSectors": "Aucun secteur disponible"
+    "noOrganizationSectors": "Aucun secteur disponible",
+    "browseBySector": "Parcourir par secteur",
+    "browseBySectorHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) par domaine d'activité.",
+    "browseSectors": "Parcourir tous les secteurs"
   },
   "home": {
     "heading": "Bulletin – Offres d'emploi",

@@ -92,7 +92,10 @@
     "values": "Values",
     "sector": "Sector",
     "noSector": "Sector not specified",
-    "noOrganizationSectors": "No sectors available"
+    "noOrganizationSectors": "No sectors available",
+    "browseBySector": "Browse by sector",
+    "browseBySectorHint": "Explore solidarity economy (SSE) organizations by field of work.",
+    "browseSectors": "Browse all sectors"
   },
   "home": {
     "heading": "Bulletin – Job Postings",

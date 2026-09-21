@@ -4,13 +4,15 @@ import { JOB_BOARD_TEST_IDS } from "@/lib/testing/job-board-contract";
 
 export type JobBoardLocale = AppLocale;
 type BooleanFilterName = "salary";
-type ButtonFilterName = "postedWithin" | "workType";
+type RadioFilterName = "postedWithin";
 type CheckboxFilterName =
   | "employmentType"
   | "municipality"
-  | "organization"
+  | "organizationType"
   | "province"
-  | "source";
+  | "sector"
+  | "source"
+  | "workType";
 type QueryParamPrimitive = boolean | number | string;
 type QueryParamValue =
   | QueryParamPrimitive
@@ -24,10 +26,11 @@ type QueryParamsInput =
 type FilterLocators = {
   employmentType: Locator;
   municipality: Locator;
-  organization: Locator;
+  organizationType: Locator;
   postedWithin: Locator;
   province: Locator;
   salary: Locator;
+  sector: Locator;
   source: Locator;
   workType: Locator;
 };
@@ -151,14 +154,15 @@ export class JobBoardPage {
     }
   }
 
-  async selectFilterButton(
-    filter: ButtonFilterName,
+  async selectFilterRadio(
+    filter: RadioFilterName,
     optionLabel: string,
   ): Promise<void> {
     await this.openFilters();
+    await this.filters[filter].waitFor({ state: "visible", timeout: 5_000 });
     await this.markResultsUpdateStart();
     await this.filters[filter]
-      .getByRole("button", { name: optionLabel, exact: true })
+      .getByRole("radio", { name: optionLabel, exact: true })
       .click();
   }
 

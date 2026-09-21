@@ -188,6 +188,19 @@ describe('job-query', () => {
         filterJobs(mockJobs, { ...defaultFilters, selectedSources: ['LinkedIn'] }),
       ).toHaveLength(1);
     });
+
+    it('matches either WINP board when the WorkInNonProfits brand is selected', () => {
+      const jobs = [
+        { ...mockJobs[0], id: 'winp-jobs', source: 'WorkInNonProfits Jobs' },
+        { ...mockJobs[1], id: 'winp-vol', source: 'WorkInNonProfits Volunteer' },
+        { ...mockJobs[0], id: 'other', source: 'LinkedIn' },
+      ];
+      const result = filterJobs(jobs, {
+        ...defaultFilters,
+        selectedSources: ['WorkInNonProfits'],
+      });
+      expect(result.map((j) => j.id).sort()).toEqual(['winp-jobs', 'winp-vol']);
+    });
   });
 
   describe('sortJobs', () => {

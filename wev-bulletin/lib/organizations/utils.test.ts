@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getOrganizationTypeLabel, normalizeOrgTypeKey } from './org-type';
+import { getOrganizationTypeLabel, normalizeOrgTypeKey, expandOrgTypeFilterSelection } from './org-type';
 import { formatOrgLocationLabel, resolveOrgSortBy } from './utils';
 
 describe('normalizeOrgTypeKey', () => {
@@ -78,6 +78,19 @@ describe('formatOrgLocationLabel', () => {
     expect(
       formatOrgLocationLabel({ location: null, municipality: null, province: null }),
     ).toBeNull();
+  });
+});
+
+describe('expandOrgTypeFilterSelection', () => {
+  it('includes hyphenated legacy spellings for nonprofit', () => {
+    const values = expandOrgTypeFilterSelection(['nonprofit']);
+    expect(values).toEqual(expect.arrayContaining(['nonprofit', 'non-profit']));
+  });
+
+  it('passes through unrelated selections', () => {
+    expect(expandOrgTypeFilterSelection(['government'])).toEqual(
+      expect.arrayContaining(['government']),
+    );
   });
 });
 

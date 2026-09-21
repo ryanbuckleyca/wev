@@ -122,31 +122,41 @@ describe('server-data', () => {
       expect(mockQuery.order).toHaveBeenCalled();
     });
 
-    it('resolves org type and sector filters via organization_id', async () => {
-      let awaitCount = 0;
-      mockQuery.then.mockImplementation((onFulfilled: any) => {
-        awaitCount += 1;
-        if (awaitCount === 1) {
-          return Promise.resolve({
-            data: [
-              { id: 10, type: 'nonprofit' },
-              { id: 20, type: 'government' },
-            ],
-            error: null,
-          }).then(onFulfilled);
-        }
-        return Promise.resolve({ data: [], error: null, count: 0 }).then(onFulfilled);
+    it('expands branded Source filters to both board source names', async () => {
+      await fetchBulletinQueryPayload({
+        ...defaultInput,
+        srcs: ['WorkInNonProfits', 'Ma Communauté'],
       });
 
+      const sourceInCalls = mockQuery.in.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'source',
+      );
+      expect(sourceInCalls).toHaveLength(1);
+      expect((sourceInCalls[0][1] as string[]).sort()).toEqual([
+        'Ma Communauté (bénévolat)',
+        'Ma Communauté (emplois)',
+        'Ma Communauté Bénévolat',
+        'Ma Communauté Emplois',
+        'WorkInNonProfits Jobs',
+        'WorkInNonProfits Volunteer',
+      ]);
+    });
+
+    it('applies org type and sector filters on matched_jobs join columns', async () => {
       await fetchBulletinQueryPayload({
         ...defaultInput,
         orgTypes: ['nonprofit'],
         sectors: ['housing-collective-real-estate'],
       });
 
-      expect(mockSupabase.from).toHaveBeenCalledWith('organizations');
-      expect(mockQuery.in).toHaveBeenCalledWith('sector_id', ['housing-collective-real-estate']);
-      expect(mockQuery.in).toHaveBeenCalledWith('organization_id', [10]);
+      expect(mockQuery.in).toHaveBeenCalledWith(
+        'org_type',
+        expect.arrayContaining(['nonprofit', 'non-profit']),
+      );
+      expect(mockQuery.in).toHaveBeenCalledWith('org_sector_id', [
+        'housing-collective-real-estate',
+      ]);
+      expect(mockSupabase.from).not.toHaveBeenCalledWith('organizations');
     });
 
     it('throws migration guidance when locale FTS columns are missing during search', async () => {
