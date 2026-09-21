@@ -21,11 +21,7 @@ function typeMixLabel(
     .join(' · ');
 }
 
-export default function SectorIndexGrid({
-  sectors,
-  locale,
-  onSelectSector,
-}: SectorIndexGridProps) {
+export default function SectorIndexGrid({ sectors, locale, onSelectSector }: SectorIndexGridProps) {
   const t = useTranslations('organizations');
   const tSectors = useTranslations('taxonomy.sectors');
   const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, t) ?? '';

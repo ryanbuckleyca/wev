@@ -15,7 +15,6 @@ import { formatSearchQuery, normalizeLocation } from './search-utils';
 import { expandSourceFilterSelection } from './source-brands';
 import { expandOrgTypeFilterSelection } from '@/lib/organizations/org-type';
 
-
 // Re-exported for callers that historically imported these from server-data.
 export {
   applyBulletinAgeFilter,

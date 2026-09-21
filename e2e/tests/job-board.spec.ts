@@ -204,7 +204,10 @@ test.describe("Job board", () => {
     });
   }
 
-  test("filters by organization type", async ({ jobBoardPage, expectations }) => {
+  test("filters by organization type", async ({
+    jobBoardPage,
+    expectations,
+  }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.toggleFilterCheckbox(
@@ -305,7 +308,6 @@ test.describe("Job board", () => {
       }),
     ).toHaveCount(1);
   });
-
 
   test("shows filter-specific empty state message when filters hide all jobs", async ({
     jobBoardPage,

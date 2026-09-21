@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { getOrganizationTypeLabel, normalizeOrgTypeKey, expandOrgTypeFilterSelection } from './org-type';
+import {
+  getOrganizationTypeLabel,
+  normalizeOrgTypeKey,
+  expandOrgTypeFilterSelection,
+} from './org-type';
 import { formatOrgLocationLabel, resolveOrgSortBy } from './utils';
 
 describe('normalizeOrgTypeKey', () => {

@@ -69,11 +69,7 @@ describe('expandSourceFilterSelection', () => {
   it('merges extra known facet names into the expansion', () => {
     expect(
       expandSourceFilterSelection(['WorkInNonProfits'], ['Work In NonProfits Extra']).sort(),
-    ).toEqual([
-      'Work In NonProfits Extra',
-      'WorkInNonProfits Jobs',
-      'WorkInNonProfits Volunteer',
-    ]);
+    ).toEqual(['Work In NonProfits Extra', 'WorkInNonProfits Jobs', 'WorkInNonProfits Volunteer']);
   });
 });
 

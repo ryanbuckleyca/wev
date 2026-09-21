@@ -24,11 +24,7 @@ describe('fetchAllPagedRows', () => {
     expect(rows).toHaveLength(POSTGREST_MAX_ROWS + 1);
     expect(fetchPage).toHaveBeenCalledTimes(2);
     expect(fetchPage).toHaveBeenNthCalledWith(1, 0, POSTGREST_MAX_ROWS - 1);
-    expect(fetchPage).toHaveBeenNthCalledWith(
-      2,
-      POSTGREST_MAX_ROWS,
-      POSTGREST_MAX_ROWS * 2 - 1,
-    );
+    expect(fetchPage).toHaveBeenNthCalledWith(2, POSTGREST_MAX_ROWS, POSTGREST_MAX_ROWS * 2 - 1);
   });
 
   it('throws when a page returns an error', async () => {
