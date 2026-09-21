@@ -28,6 +28,11 @@ export const SOURCE_BRANDS = [
       'Ma Communauté (bénévolat)',
     ],
   },
+  {
+    brand: 'Idealist',
+    match: /idealist/i,
+    aliases: ['Idealist', 'Idealist Jobs', 'Idealist Internships'],
+  },
 ] as const;
 
 export type SourceBrand = (typeof SOURCE_BRANDS)[number]['brand'];
