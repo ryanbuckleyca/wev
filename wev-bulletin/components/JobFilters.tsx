@@ -96,7 +96,10 @@ export default function JobFilters(props: JobFiltersProps) {
               />
             </div>
 
-            <div className="flex flex-col min-h-0 gap-1" data-testid={JOB_BOARD_TEST_IDS.workTypeGroup}>
+            <div
+              className="flex flex-col min-h-0 gap-1"
+              data-testid={JOB_BOARD_TEST_IDS.workTypeGroup}
+            >
               <CheckboxFilterSection
                 label={t('filters.workType.label')}
                 selectedCount={selectedWorkTypes.length}
@@ -137,10 +140,7 @@ export default function JobFilters(props: JobFiltersProps) {
               ) : null}
             </div>
 
-            <div
-              className="flex flex-col min-h-0"
-              data-testid={JOB_BOARD_TEST_IDS.provinceSection}
-            >
+            <div className="flex flex-col min-h-0" data-testid={JOB_BOARD_TEST_IDS.provinceSection}>
               <CheckboxFilterSection
                 label={t('filters.province.label')}
                 selectedCount={selectedProvinces.length}
@@ -210,10 +210,7 @@ export default function JobFilters(props: JobFiltersProps) {
               />
             </div>
 
-            <div
-              className="flex flex-col min-h-0"
-              data-testid={JOB_BOARD_TEST_IDS.sectorSection}
-            >
+            <div className="flex flex-col min-h-0" data-testid={JOB_BOARD_TEST_IDS.sectorSection}>
               <CheckboxFilterSection
                 label={tOrgs('sector')}
                 selectedCount={selectedSectors.length}
@@ -291,10 +288,7 @@ export default function JobFilters(props: JobFiltersProps) {
               />
             </div>
 
-            <div
-              className="flex flex-col min-h-0"
-              data-testid={JOB_BOARD_TEST_IDS.sourceSection}
-            >
+            <div className="flex flex-col min-h-0" data-testid={JOB_BOARD_TEST_IDS.sourceSection}>
               <CheckboxFilterSection
                 label={t('filters.source.label')}
                 selectedCount={selectedSources.length}

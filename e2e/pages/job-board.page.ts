@@ -103,7 +103,9 @@ export class JobBoardPage {
     this.filters = {
       employmentType: visibleByTestId(JOB_BOARD_TEST_IDS.employmentTypeSection),
       municipality: visibleByTestId(JOB_BOARD_TEST_IDS.municipalitySection),
-      organizationType: visibleByTestId(JOB_BOARD_TEST_IDS.organizationTypeSection),
+      organizationType: visibleByTestId(
+        JOB_BOARD_TEST_IDS.organizationTypeSection,
+      ),
       sector: visibleByTestId(JOB_BOARD_TEST_IDS.sectorSection),
       postedWithin: visibleByTestId(JOB_BOARD_TEST_IDS.postedWithinGroup),
       province: visibleByTestId(JOB_BOARD_TEST_IDS.provinceSection),

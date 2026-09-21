@@ -165,20 +165,14 @@ export function buildActiveFilterChips(
   );
 
   chips.push(
-    ...buildSelectionChips(
-      'org-type',
-      input.selectedOrgTypes,
-      input.orgTypeLabel,
-      (type) => input.onOrgTypesChange(input.selectedOrgTypes.filter((item) => item !== type)),
+    ...buildSelectionChips('org-type', input.selectedOrgTypes, input.orgTypeLabel, (type) =>
+      input.onOrgTypesChange(input.selectedOrgTypes.filter((item) => item !== type)),
     ),
   );
 
   chips.push(
-    ...buildSelectionChips(
-      'sector',
-      input.selectedSectors,
-      input.sectorLabel,
-      (sector) => input.onSectorsChange(input.selectedSectors.filter((item) => item !== sector)),
+    ...buildSelectionChips('sector', input.selectedSectors, input.sectorLabel, (sector) =>
+      input.onSectorsChange(input.selectedSectors.filter((item) => item !== sector)),
     ),
   );
 

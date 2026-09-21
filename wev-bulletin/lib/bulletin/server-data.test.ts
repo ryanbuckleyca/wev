@@ -145,9 +145,7 @@ describe('server-data', () => {
       });
 
       expect(mockSupabase.from).toHaveBeenCalledWith('organizations');
-      expect(mockQuery.in).toHaveBeenCalledWith('sector_id', [
-        'housing-collective-real-estate',
-      ]);
+      expect(mockQuery.in).toHaveBeenCalledWith('sector_id', ['housing-collective-real-estate']);
       expect(mockQuery.in).toHaveBeenCalledWith('organization_id', [10]);
     });
 
