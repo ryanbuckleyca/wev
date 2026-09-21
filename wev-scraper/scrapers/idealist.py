@@ -22,6 +22,7 @@ _INTERNSHIPS_URL = "https://www.idealist.org/en/internships"
 
 _NEXT_PAGE_PATTERN = re.compile(r"next page", re.IGNORECASE)
 _POSTED_RE = re.compile(r"(?:Posted|Published)\s+(.+?)\s*$", re.IGNORECASE)
+_EMPTY_COUNT_RE = re.compile(r"^0\s+(?:jobs|internships)$", re.IGNORECASE)
 _JOB_TYPE_RE = re.compile(
     r"Job Type:\s*(.+?)(?=\s*(?:Education|Experience Level|Salary|Cause Areas)\b|$)",
     re.IGNORECASE | re.DOTALL,
@@ -79,7 +80,12 @@ class IdealistScraper(BaseScraper):
             self._goto_with_networkidle(page, self.get_listings_url())
             self._is_error_page(page)
             self._apply_canada_location(page)
-            self._sort_newest(page)
+            # Only early-exit on old dates when results are confirmed Newest-first.
+            self.is_chronological = self._sort_newest(page)
+            if not self.is_chronological:
+                scraper_log(
+                    "\tIdealist: Newest sort unavailable — chronological early exit disabled"
+                )
             page.wait_for_timeout(1500)
 
         self._retry(_load_page)
@@ -141,26 +147,46 @@ class IdealistScraper(BaseScraper):
         page.wait_for_timeout(2000)
         scraper_log("\tIdealist: Canada location filter applied")
 
-    def _sort_newest(self, page):
+    def _sort_newest(self, page) -> bool:
+        """Click Newest when present. Returns True only on a successful click."""
         try:
             newest = page.get_by_role("button", name=re.compile(r"Newest", re.I))
             if newest.count() == 0:
                 newest = page.get_by_role("radio", name=re.compile(r"Newest", re.I))
-            if newest.count() > 0:
-                newest.first.click(timeout=3000)
-                page.wait_for_timeout(1000)
-                scraper_log("\tIdealist: sorted by Newest")
+            if newest.count() == 0:
+                return False
+            newest.first.click(timeout=3000)
+            page.wait_for_timeout(1000)
+            scraper_log("\tIdealist: sorted by Newest")
+            return True
+        except Exception as e:
+            scraper_log(f"\tIdealist: could not sort by Newest ({e})")
+            return False
+
+    def _has_empty_results(self, page) -> bool:
+        """True when Idealist shows a verified empty-results state for the filter."""
+        try:
+            if page.locator("h2").filter(has_text=_EMPTY_COUNT_RE).count() > 0:
+                return True
+            body = page.locator("main").inner_text()
+            return bool(re.search(r"No (?:jobs|internships) match your search", body or "", re.I))
         except Exception:
-            pass
+            return False
 
     def get_listing_items(self, page):
-        """Allow empty Canada results (e.g. no current internships)."""
+        """Return cards, or an empty locator only when Idealist confirms zero hits."""
         self._is_error_page(page)
+        if self._has_empty_results(page):
+            scraper_log("\tIdealist: no listing cards (empty Canada results)")
+            return page.locator(self.listing_selector)
         try:
             page.wait_for_selector(self.listing_selector, state="attached", timeout=10_000)
         except Exception:
-            scraper_log("\tIdealist: no listing cards (empty Canada results)")
-            return page.locator(self.listing_selector)
+            # Results can flip to empty during the wait (filter settle).
+            if self._has_empty_results(page):
+                scraper_log("\tIdealist: no listing cards (empty Canada results)")
+                return page.locator(self.listing_selector)
+            raise
         items = page.locator(self.listing_selector)
         scraper_log(f"\tFound {items.count()} listing items")
         return items

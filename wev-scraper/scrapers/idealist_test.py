@@ -162,3 +162,31 @@ def test_get_job_url_keeps_canadian(page):
     url = scraper.get_job_url(item)
     assert url is not None
     assert "/nonprofit-job/" in url
+
+
+def test_has_empty_results_true_for_zero_count(page):
+    scraper = IdealistScraper(jobs_source())
+    page.set_content("<main><h1>Jobs</h1><h2>0 jobs</h2><p>No jobs match your search</p></main>")
+    assert scraper._has_empty_results(page) is True
+
+
+def test_has_empty_results_false_when_listings_present(page):
+    scraper = IdealistScraper(jobs_source())
+    page.set_content("<main><h1>Jobs</h1><h2>6 jobs</h2></main>")
+    assert scraper._has_empty_results(page) is False
+
+
+def test_sort_newest_returns_false_when_control_missing(page):
+    scraper = IdealistScraper(jobs_source())
+    page.set_content("<main><h1>Jobs</h1></main>")
+    assert scraper._sort_newest(page) is False
+
+
+def test_get_listing_items_empty_when_verified(page):
+    scraper = IdealistScraper(intern_source())
+    page.set_content(
+        "<main><h1>Internships</h1><h2>0 internships</h2>"
+        "<p>No internships match your search: All internships near Canada</p></main>"
+    )
+    items = scraper.get_listing_items(page)
+    assert items.count() == 0
