@@ -29,13 +29,7 @@ const ORG_TYPE_ALIASES: Record<string, OrgType> = {
  */
 const ORG_TYPE_ALIAS_RAW_FORMS: Record<string, readonly string[]> = {
   nonprofit: ['non-profit', 'non_profit', 'Non-Profit', 'Non Profit', 'Nonprofit'],
-  cooperative: [
-    'co-operative',
-    'co_operative',
-    'Co-operative',
-    'Co Operative',
-    'Cooperative',
-  ],
+  cooperative: ['co-operative', 'co_operative', 'Co-operative', 'Co Operative', 'Cooperative'],
   socialenterprise: [
     'social enterprise',
     'social-enterprise',
@@ -43,18 +37,9 @@ const ORG_TYPE_ALIAS_RAW_FORMS: Record<string, readonly string[]> = {
     'SocialEnterprise',
   ],
   mutualaid: ['mutual aid', 'Mutual Aid', 'mutual-aid', 'Mutual-Aid'],
-  mutualaidgroup: [
-    'mutual aid group',
-    'Mutual Aid Group',
-    'mutual-aid-group',
-    'Mutual-Aid-Group',
-  ],
+  mutualaidgroup: ['mutual aid group', 'Mutual Aid Group', 'mutual-aid-group', 'Mutual-Aid-Group'],
   mutualsociety: ['mutual society', 'Mutual Society', 'mutual-society'],
-  communityassociation: [
-    'community association',
-    'Community Association',
-    'community-association',
-  ],
+  communityassociation: ['community association', 'Community Association', 'community-association'],
   communityproject: ['community project', 'Community Project', 'community-project'],
   creditunion: ['credit union', 'Credit Union', 'credit-union', 'Credit-Union'],
   government: ['Government'],
