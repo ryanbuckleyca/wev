@@ -21,6 +21,12 @@ describe('toSourceBrand', () => {
     expect(toSourceBrand('Ma Communauté (bénévolat)')).toBe('Ma Communauté');
   });
 
+  it('collapses Idealist jobs and internships board names', () => {
+    expect(toSourceBrand('Idealist')).toBe('Idealist');
+    expect(toSourceBrand('Idealist Jobs')).toBe('Idealist');
+    expect(toSourceBrand('Idealist Internships')).toBe('Idealist');
+  });
+
   it('leaves unrelated boards unchanged', () => {
     expect(toSourceBrand('CharityVillage')).toBe('CharityVillage');
     expect(toSourceBrand('GoodWork')).toBe('GoodWork');
