@@ -53,6 +53,28 @@ describe('useBulletinFilters', () => {
     expect(result.current.hasAnyFilters).toBe(false);
   });
 
+  it('treats showNonSse as an active filter only for admins', async () => {
+    const { result: nonAdmin } = renderHook(() => useBulletinFilters({ isAdmin: false }));
+
+    await act(async () => {
+      nonAdmin.current.setShowNonSse(true);
+    });
+
+    expect(nonAdmin.current.showNonSse).toBe(false);
+    expect(nonAdmin.current.hasAnyFilters).toBe(false);
+    expect(nonAdmin.current.filters.showNonSse).toBe(false);
+
+    const { result: admin } = renderHook(() => useBulletinFilters({ isAdmin: true }));
+
+    await act(async () => {
+      admin.current.setShowNonSse(true);
+    });
+
+    expect(admin.current.showNonSse).toBe(true);
+    expect(admin.current.hasAnyFilters).toBe(true);
+    expect(admin.current.filters.showNonSse).toBe(true);
+  });
+
   it('clears all filters', async () => {
     const { result } = renderHook(() => useBulletinFilters());
 

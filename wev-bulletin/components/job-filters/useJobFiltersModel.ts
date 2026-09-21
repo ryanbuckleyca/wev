@@ -70,6 +70,7 @@ export function useJobFiltersModel({
   filterOptions: externalFilterOptions,
   filteredJobsCount,
   totalJobsCount,
+  isAdmin = false,
 }: JobFiltersProps): JobFiltersModel {
   const controls = useBulletinFilterContext();
   const {
@@ -162,7 +163,8 @@ export function useJobFiltersModel({
       buildActiveFilterChips(
         {
           postedWithin,
-          showNonSse,
+          // Non-SSE is an admin-only control — never surface the chip to others.
+          showNonSse: isAdmin && showNonSse,
           showJobsWithoutSalary,
           searchQuery,
           selectedWorkTypes,
@@ -193,6 +195,7 @@ export function useJobFiltersModel({
         t,
       ),
     [
+      isAdmin,
       onEmploymentTypesChange,
       onLanguagesChange,
       onMunicipalitiesChange,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   parseAsArrayOf,
@@ -95,12 +95,14 @@ function hasSameSelections(left: string[], right: string[]) {
 interface UseBulletinFiltersOptions {
   initialProfile?: Profile | null;
   initialUserId?: string | null;
+  /** When false, non-SSE inclusion is ignored (URL + hasAnyFilters + fetch). */
+  isAdmin?: boolean;
 }
 
 export function useBulletinFilters(
   options: UseBulletinFiltersOptions = {},
 ): BulletinFilterControls {
-  const { initialProfile = null, initialUserId = null } = options;
+  const { initialProfile = null, initialUserId = null, isAdmin = false } = options;
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const userId = authLoading ? initialUserId : (user?.id ?? null);
@@ -173,6 +175,16 @@ export function useBulletinFilters(
   );
   // showNonSse defaults to false → SSE-only view by default, without an active filter
   const [showNonSse, setShowNonSse] = useQueryState('nonSse', parseAsBoolean.withDefault(false));
+
+  // Non-SSE inclusion is admin-only. Strip a leftover ?nonSse= for everyone else so
+  // hasAnyFilters / chips / fetch stay aligned with what the UI exposes.
+  useEffect(() => {
+    if (!isAdmin && showNonSse) {
+      void setShowNonSse(false);
+    }
+  }, [isAdmin, showNonSse, setShowNonSse]);
+
+  const effectiveShowNonSse = isAdmin && showNonSse;
   const [showJobsWithoutSalary, setShowJobsWithoutSalary] = useQueryState(
     'salary',
     parseAsBoolean.withDefault(false),
@@ -292,7 +304,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showNonSse,
+      showNonSse: effectiveShowNonSse,
       showJobsWithoutSalary,
       postedWithin,
     }),
@@ -307,7 +319,7 @@ export function useBulletinFilters(
       selectedSources,
       selectedWorkTypes,
       selectedLanguages,
-      showNonSse,
+      effectiveShowNonSse,
       showJobsWithoutSalary,
       postedWithin,
     ],
@@ -333,7 +345,7 @@ export function useBulletinFilters(
     selectedSources.length > 0 ||
     selectedWorkTypes.length > 0 ||
     selectedLanguages.length > 0 ||
-    showNonSse ||
+    effectiveShowNonSse ||
     showJobsWithoutSalary ||
     postedWithin !== PRODUCT_DEFAULT_POSTED_WITHIN;
 
@@ -404,7 +416,7 @@ export function useBulletinFilters(
     setSelectedWorkTypes,
     selectedLanguages,
     setSelectedLanguages,
-    showNonSse,
+    showNonSse: effectiveShowNonSse,
     setShowNonSse,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary,

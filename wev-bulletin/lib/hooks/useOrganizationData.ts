@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { OrganizationFilters } from './useOrganizationFilters';
@@ -83,30 +83,27 @@ export function useOrganizationData(
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
 
-  // Ref to track whether we have any data loaded — used to decide whether to
-  // show the full skeleton spinner. Avoids stale-closure reads of `orgs`.
-  const hasDataRef = useRef(Boolean(initialData?.orgs?.length));
-
   const fetchKey = useMemo(
     () => buildFetchKey(locale, currentPage, sortBy, filters),
     [locale, currentPage, sortBy, filters],
   );
 
-  // Track which fetchKey was last dispatched so we can skip the initial render
-  // when initialData already matches the current key.
-  const lastFetchKey = useRef<string>(initialData ? fetchKey : '');
+  // Key of the data currently in state. Differs from fetchKey while a new
+  // filter/page request is in flight — used so the list skeleton shows on the
+  // same render as the URL change (before the effect runs).
+  const [completedFetchKey, setCompletedFetchKey] = useState(() =>
+    initialData ? buildFetchKey(locale, currentPage, sortBy, filters) : '',
+  );
 
   useEffect(() => {
-    if (fetchKey === lastFetchKey.current) return;
-    lastFetchKey.current = fetchKey;
+    if (fetchKey === completedFetchKey) return;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
 
     async function fetchData() {
       setError(null);
-      // Only show the full-page skeleton when no data is loaded yet.
-      if (!hasDataRef.current) setLoading(true);
+      setLoading(true);
 
       try {
         const params = buildSearchParams(locale, currentPage, sortBy, filters);
@@ -121,10 +118,12 @@ export function useOrganizationData(
         setTotal(data.total);
         setTotalAvailable(data.totalAvailable ?? data.total);
         if (data.filterOptions) setFilterOptions(data.filterOptions);
-        hasDataRef.current = true;
+        setCompletedFetchKey(fetchKey);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Unknown error');
+        // Settle this fetchKey even on failure so isStale clears (same as bulletin).
+        setCompletedFetchKey(fetchKey);
       } finally {
         clearTimeout(timeoutId);
         if (!controller.signal.aborted) setLoading(false);
@@ -136,7 +135,15 @@ export function useOrganizationData(
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [fetchKey, locale, currentPage, sortBy, filters]);
+  }, [fetchKey, completedFetchKey, locale, currentPage, sortBy, filters]);
 
-  return { orgs, total, totalAvailable, filterOptions, loading, error };
+  const isStale = completedFetchKey !== fetchKey;
+  return {
+    orgs,
+    total,
+    totalAvailable,
+    filterOptions,
+    loading: loading || isStale,
+    error,
+  };
 }
