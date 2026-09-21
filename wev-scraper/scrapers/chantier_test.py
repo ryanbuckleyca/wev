@@ -1,4 +1,4 @@
-from scrapers.chantier import ChantierScraper, _BOARD_URL
+from scrapers.chantier import _BOARD_URL, ChantierScraper
 
 
 def make_source(url=_BOARD_URL):
