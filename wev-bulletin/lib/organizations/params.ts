@@ -27,6 +27,15 @@ export function parseActivityWindow(raw: string | null | undefined): ActivityWin
   return 'all';
 }
 
+/**
+ * Org detail jobs list: default to the 28-day (active) window so older postings
+ * stay opt-in via `?activity=90d` or `?activity=all`.
+ */
+export function parseOrgJobsActivityWindow(raw: string | null | undefined): ActivityWindow {
+  if (raw === 'all' || raw === '90d' || raw === '28d') return raw;
+  return '28d';
+}
+
 export interface OrgIndexParams {
   page: number;
   searchQuery: string;

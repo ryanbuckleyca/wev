@@ -22,6 +22,13 @@ def _make_repo(**kwargs) -> MagicMock:
     else:
         repo.insert.return_value = insert_val
     repo.find_by_name_and_location.return_value = kwargs.get("find_by_name_and_location")
+    # Resolver identity search uses repo._supabase directly (not on the spec).
+    sb = MagicMock()
+    empty = MagicMock()
+    empty.data = []
+    sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = empty
+    # Bypass MagicMock(spec=...) attribute lock for private collaborator.
+    object.__setattr__(repo, "_supabase", sb)
     return repo
 
 
@@ -364,6 +371,30 @@ class TestDBMatchPath:
         assert result == 99
         repo.insert.assert_called_once()
 
+    def test_alias_match_reuses_org(self):
+        """Scraped aka name should reuse org that lists it in alternative_names."""
+        org_rows = [
+            {
+                "id": 212,
+                "name": "Canadian Cancer Society",
+                "location": "Toronto ON",
+                "website": "https://cancer.ca",
+                "alternative_names": ["Société canadienne du cancer"],
+            }
+        ]
+        repo = _make_repo(find_by_name=org_rows)
+        resolver = _make_resolver(repo=repo, assessor=None)
+
+        result = resolver.resolve(
+            "Société canadienne du cancer",
+            "Montreal",
+            "QC",
+            website="https://cancer.ca",
+        )
+
+        assert result == 212
+        repo.insert.assert_not_called()
+
     def test_domain_only_different_name_does_not_reuse(self):
         """Job name Acme + mindrift.ai must not attach to Mindrift org."""
         mindrift = {
@@ -378,6 +409,13 @@ class TestDBMatchPath:
             insert={"id": 99},
         )
         resolver = _make_resolver(repo=repo, assessor=None)
+
+        # Identity search goes through repo._supabase; return the Mindrift row.
+        execute = MagicMock()
+        execute.data = [mindrift]
+        repo._supabase.table.return_value.select.return_value.ilike.return_value.execute.return_value = (
+            execute
+        )
 
         result = resolver.resolve(
             "Acme Corp",

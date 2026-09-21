@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {
   fetchOrganizationIndex,
   fetchOrganizationFilterOptions,
+  fetchSectorIndexStats,
 } from '@/lib/organizations/server-data';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
@@ -63,7 +64,18 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     activityDays,
   } = parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
 
-  const [initialData, filterOptions] = await Promise.all([
+  // Match OrganizationIndexClient: sector cards only when no user filters are active.
+  const showSectorIndex =
+    !searchQuery &&
+    sseOnly &&
+    provinces.length === 0 &&
+    municipalities.length === 0 &&
+    orgTypes.length === 0 &&
+    languages.length === 0 &&
+    sectors.length === 0 &&
+    activityDays == null;
+
+  const [initialData, filterOptions, sectorIndex] = await Promise.all([
     fetchOrganizationIndex(
       {
         page,
@@ -81,6 +93,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       user ? supabaseAuth : undefined,
     ),
     fetchOrganizationFilterOptions(activityDays),
+    showSectorIndex ? fetchSectorIndexStats({ sseOnly: true }) : Promise.resolve([]),
   ]);
 
   return (
@@ -108,6 +121,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       <OrganizationIndexClient
         initialData={initialData}
         filterOptions={filterOptions}
+        sectorIndex={sectorIndex}
         locale={locale}
         initialHasMatchScores={Boolean(user)}
       />

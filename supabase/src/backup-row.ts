@@ -6,6 +6,14 @@ export const GENERATED_COLUMN_PATTERNS = [
   /search_vector$/i,
   /^has_compensation$/i,
   /^ideal_work_environment$/i,
+  // Accent-fold search copies (GENERATED ALWAYS). Hosted PostgREST still
+  // includes them on INSERT; Postgres then rejects non-DEFAULT values.
+  /^search_municipality$/i,
+  /^search_province$/i,
+  /^search_name$/i,
+  // Org name lookup copies (GENERATED ALWAYS AS normalize_org_name*).
+  /^name_normalized$/i,
+  /^alternative_names_normalized$/i,
 ] as const;
 
 export function isGeneratedBackupColumn(column: string): boolean {

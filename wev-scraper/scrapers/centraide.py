@@ -65,12 +65,15 @@ class CentraideScraper(BaseScraper):
 
     def extract_job_title(self, page, listing_data):
         try:
-            return page.locator("h1, h2").first.inner_text().strip()
+            loc = page.locator("h1, h2")
+            if loc.count() > 0:
+                return loc.first.inner_text().strip()
         except Exception:
-            try:
-                return page.title().strip()
-            except Exception:
-                return "Unknown"
+            pass
+        try:
+            return page.title().strip()
+        except Exception:
+            return "Unknown"
 
     def extract_description(self, page, listing_data):
         for sel in ["section.single-main .entry-content", ".entry-content", "article", "#content"]:
@@ -100,7 +103,10 @@ class CentraideScraper(BaseScraper):
 
     def extract_employment_type(self, page, listing_data):
         try:
-            text = (page.locator("section.single-main .entry-content").first.inner_text() or "").lower()
+            loc = page.locator("section.single-main .entry-content")
+            if loc.count() == 0:
+                return None
+            text = (loc.first.inner_text() or "").lower()
             if "bénévole" in text:
                 return "volunteer"
         except Exception:
@@ -109,7 +115,10 @@ class CentraideScraper(BaseScraper):
 
     def extract_wage(self, page, listing_data):
         try:
-            text = page.locator("section.single-main .entry-content").first.inner_text() or ""
+            loc = page.locator("section.single-main .entry-content")
+            if loc.count() == 0:
+                return None
+            text = loc.first.inner_text() or ""
             return extract_salary_from_text(text)
         except Exception:
             pass

@@ -10,6 +10,11 @@ from dotenv import load_dotenv
 load_dotenv('../.env')
 
 from llm.tavily_grounding import is_tavily_available  # noqa: E402
+from utils.catch_up import (  # noqa: E402
+    SKIP_REASON_EXCEPTION,
+    _park_org,
+    resolve_org_skip_reason,
+)
 from utils.db import supabase  # noqa: E402
 from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields  # noqa: E402
 
@@ -151,7 +156,7 @@ def main():
         try:
             existing_description = org.get('description_en') or org.get('description')
 
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -161,12 +166,18 @@ def main():
                 existing_description=existing_description,
             )
 
-            if result:
-                update_fields = _result_to_db_fields(result)
+            if outcome.result:
+                update_fields = _result_to_db_fields(outcome.result)
 
                 # Always update to get new model tracking
                 if update_fields:
-                    supabase.table('organizations').update(update_fields).eq('id', org_id).execute()
+                    # Record the outcome too, so reprocessing releases an org that
+                    # is now complete instead of leaving it in the review queue.
+                    reason = resolve_org_skip_reason(org, outcome, update_fields)
+                    payload = {**update_fields, 'assessment_skip_reason': reason}
+                    supabase.table('organizations').update(payload).eq('id', org_id).execute()
+                    if reason is not None:
+                        print(f"  ⏸  Parked for review: {reason}")
                     print(f"  ✅ Updated {len(update_fields)} fields:")
                     for field, new_val in sorted(update_fields.items()):
                         old_val = org.get(field)
@@ -187,10 +198,12 @@ def main():
             else:
                 print("  ❌ Assessment failed")
                 error_count += 1
+                _park_org(org, outcome.skip_reason or SKIP_REASON_EXCEPTION)
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         time.sleep(0.5)
 

@@ -8,7 +8,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.17';
+    PostgrestVersion: '14.5';
   };
   public: {
     Tables: {
@@ -411,6 +411,9 @@ export type Database = {
       };
       organizations: {
         Row: {
+          alternative_names: string[];
+          alternative_names_normalized: string[] | null;
+          assessment_skip_reason: string | null;
           created_at: string;
           description: string | null;
           description_en: string | null;
@@ -428,6 +431,7 @@ export type Database = {
           mission_statement_fr: string | null;
           municipality: string | null;
           name: string;
+          name_normalized: string | null;
           province: string | null;
           sector_id: string | null;
           slug: string;
@@ -440,6 +444,9 @@ export type Database = {
           website: string | null;
         };
         Insert: {
+          alternative_names?: string[];
+          alternative_names_normalized?: string[] | null;
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;
@@ -457,6 +464,7 @@ export type Database = {
           mission_statement_fr?: string | null;
           municipality?: string | null;
           name: string;
+          name_normalized?: string | null;
           province?: string | null;
           sector_id?: string | null;
           slug: string;
@@ -469,6 +477,9 @@ export type Database = {
           website?: string | null;
         };
         Update: {
+          alternative_names?: string[];
+          alternative_names_normalized?: string[] | null;
+          assessment_skip_reason?: string | null;
           created_at?: string;
           description?: string | null;
           description_en?: string | null;
@@ -486,6 +497,7 @@ export type Database = {
           mission_statement_fr?: string | null;
           municipality?: string | null;
           name?: string;
+          name_normalized?: string | null;
           province?: string | null;
           sector_id?: string | null;
           slug?: string;
@@ -714,6 +726,8 @@ export type Database = {
           municipality: string | null;
           organization: string | null;
           organization_id: number | null;
+          org_sector_id: string | null;
+          org_type: string | null;
           province: string | null;
           scraped_at: string | null;
           search_municipality: string | null;
@@ -765,6 +779,16 @@ export type Database = {
         Returns: undefined;
       };
       f_unaccent: { Args: { '': string }; Returns: string };
+      find_organizations_by_name: {
+        Args: { p_name: string };
+        Returns: {
+          alternative_names: string[];
+          id: number;
+          location: string;
+          name: string;
+          website: string;
+        }[];
+      };
       get_active_organizations: {
         Args: {
           min_date: string;
@@ -864,6 +888,8 @@ export type Database = {
               similarity: number;
             }[];
           };
+      normalize_org_name: { Args: { p_name: string }; Returns: string };
+      normalize_org_names: { Args: { p_names: string[] }; Returns: string[] };
       process_job_match_recalc_queue: {
         Args: {
           p_attempts_max?: number;

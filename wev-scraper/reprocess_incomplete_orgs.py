@@ -6,8 +6,9 @@ import time
 from datetime import datetime, timedelta
 
 from llm.tavily_grounding import is_tavily_available
+from utils.catch_up import SKIP_REASON_EXCEPTION, _park_org, persist_org_assessment_outcome
 from utils.db import supabase
-from utils.organization_assessment import OrganizationAssessor, _result_to_db_fields
+from utils.organization_assessment import OrganizationAssessor
 
 
 def main():
@@ -50,8 +51,12 @@ def main():
 
     print(f"Total organizations: {len(all_orgs)}")
 
-    # Filter to incomplete orgs (missing critical fields)
+    # Filter to incomplete orgs (missing critical fields), excluding rows an earlier
+    # attempt already parked for review. Matches the filter in backfill_orgs.py:
+    # without it this script re-spends LLM credits on orgs that are known to need
+    # human attention, which is what parking exists to prevent.
     incomplete_orgs = []
+    parked_skipped = 0
     for org in all_orgs:
         missing_critical = []
         if not org.get('sector_id'):
@@ -63,10 +68,19 @@ def main():
         if not org.get('description_fr'):
             missing_critical.append('description_fr')
 
-        if missing_critical:
-            incomplete_orgs.append((org, missing_critical))
+        if not missing_critical:
+            continue
+        if org.get('assessment_skip_reason') is not None:
+            parked_skipped += 1
+            continue
+        incomplete_orgs.append((org, missing_critical))
 
     print(f"\nIncomplete organizations: {len(incomplete_orgs)}")
+    if parked_skipped:
+        print(
+            f"Parked for review (skipped): {parked_skipped} — "
+            "clear assessment_skip_reason from the admin page to retry one"
+        )
 
     if not incomplete_orgs:
         print("\n✅ All organizations are complete!")
@@ -133,7 +147,6 @@ def main():
     no_change_count = 0
 
     for i, (org, missing) in enumerate(orgs_to_process, 1):
-        org_id = org['id']
         name = org.get('name', '(unnamed)')
         municipality = org.get('municipality')
         province = org.get('province')
@@ -146,7 +159,7 @@ def main():
         existing_description = org.get('description_en') or org.get('description')
 
         try:
-            result = assessor.assess(
+            outcome = assessor.assess_with_outcome(
                 raw_name=name,
                 municipality=municipality,
                 province=province,
@@ -156,38 +169,29 @@ def main():
                 existing_description=existing_description,
             )
 
-            if result:
-                update_fields = _result_to_db_fields(result)
+            write = persist_org_assessment_outcome(org, outcome)
+            filtered_update = write.filtered
+            reason = write.reason
 
-                # Only update fields that are currently missing
-                filtered_update = {}
-                for field, value in update_fields.items():
-                    if not org.get(field) and value:
-                        filtered_update[field] = value
-
-                if filtered_update:
-                    # Conditional write: only update if the row hasn't changed since we read it.
-                    read_at = org.get('updated_at')
-                    query = supabase.table('organizations').update(filtered_update).eq('id', org_id)
-                    if read_at:
-                        query = query.eq('updated_at', read_at)
-                    resp = query.execute()
-                    if resp.data:
-                        print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
-                        success_count += 1
-                    else:
-                        print("  ⚠️  Conflict: row was modified since we read it, skipping")
-                        error_count += 1
-                else:
-                    print("  ⚠️  No new fields to update")
-                    no_change_count += 1
-            else:
-                print("  ❌ Assessment failed")
+            if not write.applied:
+                print("  ⚠️  Conflict: row was modified since we read it, skipping")
                 error_count += 1
+            elif reason is None:
+                print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                success_count += 1
+            else:
+                if filtered_update:
+                    print(f"  ✅ Updated fields: {', '.join(filtered_update.keys())}")
+                else:
+                    no_change_count += 1
+                print(f"  ⏸  Parked for review: {reason}")
+                if outcome.result is None:
+                    error_count += 1
 
         except Exception as e:
             print(f"  ❌ Error: {e}")
             error_count += 1
+            _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Small delay to avoid rate limiting
         time.sleep(0.5)

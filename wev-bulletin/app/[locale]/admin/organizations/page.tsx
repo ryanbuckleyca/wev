@@ -4,22 +4,30 @@ import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_ORGS_PER_PAGE } from '@/lib/organizations/constants';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { ORG_SKIP_REASON_IGNORED } from '@/lib/organizations/assessment-review';
 import { logger } from '@/lib/logger';
 import PageLayout from '@/components/PageLayout';
 import SseBadge from '@/components/SseBadge';
 import UrlSyncedPagination from '@/components/UrlSyncedPagination';
+import OrgReviewQueue from '@/components/admin/OrgReviewQueue';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 
 interface PageProps {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; review?: string }>;
 }
 
 function parsePage(raw: string | undefined): number {
   const parsed = Number(raw);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
 }
+
+const ORG_ADMIN_TABLE_SELECT =
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason' as const;
+
+const ORG_ADMIN_REVIEW_SELECT =
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list' as const;
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
@@ -29,41 +37,72 @@ export async function generateMetadata({ params }: PageProps) {
 
 export default async function AdminOrganizationsPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
-  const { page: rawPage } = await searchParams;
+  const { page: rawPage, review: rawReview } = await searchParams;
   const t = await getTranslations({ locale, namespace: 'admin.organizations' });
   const tOrgs = await getTranslations({ locale, namespace: 'organizations' });
 
   await requireAdminPage(locale);
 
-  const { count: totalCount, error: countError } = await supabaseServer
-    .from('organizations')
-    .select('id', { count: 'exact', head: true });
+  const reviewOnly = rawReview === '1';
 
-  if (countError) {
-    logger.error({ err: countError }, 'Failed to count organizations for admin list');
+  const [
+    { count: allCount, error: allCountError },
+    { count: reviewCount, error: reviewCountError },
+  ] = await Promise.all([
+    supabaseServer.from('organizations').select('id', { count: 'exact', head: true }),
+    supabaseServer
+      .from('organizations')
+      .select('id', { count: 'exact', head: true })
+      .not('assessment_skip_reason', 'is', null)
+      .neq('assessment_skip_reason', ORG_SKIP_REASON_IGNORED),
+  ]);
+
+  if (allCountError || reviewCountError) {
+    logger.error(
+      { err: allCountError ?? reviewCountError },
+      'Failed to count organizations for admin list',
+    );
   }
 
-  const total = totalCount ?? 0;
+  const needsReviewCount = reviewCount ?? 0;
+  const total = (reviewOnly ? reviewCount : allCount) ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / ADMIN_ORGS_PER_PAGE));
   const page = Math.min(parsePage(rawPage), totalPages);
   const from = (page - 1) * ADMIN_ORGS_PER_PAGE;
   const to = from + ADMIN_ORGS_PER_PAGE - 1;
 
-  const { data: organizations, error } = await supabaseServer
-    .from('organizations')
-    .select('id, name, slug, type, is_sse, location, created_at')
-    .order('name', { ascending: true })
-    .range(from, to);
+  // Two full query statements (not a ternary select string): Supabase's typed
+  // select parser rejects a union of two column lists, and the All table should
+  // not pull description*/values_list that only the review checklist needs.
+  const { data: organizations, error } = reviewOnly
+    ? await supabaseServer
+        .from('organizations')
+        .select(ORG_ADMIN_REVIEW_SELECT)
+        .not('assessment_skip_reason', 'is', null)
+        .neq('assessment_skip_reason', ORG_SKIP_REASON_IGNORED)
+        .order('name', { ascending: true })
+        .range(from, to)
+    : await supabaseServer
+        .from('organizations')
+        .select(ORG_ADMIN_TABLE_SELECT)
+        .order('name', { ascending: true })
+        .range(from, to);
 
   if (error) {
     logger.error({ err: error }, 'Failed to fetch organizations for admin list');
   }
 
   const orgs = organizations || [];
-  const loadFailed = Boolean(countError || error);
+  const loadFailed = Boolean(allCountError || reviewCountError || error);
+
+  // Unknown reasons still render something useful: the scraper may add a reason
+  // before the translations catch up.
+  const reasonLabel = (reason: string | null) =>
+    reason ? t(`skipReasons.${reason}`, { defaultValue: reason }) : t('skipReasons.unknown');
 
   return (
-    <PageLayout maxWidth="lg">
+    // xl keeps the six-column All table readable without wrapping the Edit action.
+    <PageLayout maxWidth="xl">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-foreground">{t('listTitle')}</h1>
         <Link
@@ -71,6 +110,27 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
           className={cn(buttonVariants({ variant: 'default' }))}
         >
           {t('actions.addNew')}
+        </Link>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        <Link
+          href={`/${locale}/admin/organizations`}
+          className={cn(
+            buttonVariants({ variant: reviewOnly ? 'secondary' : 'default', size: 'sm' }),
+          )}
+        >
+          {t('filters.all')}
+        </Link>
+        <Link
+          href={`/${locale}/admin/organizations?review=1`}
+          className={cn(
+            buttonVariants({ variant: reviewOnly ? 'default' : 'secondary', size: 'sm' }),
+          )}
+        >
+          {needsReviewCount > 0
+            ? t('filters.needsReviewCount', { count: needsReviewCount })
+            : t('filters.needsReview')}
         </Link>
       </div>
 
@@ -82,10 +142,14 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
 
       {!loadFailed && orgs.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <p>{t('noOrganizations')}</p>
+          <p>{reviewOnly ? t('noNeedsReview') : t('noOrganizations')}</p>
         </div>
+      ) : !loadFailed && reviewOnly ? (
+        <OrgReviewQueue orgs={orgs} locale={locale} reasonLabel={reasonLabel} />
       ) : !loadFailed ? (
-        <div className="bg-card border border-border rounded-wev-card overflow-hidden">
+        // overflow-x-auto, not overflow-hidden: a table too wide to fit should
+        // scroll rather than have its Actions column clipped off.
+        <div className="bg-card border border-border rounded-wev-card overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted border-b border-border">
               <tr>
@@ -137,13 +201,15 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/${locale}/admin/organizations/${org.id}/edit`}
-                      className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
-                    >
-                      {t('edit')}
-                    </Link>
+                  <td className="px-4 py-3 text-right align-top">
+                    <div className="flex flex-wrap gap-2 items-center justify-end">
+                      <Link
+                        href={`/${locale}/admin/organizations/${org.id}/edit`}
+                        className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }))}
+                      >
+                        {t('edit')}
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

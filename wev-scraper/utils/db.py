@@ -205,6 +205,51 @@ def _find_existing_job(job):
     return None
 
 
+_NEAR_DUPE_CANDIDATE_COLUMNS = (
+    "id, job_title, listing_url, date_posted, description, employment_type, "
+    "municipality, location, organization, organization_id"
+)
+_NEAR_DUPE_CANDIDATE_LIMIT = 40
+
+
+def _find_confident_near_duplicate(job, *, organization_id=None):
+    """Return an existing job that is a high-confidence content clone (different URL).
+
+    Used to stop board-side ID churn (e.g. Eco Canada re-listing the same req
+    under new numeric IDs) from inserting duplicate rows. Raises on DB errors.
+    """
+    from utils.job_near_dupes import is_confident_duplicate_pair
+
+    title = (job.get("job_title") or "").strip()
+    if not title or not (job.get("description") or "").strip():
+        return None
+
+    query = (
+        supabase.table("jobs")
+        .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
+        .order("scraped_at", desc=True)
+        .limit(_NEAR_DUPE_CANDIDATE_LIMIT)
+    )
+    if organization_id is not None:
+        query = query.eq("organization_id", organization_id)
+    else:
+        org_name = (job.get("organization") or "").strip()
+        if not org_name:
+            return None
+        query = query.eq("organization", org_name)
+
+    resp = query.execute()
+    rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
+    probe = {
+        **job,
+        "organization_id": organization_id if organization_id is not None else job.get("organization_id"),
+    }
+    for row in rows:
+        if is_confident_duplicate_pair(probe, row):
+            return row
+    return None
+
+
 def _build_update_row(job, source_id, existing_data, *, organization_id=None):
     """Build an update payload that preserves existing fields unless explicitly overridden.
 
@@ -225,7 +270,10 @@ def _build_update_row(job, source_id, existing_data, *, organization_id=None):
 
 
 def save_job(job, source_id, *, resolver=None):
-    """Insert job if not exists (deduplicate by listing_url). If SHOULD_OVERRIDE_EXISTING is set, update existing row instead of skipping.
+    """Insert job if not exists (deduplicate by listing_url, then confident content clones).
+
+    If SHOULD_OVERRIDE_EXISTING is set, update the exact-URL row instead of skipping.
+    Near-duplicates with a different URL are always skipped (never overwrite the other row).
 
     Args:
         job: Job dict from the scraper.
@@ -282,6 +330,22 @@ def save_job(job, source_id, *, resolver=None):
         except Exception as e:
             scraper_log(f"❌ Error overwriting job: {e}")
             return "skipped", None
+
+    # Different listing_url but same role + near-identical body (board ID churn).
+    # Fail open on probe errors: skipping would drop a genuinely new job until the
+    # next scrape; a duplicate insert is recoverable via unique constraints / later
+    # near-dupe review.
+    try:
+        near = _find_confident_near_duplicate(job, organization_id=organization_id)
+    except Exception as e:
+        scraper_log(f"Error checking for near-duplicate job (proceeding with insert): {e}")
+        near = None
+    if near:
+        scraper_log(
+            f"Near-duplicate of existing job {near.get('id')} "
+            f"({near.get('listing_url')}), skipping insert: {job['listing_url']}"
+        )
+        return "skipped", None
 
     scraper_log(f"Inserting new job: {job['listing_url']}")
     try:

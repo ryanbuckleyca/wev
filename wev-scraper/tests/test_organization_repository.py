@@ -114,6 +114,8 @@ class TestFindByNameAndLocation:
 class TestFindByName:
     def test_percent_in_name_is_escaped(self):
         sb = MagicMock()
+        # Force ILIKE fallback path (RPC unavailable in unit tests).
+        sb.rpc.side_effect = Exception("no rpc")
         resp = MagicMock()
         resp.data = [{"id": 10, "name": "100% Organic", "location": "QC"}]
         sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = resp
@@ -121,9 +123,13 @@ class TestFindByName:
         result = repo.find_by_name("100% Organic")
         assert len(result) == 1
         assert result[0]["id"] == 10
+        sb.table.return_value.select.return_value.ilike.assert_called()
+        args, _kwargs = sb.table.return_value.select.return_value.ilike.call_args
+        assert args[1] == r"100\% Organic"
 
     def test_underscore_in_name_is_escaped(self):
         sb = MagicMock()
+        sb.rpc.side_effect = Exception("no rpc")
         resp = MagicMock()
         resp.data = [{"id": 20, "name": "Test_Name", "location": "ON"}]
         sb.table.return_value.select.return_value.ilike.return_value.execute.return_value = resp
@@ -131,6 +137,24 @@ class TestFindByName:
         result = repo.find_by_name("Test_Name")
         assert len(result) == 1
         assert result[0]["id"] == 20
+        args, _kwargs = sb.table.return_value.select.return_value.ilike.call_args
+        assert args[1] == r"Test\_Name"
+
+    def test_rpc_path_returns_alias_hits(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [
+            {
+                "id": 212,
+                "name": "Canadian Cancer Society",
+                "alternative_names": ["Société canadienne du cancer"],
+            }
+        ]
+        sb.rpc.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+        result = repo.find_by_name("Société canadienne du cancer")
+        assert result[0]["id"] == 212
+        sb.table.assert_not_called()
 
 
 class TestFindByDomain:
@@ -183,6 +207,52 @@ def _make_repo_sb(data: list | None = None) -> MagicMock:
     resp.data = data or []
     sb.table.return_value.select.return_value.is_.return_value.order.return_value.gt.return_value.limit.return_value.execute.return_value = resp
     return sb
+
+
+# ── generated-column stripping ───────────────────────────────────────────────
+
+
+class TestGeneratedColumnStripping:
+    def test_insert_strips_generated_columns(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [{"id": 5}]
+        sb.table.return_value.insert.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+
+        repo.insert(
+            {
+                "name": "Foo",
+                "slug": "foo",
+                "name_normalized": "foo",
+                "alternative_names_normalized": ["foo"],
+            }
+        )
+
+        forwarded = sb.table.return_value.insert.call_args[0][0]
+        assert "name_normalized" not in forwarded
+        assert "alternative_names_normalized" not in forwarded
+        assert forwarded == {"name": "Foo", "slug": "foo"}
+
+    def test_update_org_strips_generated_columns(self):
+        sb = MagicMock()
+        resp = MagicMock()
+        resp.data = [{"id": 7}]
+        sb.table.return_value.update.return_value.eq.return_value.execute.return_value = resp
+        repo = OrganizationRepository(sb)
+
+        repo.update_org(7, website="https://x.io", name_normalized="x")
+
+        forwarded = sb.table.return_value.update.call_args[0][0]
+        assert forwarded == {"website": "https://x.io"}
+
+    def test_update_org_noop_when_only_generated_columns(self):
+        sb = MagicMock()
+        repo = OrganizationRepository(sb)
+
+        repo.update_org(7, name_normalized="x", alternative_names_normalized=["x"])
+
+        sb.table.return_value.update.assert_not_called()
 
 
 # ── sse methods ─────────────────────────────────────────────────────────────

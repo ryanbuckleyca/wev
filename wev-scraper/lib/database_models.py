@@ -159,6 +159,22 @@ class Organizations(BaseModel):
     mission_statement_fr: Optional[str] = Field(
         None, description='Public organization mission statement in French.'
     )
+    assessment_skip_reason: Optional[str] = Field(
+        None,
+        description="Why the last organization assessment did not complete, or NULL when the org is eligible for a catch-up attempt. NULL means never attempted (or reset by an admin Retry) and the scraper may assess it exactly once. Any non-null value parks the row: catch-up skips it until a human clears the reason from the admin organizations page. The reserved value 'ignored' parks the row and hides it from the default Needs review filter. Reasons written by the assessor: private_residence, llm_error, empty_response, parse_failed, location_mismatch. Reasons written by the catch-up layer or admin: no_new_fields, partial_fill, exception, incomplete_backlog, ignored.",
+    )
+    alternative_names: List[str] = Field(
+        ...,
+        description='Additional names that identify this organization for matching (former names, other-language legal names, acronyms, short forms). Canonical display name remains organizations.name. Values are display strings; matching uses the same normalization as organization name cache keys.',
+    )
+    name_normalized: Optional[str] = Field(
+        None,
+        description='Stored normalize_org_name(name) for indexed equality matching.',
+    )
+    alternative_names_normalized: Optional[List[str]] = Field(
+        None,
+        description='Stored normalize_org_names(alternative_names) for indexed containment matching.',
+    )
 
 
 class Profiles(BaseModel):

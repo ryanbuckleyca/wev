@@ -61,25 +61,28 @@ class MaCommunauteScraper(BaseScraper):
         """Extract date, location, title, and organization from the listing card."""
         data = {}
         try:
-            # "12 mars 2026 • <i>Montréal</i>" — strip the location part to get just the date
-            date_text = item.locator(".date").inner_text().strip()
-            # Everything before the bullet is the date
-            data["date_posted"] = date_text.split("•")[0].strip()
+            date_loc = item.locator(".date")
+            if date_loc.count() > 0:
+                # "12 mars 2026 • <i>Montréal</i>" — strip the location part to get just the date
+                date_text = date_loc.inner_text().strip()
+                data["date_posted"] = date_text.split("•")[0].strip()
+                loc_loc = date_loc.locator("i")
+                if loc_loc.count() > 0:
+                    data["location"] = loc_loc.inner_text().strip()
         except Exception:
             pass
 
         try:
-            data["location"] = item.locator(".date i").inner_text().strip()
+            title_loc = item.locator("h3")
+            if title_loc.count() > 0:
+                data["job_title"] = title_loc.inner_text().strip()
         except Exception:
             pass
 
         try:
-            data["job_title"] = item.locator("h3").inner_text().strip()
-        except Exception:
-            pass
-
-        try:
-            data["organization"] = item.locator(".auteur").inner_text().strip()
+            org_loc = item.locator(".auteur")
+            if org_loc.count() > 0:
+                data["organization"] = org_loc.inner_text().strip()
         except Exception:
             pass
 
@@ -150,22 +153,27 @@ class MaCommunauteScraper(BaseScraper):
             return "volunteer"
         # Try to detect from the detail page meta block
         try:
-            meta_text = page.locator(".job-meta, .entry-meta, aside, .sidebar").first.inner_text()
-            meta_lower = meta_text.lower()
-            if "temps plein" in meta_lower:
-                return "full-time"
-            if "temps partiel" in meta_lower:
-                return "part-time"
-            # "poste contractuel" or "emploi contractuel" = fixed-term contract
-            if re.search(r"(?:poste|emploi)\s+contractuel", meta_lower):
-                return "contract"
-            if "bénévol" in meta_lower or "benevol" in meta_lower:
-                return "volunteer"
+            loc = page.locator(".job-meta, .entry-meta, aside, .sidebar")
+            if loc.count() > 0:  # count() does not wait
+                meta_text = loc.first.inner_text()
+                meta_lower = meta_text.lower()
+                if "temps plein" in meta_lower:
+                    return "full-time"
+                if "temps partiel" in meta_lower:
+                    return "part-time"
+                # "poste contractuel" or "emploi contractuel" = fixed-term contract
+                if re.search(r"(?:poste|emploi)\s+contractuel", meta_lower):
+                    return "contract"
+                if "bénévol" in meta_lower or "benevol" in meta_lower:
+                    return "volunteer"
         except Exception:
             pass
         # Fall back to scanning the full page text
         try:
-            text = page.locator("article, .entry-content").first.inner_text().lower()
+            loc = page.locator("article, .entry-content")
+            if loc.count() == 0:
+                return None
+            text = loc.first.inner_text().lower()
             if "temps plein" in text:
                 return "full-time"
             if "temps partiel" in text:
@@ -178,8 +186,10 @@ class MaCommunauteScraper(BaseScraper):
 
     def extract_wage(self, page, listing_data):
         try:
-            text = page.locator(".post-content, .entry-content, article").first.inner_text()
-            return extract_salary_from_text(text)
+            loc = page.locator(".post-content, .entry-content, article")
+            if loc.count() == 0:
+                return None
+            return extract_salary_from_text(loc.first.inner_text())
         except Exception:
             pass
         return None

@@ -7,6 +7,7 @@ import pytest
 
 from utils.organization_assessment import (
     _attach_org_language,
+    _build_assessment_prompt,
     _build_search_query,
     _parse_response,
     _parse_website,
@@ -1166,3 +1167,386 @@ def test_assess_passes_prefer_hosts_for_known_website():
     call_kwargs = mock_provider.complete.call_args.kwargs
     assert call_kwargs.get("prefer_hosts") == ["paro.ca"]
     assert "https://paro.ca" in call_kwargs.get("search_query", "")
+
+
+# ---------------------------------------------------------------------------
+# assess_with_outcome: skip reasons drive the admin review queue
+# ---------------------------------------------------------------------------
+
+
+def _valid_assessment_payload(**overrides):
+    payload = {
+        "canonical_name": "Riverside Housing Co-op",
+        "slug": "riverside-housing-co-op",
+        "type": "cooperative",
+        "sector_id": "housing",
+        "values": ["Community"],
+        "values_raw": "Community",
+        "sse_rating": "strong_yes",
+        "sse_confidence": 0.9,
+        "sse_reasoning_en": "Member-owned housing cooperative.",
+        "sse_reasoning_fr": None,
+        "must_haves_met": ["Explicit primary social, environmental, or community purpose"],
+        "nice_to_haves_met": [],
+        "flags": [
+            "description via=extracted",
+            "mission via=extracted",
+            "values via=extracted",
+        ],
+        "public_language": "en",
+        "geographic_scope": "local",
+        "website": None,
+        "description_en": "Riverside Housing Co-op provides member-owned housing.",
+        "description_fr": None,
+        "mission_statement_en": "Affordable member-owned housing.",
+        "mission_statement_fr": None,
+        "values_en": ["Community"],
+        "values_fr": [],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _assessor_with_provider(mock_provider):
+    from unittest.mock import patch
+
+    from utils.organization_assessment import OrganizationAssessor
+
+    with patch("utils.organization_assessment.get_sse_provider", return_value=mock_provider):
+        return OrganizationAssessor()
+
+
+def test_assess_with_outcome_flags_private_residence_without_calling_llm():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_PRIVATE_RESIDENCE
+
+    mock_provider = MagicMock()
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Private Residence")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_PRIVATE_RESIDENCE
+    mock_provider.complete.assert_not_called()
+
+
+def test_assess_with_outcome_maps_provider_503_to_llm_error():
+    from unittest.mock import MagicMock
+
+    from llm.base import LLMProviderError
+    from utils.organization_assessment import SKIP_REASON_LLM_ERROR
+
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = LLMProviderError(
+        "Gemini completion error: 503 UNAVAILABLE."
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_LLM_ERROR
+
+
+def test_assess_with_outcome_reports_empty_response_after_retry():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_EMPTY_RESPONSE
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = "   "
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_EMPTY_RESPONSE
+
+
+def test_assess_with_outcome_reports_parse_failed_on_garbage_json():
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_PARSE_FAILED
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = "not json at all"
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(raw_name="Riverside Housing Co-op")
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_PARSE_FAILED
+
+
+def test_assess_with_outcome_reports_location_mismatch():
+    """The St. Catharines case: LLM answered, but for the wrong municipality."""
+    from unittest.mock import MagicMock
+
+    from utils.organization_assessment import SKIP_REASON_LOCATION_MISMATCH
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(
+        _valid_assessment_payload(
+            canonical_name="City of St. Catharines",
+            slug="city-of-st-catharines",
+            type="government",
+            website="https://stcatharines.ca",
+            description_en="The municipal government of St. Catharines, Ontario.",
+            mission_statement_en="Serving St. Catharines residents.",
+            geographic_scope="local",
+        )
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="City of St. Catharines",
+        municipality="Sainte-Catherine",
+        province="QC",
+    )
+
+    assert outcome.result is None
+    assert outcome.skip_reason == SKIP_REASON_LOCATION_MISMATCH
+
+
+def test_assess_with_outcome_returns_no_reason_on_success():
+    from unittest.mock import MagicMock
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(_valid_assessment_payload())
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["canonical_name"] == "Riverside Housing Co-op"
+
+
+def test_assess_wrapper_preserves_result_or_none_contract():
+    """Existing callers keep getting a result or None, never an outcome object."""
+    from unittest.mock import MagicMock
+
+    from llm.base import LLMProviderError
+
+    ok_provider = MagicMock()
+    ok_provider.complete.return_value = json.dumps(_valid_assessment_payload())
+    assert _assessor_with_provider(ok_provider).assess(
+        raw_name="Riverside Housing Co-op"
+    )["canonical_name"] == "Riverside Housing Co-op"
+
+    failing_provider = MagicMock()
+    failing_provider.complete.side_effect = LLMProviderError("503 UNAVAILABLE")
+    assert _assessor_with_provider(failing_provider).assess(
+        raw_name="Riverside Housing Co-op"
+    ) is None
+
+
+def test_values_rules_require_infer_from_tavily_when_no_literal_list():
+    """Empty values was the easy out; parked backlog is almost all 'missing values'."""
+    prompt = _build_assessment_prompt(
+        raw_name="AECOM",
+        municipality="Toronto",
+        province="ON",
+        job_title="Engineer",
+    )
+    assert "return an empty array" not in prompt
+    assert "Still return 3–5 Knowdell labels" in prompt
+    assert "Tavily/web evidence" in prompt
+    assert "NEVER use SOURCE DESCRIPTION or listing notes for values" in prompt
+    assert "you MUST infer values too" in prompt
+    assert "Municipal / government" in prompt
+
+
+def test_description_present_without_values():
+    from utils.organization_assessment import (
+        _description_present_without_values,
+        _should_retry_empty_values,
+    )
+
+    assert _description_present_without_values(
+        {
+            "description_en": "A municipal government in Ontario.",
+            "description_fr": "",
+            "values": [],
+        }
+    )
+    assert not _description_present_without_values(
+        {
+            "description_en": "A municipal government in Ontario.",
+            "description_fr": "",
+            "values": ["Community"],
+        }
+    )
+    assert not _description_present_without_values(
+        {"description_en": "", "description_fr": "", "values": []}
+    )
+
+    inferred_empty = {
+        "description_en": "A municipal government in Ontario.",
+        "description_fr": "",
+        "values": [],
+        "flags": ["description via=inferred", "values via=absent"],
+    }
+    extracted_empty = {
+        "description_en": "Stale listing blurb only.",
+        "description_fr": "",
+        "values": [],
+        "flags": ["description via=extracted", "values via=absent"],
+    }
+    assert _should_retry_empty_values(inferred_empty)
+    assert not _should_retry_empty_values(extracted_empty)
+
+
+def test_assess_with_outcome_keeps_first_parse_when_values_retry_still_empty():
+    """Empty values after retry must not discard a usable first parse as parse_failed."""
+    from unittest.mock import MagicMock
+
+    empty_values = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [empty_values, empty_values]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["description_en"]
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count >= 2
+
+
+def test_assess_with_outcome_skips_values_retry_for_source_description_only():
+    """SOURCE DESCRIPTION + empty values must not trigger the research values nudge."""
+    from unittest.mock import MagicMock
+
+    source_only = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=extracted",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = source_only
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+        existing_description="Stale listing blurb only.",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count == 1
+
+
+def test_assess_with_outcome_uses_values_retry_when_it_fills_values():
+    from unittest.mock import MagicMock
+
+    empty_values = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    with_values = json.dumps(
+        _valid_assessment_payload(
+            values=["Community", "Help Society", "Stability"],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=inferred",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [empty_values, with_values]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["values"] == ["Community", "Help Society", "Stability"]
+
+
+def test_assess_with_outcome_keeps_first_parse_when_retry_omits_descriptions():
+    """A values-retry that clears description_* must not replace, even with values."""
+    from unittest.mock import MagicMock
+
+    first = json.dumps(
+        _valid_assessment_payload(
+            values=[],
+            values_raw=None,
+            flags=[
+                "description via=inferred",
+                "mission via=absent",
+                "values via=absent",
+            ],
+        )
+    )
+    # Retry fills values but drops both description fields.
+    stripped = json.dumps(
+        _valid_assessment_payload(
+            description_en=None,
+            description_fr=None,
+            values=["Community", "Help Society"],
+            values_raw=None,
+            flags=[
+                "description via=absent",
+                "mission via=absent",
+                "values via=inferred",
+            ],
+        )
+    )
+    mock_provider = MagicMock()
+    mock_provider.complete.side_effect = [first, stripped]
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Riverside Housing Co-op",
+        municipality="Halifax",
+        province="NS",
+    )
+
+    assert outcome.skip_reason is None
+    assert outcome.result is not None
+    assert outcome.result["description_en"]
+    assert outcome.result["values"] == []
+    assert mock_provider.complete.call_count >= 2

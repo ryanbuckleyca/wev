@@ -105,6 +105,34 @@ def test_compare_fields():
     assert diffs["job_title"]["scraped"] == "New Title"
     assert "location" not in diffs
 
+def test_run_catch_up_after_post_scrape():
+    """Catch-up drains the backlog after scraping and post-processing new jobs."""
+    call_order: list[str] = []
+    orchestrator = ScraperOrchestrator()
+
+    with (
+        patch.object(orchestrator, "_log_environment_status"),
+        patch.object(orchestrator, "_fetch_sources", return_value=[]),
+        patch.object(orchestrator, "_fetch_existing_job_urls", return_value=set()),
+        patch("utils.organization_resolver.create_resolver"),
+        patch.object(
+            orchestrator,
+            "_run_post_scrape_tasks",
+            side_effect=lambda: call_order.append("post_scrape"),
+        ),
+        patch.object(
+            orchestrator,
+            "_run_catch_up",
+            side_effect=lambda: call_order.append("catch_up"),
+        ),
+        patch.object(orchestrator, "_print_final_summary"),
+    ):
+        orchestrator.results.all_job_ids = ["j1"]
+        orchestrator.run()
+
+    assert call_order == ["post_scrape", "catch_up"]
+
+
 @patch("scrape.is_truthy_env", return_value=True)
 def test_run_post_scrape_tasks_records_errors(mock_env):
 

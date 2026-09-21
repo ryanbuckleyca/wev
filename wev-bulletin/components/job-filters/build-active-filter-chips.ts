@@ -17,9 +17,13 @@ export type ActiveFilterChipInputs = {
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedOrganizations: string[];
+  selectedOrgTypes: string[];
+  selectedSectors: string[];
   selectedEmploymentTypes: string[];
   selectedSources: string[];
   selectedLanguages: string[];
+  orgTypeLabel: (type: string) => string;
+  sectorLabel: (sectorId: string) => string;
   onPostedWithinChange: (value: PostedWithinValue) => void;
   onShowNonSseChange: (value: boolean) => void;
   onShowJobsWithoutSalaryChange: (value: boolean) => void;
@@ -28,6 +32,8 @@ export type ActiveFilterChipInputs = {
   onProvincesChange: (value: string[]) => void;
   onMunicipalitiesChange: (value: string[]) => void;
   onOrganizationsChange: (value: string[]) => void;
+  onOrgTypesChange: (value: string[]) => void;
+  onSectorsChange: (value: string[]) => void;
   onEmploymentTypesChange: (value: string[]) => void;
   onSourcesChange: (value: string[]) => void;
   onLanguagesChange: (value: string[]) => void;
@@ -145,6 +151,7 @@ export function buildActiveFilterChips(
     ),
   );
 
+  // Legacy org-name URL param — still chip-removable if present.
   chips.push(
     ...buildSelectionChips(
       'organization',
@@ -154,6 +161,18 @@ export function buildActiveFilterChips(
         input.onOrganizationsChange(
           input.selectedOrganizations.filter((item) => item !== organization),
         ),
+    ),
+  );
+
+  chips.push(
+    ...buildSelectionChips('org-type', input.selectedOrgTypes, input.orgTypeLabel, (type) =>
+      input.onOrgTypesChange(input.selectedOrgTypes.filter((item) => item !== type)),
+    ),
+  );
+
+  chips.push(
+    ...buildSelectionChips('sector', input.selectedSectors, input.sectorLabel, (sector) =>
+      input.onSectorsChange(input.selectedSectors.filter((item) => item !== sector)),
     ),
   );
 

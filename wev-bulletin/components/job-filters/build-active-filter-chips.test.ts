@@ -12,9 +12,13 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     selectedProvinces: [],
     selectedMunicipalities: [],
     selectedOrganizations: [],
+    selectedOrgTypes: [],
+    selectedSectors: [],
     selectedEmploymentTypes: [],
     selectedSources: [],
     selectedLanguages: [],
+    orgTypeLabel: (type) => type,
+    sectorLabel: (sector) => sector,
     onPostedWithinChange: vi.fn(),
     onShowNonSseChange: vi.fn(),
     onShowJobsWithoutSalaryChange: vi.fn(),
@@ -23,6 +27,8 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     onProvincesChange: vi.fn(),
     onMunicipalitiesChange: vi.fn(),
     onOrganizationsChange: vi.fn(),
+    onOrgTypesChange: vi.fn(),
+    onSectorsChange: vi.fn(),
     onEmploymentTypesChange: vi.fn(),
     onSourcesChange: vi.fn(),
     onLanguagesChange: vi.fn(),
@@ -114,5 +120,25 @@ describe('buildActiveFilterChips', () => {
 
     expect(employmentChip?.label).toBe('Contract');
     expect(employmentChip?.title).toBe('Contract');
+  });
+
+  it('chips org type and sector with labeled remove handlers', () => {
+    const input = createInput({
+      selectedOrgTypes: ['nonprofit'],
+      selectedSectors: ['education'],
+      orgTypeLabel: (type) => (type === 'nonprofit' ? 'Nonprofit' : type),
+      sectorLabel: (sector) => (sector === 'education' ? 'Education' : sector),
+    });
+
+    const chips = buildActiveFilterChips(input, t);
+    expect(chips.map((chip) => chip.id)).toEqual(
+      expect.arrayContaining(['org-type-nonprofit', 'sector-education']),
+    );
+
+    chips.find((chip) => chip.id === 'org-type-nonprofit')?.onRemove?.();
+    expect(input.onOrgTypesChange).toHaveBeenCalledWith([]);
+
+    chips.find((chip) => chip.id === 'sector-education')?.onRemove?.();
+    expect(input.onSectorsChange).toHaveBeenCalledWith([]);
   });
 });

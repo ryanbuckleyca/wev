@@ -73,7 +73,13 @@
     "clearAllFilters": "Clear all filters",
     "showNonSse": "Show non-SSE organizations",
     "noJobsForOrg": "This organization has no active job listings at the moment.",
+    "noJobsForOrgAll": "This organization has no job listings.",
     "jobs": "{count, plural, =0 {No active jobs} one {1 active job} other {# active jobs}}",
+    "jobsAll": "{count, plural, =0 {No jobs} one {1 job} other {# jobs}}",
+    "jobsActivityLabel": "Job listing period",
+    "jobsActivity28d": "Last 4 weeks",
+    "jobsActivity90d": "Last 3 months",
+    "jobsActivityAll": "All jobs",
     "website": "Website",
     "viewProfile": "View organization profile",
     "noDescription": "No description available.",
@@ -86,7 +92,10 @@
     "values": "Values",
     "sector": "Sector",
     "noSector": "Sector not specified",
-    "noOrganizationSectors": "No sectors available"
+    "noOrganizationSectors": "No sectors available",
+    "browseBySector": "Browse by sector",
+    "browseBySectorHint": "Explore solidarity economy (SSE) organizations by field of work.",
+    "browseSectors": "Browse all sectors"
   },
   "home": {
     "heading": "Bulletin – Job Postings",
@@ -310,7 +319,8 @@
     "expandDetails": "Expand job details",
     "viewMatchDetails": "View match details",
     "removeSseConfirm": "Remove the SSE tag from \"{title}\" at {org}?",
-    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?"
+    "markSseConfirm": "Mark \"{title}\" at {org} as a Solidarity Economy job?",
+    "roleAtOrg": "{title} at {org}"
   },
   "buttons": {
     "copyPageJobs": "Copy This Page",
@@ -900,8 +910,17 @@
         "location": "Location",
         "type": "Organization Type",
         "sector": "Sector",
+        "language": "Public Language",
         "isSse": "Solidarity Economy Organization",
         "values": "Core Values"
+      },
+      "languages": {
+        "en": "English",
+        "fr": "French",
+        "bilingual": "Bilingual"
+      },
+      "hints": {
+        "language": "The language the organization communicates in publicly. Used for filtering and matching."
       },
       "placeholders": {
         "name": "e.g., Centraide Montreal",
@@ -916,6 +935,7 @@
         "location": "Start typing a city…",
         "selectType": "Select a type...",
         "selectSector": "Select a sector...",
+        "selectLanguage": "Select a language...",
         "values": "Search and select work values"
       },
       "locationHint": "City-level only — used for filters and matching. Job postings carry specific work locations.",
@@ -924,8 +944,47 @@
         "slug": "Slug",
         "type": "Type",
         "location": "Location",
+        "reason": "Reason",
         "sse": "SSE",
         "actions": "Actions"
+      },
+      "filters": {
+        "all": "All",
+        "needsReview": "Needs review",
+        "needsReviewCount": "Needs review ({count})"
+      },
+      "noNeedsReview": "No organizations need review. Everything the scraper could not finish has been handled.",
+      "review": {
+        "banner": "This organization needs review: {reason}",
+        "bannerHint": "The scraper stopped assessing it and will not try again until you retry or complete the missing fields.",
+        "checklistHeading": "Assessed fields",
+        "fieldMissing": "missing",
+        "missingIntro": "Still missing:",
+        "missingNone": "Every assessed field is now filled in. Saving will clear this notice.",
+        "missingFields": {
+          "sector": "Sector",
+          "type": "Organization Type",
+          "descriptionEn": "Description (English)",
+          "descriptionFr": "Description (French)",
+          "language": "Public Language",
+          "values": "Core Values"
+        },
+        "retrySuccess": "Organization queued for another assessment",
+        "ignoreSuccess": "Organization removed from the review queue",
+        "actionFailed": "Could not update the review state. Please try again."
+      },
+      "skipReasons": {
+        "private_residence": "Not an organization (private residence)",
+        "llm_error": "AI provider error",
+        "empty_response": "AI returned an empty response",
+        "parse_failed": "AI response could not be read",
+        "location_mismatch": "Location did not match the organization found",
+        "no_new_fields": "Assessment produced no new information",
+        "partial_fill": "Assessment filled some fields but not all",
+        "exception": "Unexpected error during assessment",
+        "incomplete_backlog": "Incomplete before review was introduced",
+        "ignored": "Ignored by an admin",
+        "unknown": "Unknown"
       },
       "actions": {
         "addNew": "Add Organization",
@@ -933,6 +992,8 @@
         "create": "Create Organization",
         "update": "Update Organization",
         "delete": "Delete Organization",
+        "retry": "Retry",
+        "ignore": "Ignore",
         "cancel": "Cancel"
       },
       "errors": {
@@ -944,6 +1005,7 @@
         "missionTooLong": "Mission statement is too long (max 500 characters)",
         "invalidType": "Please select a valid organization type",
         "invalidSector": "Please select a valid sector",
+        "invalidLanguage": "Please select a valid public language",
         "invalidValues": "One or more selected values are not recognized",
         "tooManyValues": "You can select at most 5 values",
         "slug_taken": "This slug is already in use",

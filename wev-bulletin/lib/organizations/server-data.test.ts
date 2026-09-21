@@ -64,6 +64,7 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
 import {
   fetchOrganizationIndex,
   fetchOrganizationFilterOptions,
+  fetchSectorIndexStats,
   getOrganizationJobs,
 } from './server-data';
 
@@ -268,10 +269,38 @@ describe('organizations/server-data', () => {
     expect(mockFrom).toHaveBeenCalledWith('jobs');
     expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 42);
     expect(jobsQuery.gte).toHaveBeenCalledWith('date_posted', '2026-05-16T00:00:00.000Z');
-    expect(jobsQuery.order).toHaveBeenCalledWith('date_posted', { ascending: false });
+    expect(jobsQuery.order).toHaveBeenCalledWith('date_posted', {
+      ascending: false,
+      nullsFirst: false,
+    });
     expect(jobsQuery.range).toHaveBeenCalledWith(20, 39);
     expect(result.total).toBe(1);
     expect(result.jobs).toHaveLength(1);
+  });
+
+  it('omits the date_posted filter when activityDays is null (all jobs)', async () => {
+    jobsQuery.setResult({
+      data: [],
+      error: null,
+      count: 0,
+    });
+
+    await getOrganizationJobs({ orgId: 42, page: 1, activityDays: null });
+
+    expect(jobsQuery.eq).toHaveBeenCalledWith('organization_id', 42);
+    expect(jobsQuery.gte).not.toHaveBeenCalled();
+  });
+
+  it('applies a custom activityDays window', async () => {
+    jobsQuery.setResult({
+      data: [],
+      error: null,
+      count: 0,
+    });
+
+    await getOrganizationJobs({ orgId: 42, page: 1, activityDays: 90 });
+
+    expect(jobsQuery.gte).toHaveBeenCalledWith('date_posted', '2026-03-15T00:00:00.000Z');
   });
 
   describe('fetchOrganizationFilterOptions', () => {
@@ -333,6 +362,38 @@ describe('organizations/server-data', () => {
 
       expect(options.types).toEqual(['cooperative', 'nonprofit']);
       expect(options.availableTypes).toEqual(['cooperative']);
+    });
+  });
+
+  describe('fetchSectorIndexStats', () => {
+    it('pages SSE orgs with sectors and builds index cards', async () => {
+      organizationsQuery.setResult({
+        data: [
+          {
+            name: 'Alpha Farm',
+            type: 'nonprofit',
+            sector_id: 'agriculture-food-systems',
+          },
+          {
+            name: 'Radio Co-op',
+            type: 'cooperative',
+            sector_id: 'arts-culture-information',
+          },
+        ],
+        error: null,
+      });
+
+      const cards = await fetchSectorIndexStats({ sseOnly: true });
+
+      expect(organizationsQuery.eq).toHaveBeenCalledWith('is_sse', true);
+      expect(organizationsQuery.not).toHaveBeenCalledWith('sector_id', 'is', null);
+      expect(organizationsQuery.order).toHaveBeenCalledWith('id', { ascending: true });
+      expect(organizationsQuery.range).toHaveBeenCalledWith(0, 999);
+      expect(cards.map((c) => c.id)).toEqual([
+        'agriculture-food-systems',
+        'arts-culture-information',
+      ]);
+      expect(cards[0].orgCount).toBe(1);
     });
   });
 });

@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import OrganizationFilters from './OrganizationFilters';
 import OrganizationCard from './OrganizationCard';
+import SectorIndexGrid from './SectorIndexGrid';
 import Pagination from './Pagination';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
+import type { SectorIndexCard } from '@/lib/organizations/sector-index';
 import { useOrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import { useOrganizationData } from '@/lib/hooks/useOrganizationData';
-import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
+import { useOrganizationPagination } from '@/lib/hooks/useOrganizationPagination';
 import { resolveOrgSortBy } from '@/lib/organizations/utils';
 import { useTranslations } from 'next-intl';
 import ListEmptyState from './ListEmptyState';
@@ -20,6 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface OrganizationIndexClientProps {
   initialData: { orgs: OrgIndexEntry[]; total: number; totalAvailable?: number };
   filterOptions: OrganizationFilterOptions;
+  sectorIndex: SectorIndexCard[];
   locale: string;
   initialHasMatchScores?: boolean;
 }
@@ -27,6 +30,7 @@ interface OrganizationIndexClientProps {
 export default function OrganizationIndexClient({
   initialData,
   filterOptions,
+  sectorIndex,
   locale,
   initialHasMatchScores = false,
 }: OrganizationIndexClientProps) {
@@ -56,10 +60,24 @@ export default function OrganizationIndexClient({
     initialData,
   );
 
-  const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
+  const { totalPages, itemsPerPage } = useOrganizationPagination(total, {
+    filters: controls.filters,
+    sortBy: effectiveSortBy,
+    currentPage: controls.currentPage,
+    setCurrentPage: controls.setCurrentPage,
+  });
 
-  const totalPages = Math.max(1, Math.ceil(total / ORG_JOBS_PER_PAGE));
+  const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
+  const showSectorIndex = !controls.hasAnyFilters && sectorIndex.length > 0;
   const showCountSkeleton = loading && orgs.length === 0;
+
+  const handleSelectSector = (sectorId: string) => {
+    const next = controls.selectedSectors.includes(sectorId)
+      ? controls.selectedSectors
+      : [...controls.selectedSectors, sectorId];
+    void controls.setSelectedSectors(next);
+    void controls.setCurrentPage(1);
+  };
 
   return (
     <div className="flex flex-col gap-0 w-full">
@@ -73,77 +91,96 @@ export default function OrganizationIndexClient({
         setFiltersExpanded={setFiltersExpanded}
       />
 
-      <div className="flex flex-col gap-4" aria-live="polite">
-        <OrgListToolbar
-          countContent={
-            showCountSkeleton ? (
-              <CountPhraseSkeleton className="w-32" />
-            ) : (
-              t('organizationCount', { count: total })
-            )
-          }
-          sortBy={effectiveSortBy}
-          onSortChange={(val) => {
-            controls.setSortBy(val);
-            controls.setCurrentPage(1);
-          }}
+      {showSectorIndex ? (
+        <SectorIndexGrid
+          sectors={sectorIndex}
+          locale={locale}
+          onSelectSector={handleSelectSector}
         />
-
-        {error ? (
-          <div className="p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
-            {t('loadFailed')}
-          </div>
-        ) : showCountSkeleton ? (
-          <CardListSkeleton count={4} />
-        ) : orgs.length === 0 ? (
-          <ListEmptyState
-            emptyMessage={t('noOrganizations')}
-            filteredMessage={t('showingFiltered', { total: totalAvailable ?? 0 })}
-            hasFilters={controls.hasAnyFilters}
-            totalAvailable={totalAvailable ?? 0}
-            onClearFilters={controls.clearAllFilters}
-            clearFiltersLabel={t('clearAllFilters')}
-          />
-        ) : (
-          <>
-            <div className="flex flex-col gap-4">
-              {orgs.map((org) => (
-                <OrganizationCard
-                  key={org.id}
-                  org={org}
-                  locale={locale}
-                  sseBadgeLabel={t('sseBadgeLabel')}
-                  jobCountLabel={t('jobs', { count: org.active_job_count })}
-                  noDescriptionLabel={t('noDescription')}
-                  websiteLabel={t('website')}
-                  viewProfileLabel={t('viewProfile')}
-                  showMoreLabel={tCommon('showMore')}
-                  showLessLabel={tCommon('showLess')}
-                  isLoggedIn={Boolean(user)}
-                  selectedLanguages={controls.selectedLanguages}
-                />
-              ))}
+      ) : (
+        <div className="flex flex-col gap-4" aria-live="polite">
+          {controls.hasAnyFilters && sectorIndex.length > 0 ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => controls.clearAllFilters()}
+                className="text-sm text-primary hover:underline font-medium"
+              >
+                {t('browseSectors')}
+              </button>
             </div>
+          ) : null}
 
-            {totalPages > 1 && (
-              <div className="mt-8 flex justify-center">
-                <Pagination
-                  currentPage={controls.currentPage}
-                  onPageChange={(p) => {
-                    void controls.setCurrentPage(p);
-                    window.scrollTo({ top: 0, behavior: 'auto' });
-                  }}
-                  totalPages={totalPages}
-                  totalItems={total}
-                  itemsPerPage={ORG_JOBS_PER_PAGE}
-                  singularKey="organizations.organization"
-                  pluralKey="organizations.organizations"
-                />
+          <OrgListToolbar
+            countContent={
+              showCountSkeleton ? (
+                <CountPhraseSkeleton className="w-32" />
+              ) : (
+                t('organizationCount', { count: total })
+              )
+            }
+            sortBy={effectiveSortBy}
+            onSortChange={(val) => {
+              controls.setSortBy(val);
+            }}
+          />
+
+          {error ? (
+            <div className="p-4 rounded bg-destructive/10 text-destructive border border-destructive/20">
+              {t('loadFailed')}
+            </div>
+          ) : showCountSkeleton ? (
+            <CardListSkeleton count={4} />
+          ) : orgs.length === 0 ? (
+            <ListEmptyState
+              emptyMessage={t('noOrganizations')}
+              filteredMessage={t('showingFiltered', { total: totalAvailable ?? 0 })}
+              hasFilters={controls.hasAnyFilters}
+              totalAvailable={totalAvailable ?? 0}
+              onClearFilters={controls.clearAllFilters}
+              clearFiltersLabel={t('clearAllFilters')}
+            />
+          ) : (
+            <>
+              <div className="flex flex-col gap-4">
+                {orgs.map((org) => (
+                  <OrganizationCard
+                    key={org.id}
+                    org={org}
+                    locale={locale}
+                    sseBadgeLabel={t('sseBadgeLabel')}
+                    jobCountLabel={t('jobs', { count: org.active_job_count })}
+                    noDescriptionLabel={t('noDescription')}
+                    websiteLabel={t('website')}
+                    viewProfileLabel={t('viewProfile')}
+                    showMoreLabel={tCommon('showMore')}
+                    showLessLabel={tCommon('showLess')}
+                    isLoggedIn={Boolean(user)}
+                    selectedLanguages={controls.selectedLanguages}
+                  />
+                ))}
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex justify-center">
+                  <Pagination
+                    currentPage={controls.currentPage}
+                    onPageChange={(p) => {
+                      void controls.setCurrentPage(p);
+                      window.scrollTo({ top: 0, behavior: 'auto' });
+                    }}
+                    totalPages={totalPages}
+                    totalItems={total}
+                    itemsPerPage={itemsPerPage}
+                    singularKey="organizations.organization"
+                    pluralKey="organizations.organizations"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

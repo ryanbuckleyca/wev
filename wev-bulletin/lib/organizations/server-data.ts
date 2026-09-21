@@ -3,9 +3,10 @@ import 'server-only';
 import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
-import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
+import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
+import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 // ---------------------------------------------------------------------------
@@ -185,33 +186,44 @@ export interface GetOrganizationJobsOptions {
   orgId: number;
   page: number;
   locale?: string;
+  /**
+   * Age window in days. `null` = all jobs (no date_posted filter).
+   * Defaults to 28 (bulletin “active” ceiling).
+   */
+  activityDays?: number | null;
 }
 
 export async function getOrganizationJobs({
   orgId,
   page: rawPage,
   locale = 'en',
+  activityDays = 28,
 }: GetOrganizationJobsOptions): Promise<{ jobs: OrgJobPosting[]; total: number }> {
   const page = Math.max(1, rawPage);
-  const minDate = bulletinAgeCutoffIso();
+  const minDate = activityDaysToMinDate(activityDays);
   const limit = ORG_JOBS_PER_PAGE;
   const offset = (page - 1) * limit;
+
+  let query = supabaseServer
+    .from('jobs')
+    .select(
+      'id, job_title, listing_url, date_posted, employment_type, location, municipality, province, work_type, skills, values, summary, wage, unit_text, min_value, max_value, hours_per_week, language',
+      {
+        count: 'exact',
+      },
+    )
+    .eq('organization_id', orgId);
+
+  if (minDate) {
+    query = query.gte('date_posted', minDate);
+  }
 
   const {
     data: jobs,
     error,
     count,
-  } = await supabaseServer
-    .from('jobs')
-    .select(
-      'id, job_title, listing_url, date_posted, employment_type, location, municipality, work_type, skills, values',
-      {
-        count: 'exact',
-      },
-    )
-    .eq('organization_id', orgId)
-    .gte('date_posted', minDate)
-    .order('date_posted', { ascending: false })
+  } = await query
+    .order('date_posted', { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
@@ -312,5 +324,42 @@ export const fetchOrganizationFilterOptions = cache(
       availableLanguages: availableOptions.languages,
       availableSectors: availableOptions.sectors,
     };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// fetchSectorIndexStats
+// ---------------------------------------------------------------------------
+
+/**
+ * Sector-card front door for the org index.
+ * Counts match the product default universe (SSE-only unless `sseOnly` is false).
+ * Pages past PostgREST `max_rows` so counts stay complete as the catalog grows.
+ */
+export const fetchSectorIndexStats = cache(
+  async (opts: { sseOnly?: boolean } = {}): Promise<SectorIndexCard[]> => {
+    const sseOnly = opts.sseOnly ?? true;
+
+    let rows: Array<{ name: string | null; type: string | null; sector_id: string | null }>;
+    try {
+      rows = await fetchAllPagedRows(async (from, to) => {
+        let query = supabaseServer
+          .from('organizations')
+          .select('name, type, sector_id')
+          .not('sector_id', 'is', null)
+          .order('id', { ascending: true });
+
+        if (sseOnly) {
+          query = query.eq('is_sse', true);
+        }
+
+        return query.range(from, to);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`fetchSectorIndexStats error: ${message}`);
+    }
+
+    return buildSectorIndexCards(rows);
   },
 );

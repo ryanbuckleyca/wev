@@ -5,6 +5,17 @@ from __future__ import annotations
 import re
 from typing import Iterable, Optional, Sequence
 
+# Truncate labeled field values before the next common job-ad field heading.
+# GoodWork often flattens "Job Title: X Project: Y Organization: Z" onto one line.
+_LABELED_VALUE_STOP = re.compile(
+    r"(?:\n|"
+    r"Term:|Language:|Project:|Organization:|Company:|Farm:|Employer:|Business:|"
+    r"Location:|Work Location:|Work location:|Type:|Job Types?:|Hourly Wage:|"
+    r"Salary:|Wage:|Compensation:|Reports? to:|Work Arrangement:|Hours:|"
+    r"Start Date:|End Date:|Hiring Process:|Position Overview:)",
+    re.IGNORECASE,
+)
+
 
 def first_nonempty(*values: Optional[str]) -> Optional[str]:
     """Return the first non-empty string from values."""
@@ -12,6 +23,10 @@ def first_nonempty(*values: Optional[str]) -> Optional[str]:
         if v and str(v).strip():
             return str(v).strip()
     return None
+
+
+def _trim_labeled_value(value: str) -> str:
+    return _LABELED_VALUE_STOP.split(value, maxsplit=1)[0].strip(" \t-,;:")
 
 
 def extract_labeled_value(
@@ -26,9 +41,9 @@ def extract_labeled_value(
             pattern = re.compile(rf"{re.escape(label)}\s*(.+?)(?:\n|$)", re.IGNORECASE)
             match = pattern.search(block)
             if match:
-                value = match.group(1).strip()
-                value = re.split(r"\n|Term:|Language:", value)[0].strip()
-                return value
+                value = _trim_labeled_value(match.group(1))
+                if value:
+                    return value
     return None
 
 
@@ -40,9 +55,9 @@ def extract_labeled_value_from_text(text: str, labels: Sequence[str]) -> Optiona
         pattern = re.compile(rf"{re.escape(label)}\s*(.+?)(?:\n|$)", re.IGNORECASE)
         match = pattern.search(text)
         if match:
-            value = match.group(1).strip()
-            value = re.split(r"\n|Term:|Language:", value)[0].strip()
-            return value
+            value = _trim_labeled_value(match.group(1))
+            if value:
+                return value
     return None
 
 
@@ -129,25 +144,93 @@ def extract_title_from_blocks(blocks: Iterable[str], labels: Sequence[str]) -> O
     return extract_labeled_value(blocks, labels)
 
 
+# Current role type — not future conversion / growth language.
+_EMPLOYMENT_TYPE_PHRASE = (
+    r"(?:full[\s-]?time|part[\s-]?time|temps\s+plein|temps\s+partiel|"
+    r"permanent|contract|contractor|temporary|temporaire|seasonal|casual|"
+    r"internship|intern|volunteer(?:ing)?)"
+)
+# "full-time contract", "permanent full-time", etc.
+_EMPLOYMENT_TYPE_RUN = (
+    rf"(?:{_EMPLOYMENT_TYPE_PHRASE}(?:\s+(?:or\s+)?{_EMPLOYMENT_TYPE_PHRASE})*)"
+)
+
+# Hedge / future-state clauses that mention a type without describing the role now
+# (e.g. "possibility of becoming a full-time contract position").
+_ASPIRATIONAL_EMPLOYMENT_TYPE = re.compile(
+    rf"""
+    (?:
+        (?:
+            possibility|potential|opportunity|option|chance|path|prospect|
+            possibilit[eé]|potentiel|occasion
+        )
+        \s+(?:of|to|for|de|d['’])?\s*
+        (?:
+            becom(?:e|ing)|convert(?:ing)?|transition(?:ing)?|mov(?:e|ing)|
+            grow(?:ing)?|advance(?:ment)?|lead(?:ing)?\s+to|devenir|passer|évoluer
+        )?
+        \s*(?:a\s+|an\s+|to\s+|into\s+|au\s+|à\s+|en\s+|vers\s+)?
+        {_EMPLOYMENT_TYPE_RUN}
+    |
+        (?:may|might|could|can|would|peut|pourrait)
+        \s+(?:be\s+|become\s+|lead\s+to\s+|devenir\s+)?
+        (?:a\s+|an\s+)?
+        {_EMPLOYMENT_TYPE_RUN}
+    |
+        (?:transition(?:ing)?|convert(?:ing)?|path|route|voie)
+        \s+(?:to|into|vers|à)\s+
+        (?:a\s+|an\s+)?
+        {_EMPLOYMENT_TYPE_RUN}
+    )
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+_EMPLOYMENT_TYPE_PATTERNS: list[tuple[str, list[str]]] = [
+    ("full-time", ["full-time", "full time", "temps plein"]),
+    ("part-time", ["part-time", "part time", "temps partiel"]),
+    ("internship", ["internship", "intern"]),
+    ("volunteer", ["volunteer", "volunteering"]),
+    ("contract", ["contract", "contractor"]),
+    ("temporary", ["temporary", "temp", "temporaire"]),
+    ("seasonal", ["seasonal"]),
+    ("casual", ["casual"]),
+]
+
+
+def _neutralize_aspirational_employment_types(text: str) -> str:
+    """Blank out hedged / future-state type mentions so they are not scored."""
+    return _ASPIRATIONAL_EMPLOYMENT_TYPE.sub(" ", text)
+
+
+def _employment_type_key_pattern(key: str) -> re.Pattern[str]:
+    """Match *key* as a whole token so ``intern`` does not hit ``internal``."""
+    return re.compile(rf"(?<![\w-]){re.escape(key)}(?![\w-])", re.IGNORECASE)
+
+
 def detect_employment_type_from_texts(texts: Iterable[str | None]) -> Optional[str]:
-    """Detect employment type keywords from a list of text blobs."""
+    """Detect employment type keywords from a list of text blobs.
+
+    Ignores aspirational / future-conversion wording (path to full-time, may become
+    contract, etc.) and returns the earliest remaining type mention so a current
+    part-time role is not overwritten by a later full-time growth clause.
+
+    Uses token boundaries so substrings do not false-positive (e.g. ``intern`` in
+    ``internal`` / ``international``, ``temp`` in ``attempt``).
+    """
     if not texts:
         return None
     combined = " ".join([t for t in texts if t])
     if not combined:
         return None
-    lower = combined.lower()
-    patterns = [
-        ("full-time", ["full-time", "full time"]),
-        ("part-time", ["part-time", "part time"]),
-        ("internship", ["internship", "intern"]),
-        ("volunteer", ["volunteer", "volunteering"]),
-        ("contract", ["contract", "contractor"]),
-        ("temporary", ["temporary", "temp"]),
-        ("seasonal", ["seasonal"]),
-        ("casual", ["casual"]),
-    ]
-    for label, keys in patterns:
-        if any(k in lower for k in keys):
-            return label
-    return None
+    lower = _neutralize_aspirational_employment_types(combined).lower()
+
+    best_label: Optional[str] = None
+    best_pos = len(lower)
+    for label, keys in _EMPLOYMENT_TYPE_PATTERNS:
+        for key in keys:
+            match = _employment_type_key_pattern(key).search(lower)
+            if match and match.start() < best_pos:
+                best_pos = match.start()
+                best_label = label
+    return best_label

@@ -5,7 +5,9 @@ import {
   MAX_ORG_DESCRIPTION_LENGTH,
   MAX_ORG_MISSION_LENGTH,
   MAX_ORG_VALUES,
+  ORG_LANGUAGES,
   SLUG_PATTERN,
+  type OrgLanguage,
   type OrgType,
 } from './constants';
 import { normalizeOrgType } from './org-type';
@@ -31,11 +33,20 @@ export interface OrgFormInput {
   sector_id?: string | null;
   is_sse?: boolean;
   values_list?: string[] | null;
+  language?: string | null;
 }
 
 export type OrgValidationError = { field: string; error: string };
 
 const VALID_VALUE_IDS = new Set<string>(VALUES_LIST);
+
+const VALID_ORG_LANGUAGES = new Set<string>(ORG_LANGUAGES);
+
+/** Empty string means "unset" — the select's placeholder option submits it. */
+export function normalizeOrgLanguage(raw: string | null | undefined): OrgLanguage | null {
+  const value = raw?.trim();
+  return value && VALID_ORG_LANGUAGES.has(value) ? (value as OrgLanguage) : null;
+}
 
 export function normalizeOrgValuesList(raw: string[] | null | undefined): string[] | null {
   if (!raw?.length) return null;
@@ -114,6 +125,10 @@ export function validateOrgInput(
     return { field: 'sector_id', error: 'invalid_sector' };
   }
 
+  if (data.language?.trim() && !VALID_ORG_LANGUAGES.has(data.language.trim())) {
+    return { field: 'language', error: 'invalid_language' };
+  }
+
   if (data.values_list?.length) {
     const normalized = normalizeOrgValuesList(data.values_list);
     if (!normalized || normalized.length !== data.values_list.length) {
@@ -146,6 +161,7 @@ export interface NormalizedOrgPayload {
   type: OrgType | null;
   sector_id: string | null;
   is_sse: boolean;
+  language: OrgLanguage | null;
   values: string | null;
   values_list: string[] | null;
   values_rated: { value: string; rank: number }[] | null;
@@ -217,6 +233,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     type,
     sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
+    language: normalizeOrgLanguage(data.language),
     ...applyValuesFields(valuesList),
     ...sseFields,
   };
@@ -298,6 +315,7 @@ export function buildOrgUpdateFields(
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));
   }
+  if (data.language !== undefined) updates.language = normalizeOrgLanguage(data.language);
 
   const governmentBlocksSse = nextType === 'government';
   if (data.is_sse !== undefined || (typeChanging && governmentBlocksSse)) {

@@ -88,12 +88,6 @@ class ScraperOrchestrator:
             from utils.organization_resolver import create_resolver
             self.resolver = create_resolver()
 
-            # 1b. Catch up on any unprocessed orgs/jobs BEFORE scraping new ones
-            if not self.dry_run:
-                self._run_catch_up()
-            else:
-                _log("DRY RUN — skipping unprocessed catch-up (no DB writes).")
-
             # 2. Main Loop
             queue = sources.copy()
             while queue:
@@ -103,11 +97,17 @@ class ScraperOrchestrator:
                     queue.append(source)
                     _log(f"🔄 Re-queued {source.get('name')} to the end.")
 
-            # 3. Post-Processing
+            # 3. Post-Processing (new jobs from this run)
             if self.results.all_job_ids:
                 self._run_post_scrape_tasks()
 
-            # 4. Reporting
+            # 4. Catch up on any unprocessed orgs/jobs left in the backlog
+            if not self.dry_run:
+                self._run_catch_up()
+            else:
+                _log("DRY RUN — skipping unprocessed catch-up (no DB writes).")
+
+            # 5. Reporting
             self._print_final_summary()
 
         except Exception as e:
@@ -116,7 +116,7 @@ class ScraperOrchestrator:
     def _run_catch_up(self):
         """Find and process any previously-unprocessed orgs/jobs."""
         _log("\n" + "-" * 40)
-        _log("CATCH-UP PASS: processing unprocessed orgs/jobs before scraping")
+        _log("CATCH-UP PASS: processing unprocessed orgs/jobs after scraping")
         _log("-" * 40)
 
         from utils.catch_up import catch_up_unprocessed
@@ -126,7 +126,7 @@ class ScraperOrchestrator:
             _log(f"❌ Catch-up pass failed (non-fatal): {e}")
             traceback.print_exc()
             self.results.catch_up = {
-                "orgs_total": 0, "orgs_processed": 0, "orgs_errors": 0,
+                "orgs_total": 0, "orgs_processed": 0, "orgs_parked": 0, "orgs_errors": 0,
                 "jobs_total": 0, "jobs_processed": 0, "jobs_errors": 1,
             }
             _log("Continuing to main scraping work despite catch-up failure.")
@@ -376,11 +376,15 @@ class ScraperOrchestrator:
         _log("="*40)
         cu = self.results.catch_up or {}
         if cu.get("orgs_total") or cu.get("jobs_total"):
-            _log("Catch-up pass (before scraping):")
+            _log("Catch-up pass (after scraping):")
             if cu.get("orgs_total"):
                 o_ok = cu.get("orgs_processed", 0)
                 o_err = cu.get("orgs_errors", 0)
-                _log(f"  Organizations: {o_ok}/{cu['orgs_total']} ok, {o_err} errors")
+                o_parked = cu.get("orgs_parked", 0)
+                _log(
+                    f"  Organizations: {o_ok}/{cu['orgs_total']} ok, "
+                    f"{o_parked} parked for review, {o_err} errors"
+                )
             if cu.get("jobs_total"):
                 j_ok = cu.get("jobs_processed", 0)
                 j_err = cu.get("jobs_errors", 0)

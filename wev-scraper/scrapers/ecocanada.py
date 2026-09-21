@@ -12,17 +12,12 @@ class EcoCanadaScraper(BaseScraper):
     # Wait for the script tag containing the job data to be available
     job_wait_selector = ".job-inner"
 
-    filter_values = ["Ontario", "Quebec"]
+    def get_listings_url(self):
+        return "https://ecoworks.eco.ca/jobs"
 
-    def get_listings_url(self, filter_value=None):
-        url = "https://ecoworks.eco.ca/jobs"
-        if filter_value:
-            url += f"?location={filter_value}"
-        return url
-
-    def open_listings_page(self, page, filter_value=None):
+    def open_listings_page(self, page):
         """Navigate to the main listings page."""
-        page.goto(self.get_listings_url(filter_value))
+        page.goto(self.get_listings_url())
         page.wait_for_selector(self.listing_selector, state="attached", timeout=30000)
 
     def has_next_page(self, page):

@@ -2,6 +2,7 @@ import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import { toAnnual } from '@/lib/compensation/helpers';
 import { parseDateMs } from '@/lib/date-utils';
 import { POSTED_WITHIN_DAYS } from './constants';
+import { matchesSourceSelection } from './source-brands';
 
 export const POSTED_WITHIN_FILTER_OPTIONS = [
   '1-week',
@@ -30,6 +31,8 @@ export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
 export type BulletinFilters = {
   searchQuery: string;
   selectedOrganizations: string[];
+  selectedOrgTypes: string[];
+  selectedSectors: string[];
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedEmploymentTypes: string[];
@@ -71,6 +74,8 @@ function matchesSelection<T>(value: T | null | undefined, selectedValues: T[]): 
 }
 
 export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
+  // selectedOrgTypes / selectedSectors are applied server-side on matched_jobs
+  // org_type / org_sector_id (JobPosting has no type/sector fields).
   const lowerQuery = filters.searchQuery ? filters.searchQuery.trim().toLowerCase() : '';
   const cutoffMs =
     filters.postedWithin !== 'any'
@@ -86,7 +91,7 @@ export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPos
     if (!matchesSelection(job.work_type, filters.selectedWorkTypes)) return false;
     if (!matchesSelection(job.language, filters.selectedLanguages)) return false;
     if (!matchesSelection(job.employment_type, filters.selectedEmploymentTypes)) return false;
-    if (!matchesSelection(job.source, filters.selectedSources)) return false;
+    if (!matchesSourceSelection(job.source, filters.selectedSources)) return false;
 
     if (filters.showNonSse === false && !job.is_sse) return false;
     if (!filters.showJobsWithoutSalary && job.has_compensation !== true) return false;

@@ -20,6 +20,17 @@ logger = logging.getLogger(__name__)
 
 _LIKE_SPECIAL = re.compile(r"[%_\\]")
 
+_ORG_MATCH_COLUMNS = "id, name, location, website, alternative_names"
+
+# DB-populated GENERATED ALWAYS columns — Postgres rejects any attempt to write
+# them, so strip them from insert/update payloads before forwarding.
+_GENERATED_ORG_COLUMNS = ("name_normalized", "alternative_names_normalized")
+
+
+def _without_generated_columns(payload: dict) -> dict:
+    """Drop generated columns so the DB stays responsible for populating them."""
+    return {k: v for k, v in payload.items() if k not in _GENERATED_ORG_COLUMNS}
+
 
 def escape_like(s: str) -> str:
     """Escape % and _ for ILIKE so they're treated literally.
@@ -35,11 +46,30 @@ class OrganizationRepository:
         self._supabase = supabase_client
 
     def find_by_name(self, name: str) -> list[dict]:
+        """Match canonical name or alternative_names (case-insensitive exact)."""
+        cleaned = (name or "").strip()
+        if not cleaned:
+            return []
+        try:
+            resp = self._supabase.rpc(
+                "find_organizations_by_name",
+                {"p_name": cleaned},
+            ).execute()
+            rows = getattr(resp, "data", None)
+            if isinstance(rows, list):
+                return rows
+        except Exception as exc:
+            logger.warning(
+                "OrganizationRepository: find_organizations_by_name RPC failed for %r (%s); "
+                "falling back to name ILIKE",
+                name,
+                exc,
+            )
         try:
             resp = (
                 self._supabase.table("organizations")
-                .select("id, name, location, website")
-                .ilike("name", escape_like(name.strip()))
+                .select(_ORG_MATCH_COLUMNS)
+                .ilike("name", escape_like(cleaned))
                 .execute()
             )
             return resp.data or []
@@ -61,7 +91,7 @@ class OrganizationRepository:
             for host in evidence_domain_query_hosts(cleaned):
                 resp = (
                     self._supabase.table("organizations")
-                    .select("id, name, location, website")
+                    .select(_ORG_MATCH_COLUMNS)
                     .ilike("website", f"%{escape_like(host)}%")
                     .execute()
                 )
@@ -136,6 +166,7 @@ class OrganizationRepository:
             return set()
 
     def insert(self, row: dict) -> dict | None:
+        row = _without_generated_columns(row)
         resp = self._supabase.table("organizations").insert(row).execute()
         data = (resp.data or [{}])[0] if resp.data else {}
         if data.get("id"):
@@ -156,10 +187,11 @@ class OrganizationRepository:
 
         Used by backfill Phase 2 to write values + SSE fields.
         """
+        updates = _without_generated_columns(dict(updates))
         if not updates:
             return
         try:
-            resp = self._supabase.table("organizations").update(dict(updates)).eq("id", org_id).execute()
+            resp = self._supabase.table("organizations").update(updates).eq("id", org_id).execute()
             if not resp.data:
                 logger.warning(
                     "OrganizationRepository: update_org matched no rows for org_id=%s — updates=%s",

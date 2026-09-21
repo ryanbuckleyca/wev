@@ -316,7 +316,10 @@ function createJobFixture(
   // en:           Fully English posting, English only.
   const jobTitle = buildJobTitle(language, index);
 
-  const partnerIndex = (index % 4) + 1;
+  // SSE jobs must belong to SSE employers (partners 1–2). Non-SSE jobs use
+  // partners 3–4 so the seed respects jobs.is_sse ⊆ organizations.is_sse.
+  const isSseJob = index < TOTAL_SSE_JOB_COUNT;
+  const partnerIndex = isSseJob ? (index % 2) + 1 : (index % 2) + 3;
   const organization = `WEV Partner ${partnerIndex}`;
   const organizationId = partnerIndex;
 
@@ -342,7 +345,7 @@ function createJobFixture(
     is_remote: location.is_remote,
     // The bulletin defaults to the SSE-only filter, so the first SSE rows shape
     // the default landing state and the trailing non-SSE rows exercise that toggle.
-    is_sse: index < TOTAL_SSE_JOB_COUNT,
+    is_sse: isSseJob,
     job_title: jobTitle,
     language: dbLanguage(language),
     lat: location.lat,
@@ -546,6 +549,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     toronto: 0,
   };
   const organizationCounts = { partner1: 0 };
+  const orgTypeCounts = { nonprofit: 0, cooperative: 0 };
   const provinceCounts = { on: 0, qc: 0 };
   const sourceCounts = {
     csi: 0,
@@ -578,7 +582,11 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     if (job.municipality === "Quebec City") municipalityCounts.quebecCity++;
     if (job.municipality === "Toronto") municipalityCounts.toronto++;
 
-    if (job.organization === "WEV Partner 1") organizationCounts.partner1++;
+    if (job.organization === "WEV Partner 1") {
+      organizationCounts.partner1++;
+      orgTypeCounts.nonprofit++;
+    }
+    if (job.organization === "WEV Partner 2") orgTypeCounts.cooperative++;
 
     if (!job.is_remote && job.province === "ON") provinceCounts.on++;
     if (!job.is_remote && job.province === "QC") provinceCounts.qc++;
@@ -608,6 +616,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     municipalityCounts,
     oneWeekCount,
     organizationCounts,
+    orgTypeCounts,
     provinceCounts,
     /** SSE ∩ listed pay ∩ 2-week window — same as jobCount under product defaults. */
     salaryListedCount: baselineJobs.length,

@@ -17,6 +17,7 @@ import { normalizeLanguages } from '@/lib/languages';
 import type { Profile } from '@/lib/supabase/profiles';
 import { useProfileFilterDefaults } from './useProfileFilterDefaults';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
+import { canonicalizeSourceSelection } from '@/lib/bulletin/source-brands';
 import {
   JOB_SORT_OPTIONS,
   POSTED_WITHIN_FILTER_OPTIONS,
@@ -33,6 +34,10 @@ export interface BulletinFilterControls {
   setSearchQuery: QueryStateSetter<string>;
   selectedOrganizations: string[];
   setSelectedOrganizations: QueryStateSetter<string[]>;
+  selectedOrgTypes: string[];
+  setSelectedOrgTypes: QueryStateSetter<string[]>;
+  selectedSectors: string[];
+  setSelectedSectors: QueryStateSetter<string[]>;
   selectedProvinces: string[];
   setSelectedProvinces: QueryStateSetter<string[]>;
   selectedMunicipalities: string[];
@@ -108,6 +113,14 @@ export function useBulletinFilters(
     'org',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
+  const [selectedOrgTypes, setSelectedOrgTypes] = useQueryState(
+    'type',
+    parseAsArrayOf(parseAsString).withDefault([]),
+  );
+  const [selectedSectors, setSelectedSectors] = useQueryState(
+    'sector',
+    parseAsArrayOf(parseAsString).withDefault([]),
+  );
   const [selectedProvinces, setSelectedProvinces] = useQueryState(
     'province',
     parseAsArrayOf(parseAsString).withDefault([]),
@@ -120,9 +133,19 @@ export function useBulletinFilters(
     'employment',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
-  const [selectedSources, setSelectedSources] = useQueryState(
+  const [selectedSourcesRaw, setSelectedSourcesRaw] = useQueryState(
     'source',
     parseAsArrayOf(parseAsString).withDefault([]),
+  );
+  const selectedSources = useMemo(
+    () => canonicalizeSourceSelection(selectedSourcesRaw),
+    [selectedSourcesRaw],
+  );
+  const setSelectedSources = useCallback(
+    (value: string[]) => {
+      void setSelectedSourcesRaw(canonicalizeSourceSelection(value));
+    },
+    [setSelectedSourcesRaw],
   );
   const [selectedWorkTypes, setSelectedWorkTypes] = useQueryState(
     'workType',
@@ -261,6 +284,8 @@ export function useBulletinFilters(
     () => ({
       searchQuery,
       selectedOrganizations,
+      selectedOrgTypes,
+      selectedSectors,
       selectedProvinces,
       selectedMunicipalities,
       selectedEmploymentTypes,
@@ -274,6 +299,8 @@ export function useBulletinFilters(
     [
       searchQuery,
       selectedOrganizations,
+      selectedOrgTypes,
+      selectedSectors,
       selectedProvinces,
       selectedMunicipalities,
       selectedEmploymentTypes,
@@ -298,6 +325,8 @@ export function useBulletinFilters(
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
+    selectedOrgTypes.length > 0 ||
+    selectedSectors.length > 0 ||
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
     selectedEmploymentTypes.length > 0 ||
@@ -314,6 +343,8 @@ export function useBulletinFilters(
   const resetCommonFilters = useCallback(() => {
     void setSearchQuery('');
     void setSelectedOrganizations([]);
+    void setSelectedOrgTypes([]);
+    void setSelectedSectors([]);
     void setSelectedProvinces([]);
     void setSelectedMunicipalities([]);
     void setSelectedEmploymentTypes([]);
@@ -322,6 +353,8 @@ export function useBulletinFilters(
   }, [
     setSearchQuery,
     setSelectedOrganizations,
+    setSelectedOrgTypes,
+    setSelectedSectors,
     setSelectedProvinces,
     setSelectedMunicipalities,
     setSelectedEmploymentTypes,
@@ -355,6 +388,10 @@ export function useBulletinFilters(
     setSearchQuery,
     selectedOrganizations,
     setSelectedOrganizations,
+    selectedOrgTypes,
+    setSelectedOrgTypes,
+    selectedSectors,
+    setSelectedSectors,
     selectedProvinces,
     setSelectedProvinces,
     selectedMunicipalities,

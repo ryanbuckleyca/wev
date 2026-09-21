@@ -119,6 +119,79 @@ Optional hooks (`on_job_tagged_or_updated`, `on_user_values_updated`) that call 
 
 ---
 
+## review_org_domain_duplicates.py
+
+Interactive terminal review for orgs that share an employer website domain.
+One conflict at a time — pick the survivor, skip, or quit (resume with `--start`).
+
+When rows disagree on city (national org noise), you can look up HQ via the same
+Tavily-grounded assessor before merging.
+
+```bash
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_org_domain_duplicates --prod
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_org_domain_duplicates --prod --dry-run
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_org_domain_duplicates --prod --start 12
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_org_domain_duplicates --prod --always-lookup-hq
+```
+
+Keys: `1..N` keep that row, `h` / `h N` HQ lookup, `u N` / `u N field=value` edit a
+row (repeat for multiple orgs), `s` skip, `i <id>` keep by id, `q` quit.
+Editable fields: `website`, `name`, `municipality`, `province`, `location`
+(empty value clears). Updating `location` / `municipality` / `province`
+re-geocodes via Geocodio and rewrites lat/lng/accuracy like assessment.
+On merge, discarded names are promoted onto the survivor’s `alternative_names`
+(requires migration `organizations_alternative_names`). On merge, if cities
+differ you’re prompted to look up HQ first (default yes).
+
+---
+
+## merge_duplicate_organizations.py
+
+Finds organizations that share a normalized name, buckets them into
+`auto-merge` / `review` / `skip`, and optionally merges the safe ones.
+
+```bash
+# Terminal dump of clusters that cannot auto-merge (review + skip)
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.merge_duplicate_organizations \
+  --prod --dry-run --needs-review
+
+# Walk those clusters one at a time (Enter = next, q = quit)
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.merge_duplicate_organizations \
+  --prod --dry-run --interactive
+
+# Apply only the auto-merge bucket after review
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.merge_duplicate_organizations \
+  --prod --apply-auto-merge
+```
+
+---
+
+## review_near_duplicate_jobs.py
+
+Interactive review for **near-duplicate jobs**: same employer, similar titles,
+posted around the same time, different listing URLs. Keep one (or several) rows;
+delete the rest.
+
+Exact `listing_url` dupes stay with `cleanup_job_duplicates.py`. Different cities
+only cluster when descriptions are also similar (multi-office copies of one req).
+
+**Scrape-time:** `save_job` already auto-skips _confident_ clones (same role title +
+near-identical / shared-prefix description, different URL) so Eco Canada-style
+multi-ID relists do not insert. This review tool still covers softer matches
+(retitles, cross-board rewrites) that need a human.
+
+```bash
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_near_duplicate_jobs --prod
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_near_duplicate_jobs --prod --dry-run
+CONFIRM_PROD_RUN=YES ./venv/bin/python -m scripts.review_near_duplicate_jobs --prod --start 3
+```
+
+Keys: `1..N` keep that row, `k 1 2` keep several and delete the rest,
+`l N` re-lookup location from that row's scraped description + Geocode,
+`s` skip, `i <uuid>` keep by id, `q` quit.
+
+---
+
 ## cleanup_job_duplicates.py
 
 Finds duplicate jobs by `listing_url` and deletes all but the row with the most data.

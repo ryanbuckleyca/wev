@@ -1,4 +1,5 @@
 import type { JobPosting } from '@/lib/supabase';
+import { brandSourceOptions } from './source-brands';
 import { normalizeLocation } from './search-utils';
 
 export type MunicipalitiesByProvince = Record<string, string[]>;
@@ -76,7 +77,7 @@ export function buildFilterOptions(jobs: JobPosting[]): BulletinFilterOptions {
     provinces: Array.from(provinces.values()).sort(),
     municipalitiesByProvince: sortedMunicipalitiesByProvince,
     employmentTypes: Array.from(employmentTypes).sort(),
-    sources: Array.from(sources).sort(),
+    sources: brandSourceOptions(Array.from(sources)),
     languages: Array.from(languages).sort(),
   };
 }
