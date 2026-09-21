@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { OrganizationFilters } from './useOrganizationFilters';
@@ -91,10 +91,12 @@ export function useOrganizationData(
   // Key of the data currently in state. Differs from fetchKey while a new
   // filter/page request is in flight — used so the list skeleton shows on the
   // same render as the URL change (before the effect runs).
-  const lastCompletedKeyRef = useRef<string>(initialData ? fetchKey : '');
+  const [completedFetchKey, setCompletedFetchKey] = useState(() =>
+    initialData ? buildFetchKey(locale, currentPage, sortBy, filters) : '',
+  );
 
   useEffect(() => {
-    if (fetchKey === lastCompletedKeyRef.current) return;
+    if (fetchKey === completedFetchKey) return;
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10_000);
@@ -116,12 +118,12 @@ export function useOrganizationData(
         setTotal(data.total);
         setTotalAvailable(data.totalAvailable ?? data.total);
         if (data.filterOptions) setFilterOptions(data.filterOptions);
-        lastCompletedKeyRef.current = fetchKey;
+        setCompletedFetchKey(fetchKey);
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
         setError(err instanceof Error ? err.message : 'Unknown error');
         // Settle this fetchKey even on failure so isStale clears (same as bulletin).
-        lastCompletedKeyRef.current = fetchKey;
+        setCompletedFetchKey(fetchKey);
       } finally {
         clearTimeout(timeoutId);
         if (!controller.signal.aborted) setLoading(false);
@@ -133,9 +135,9 @@ export function useOrganizationData(
       clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [fetchKey, locale, currentPage, sortBy, filters]);
+  }, [fetchKey, completedFetchKey, locale, currentPage, sortBy, filters]);
 
-  const isStale = lastCompletedKeyRef.current !== fetchKey;
+  const isStale = completedFetchKey !== fetchKey;
   return {
     orgs,
     total,

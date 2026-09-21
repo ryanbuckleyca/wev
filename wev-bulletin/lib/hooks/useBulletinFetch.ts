@@ -68,9 +68,12 @@ export function useBulletinFetch(
     [locale, filters, sortBy, currentPage],
   );
 
-  // When we hydrate SSR jobs they already represent this fetchKey, so the first
-  // effect run won't refetch the identical set.
-  const lastFetchedKeyRef = useRef<string | null>(hydrateInitial ? fetchKey : null);
+  // Key of the data currently in state. Differs from fetchKey while a new
+  // filter/page request is in flight — drives the list skeleton on the same
+  // render as the URL change (before the fetch effect runs).
+  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(() =>
+    hydrateInitial ? buildFetchKey(locale, filters, sortBy, currentPage) : null,
+  );
 
   const [jobsOnPage, setJobsOnPage] = useState<JobPosting[]>(() =>
     hydrateInitial ? (initialData?.jobs ?? []) : [],
@@ -158,7 +161,7 @@ export function useBulletinFetch(
       if (data.filterOptions) {
         setFilterOptions(data.filterOptions);
       }
-      lastFetchedKeyRef.current = fetchKey;
+      setCompletedFetchKey(fetchKey);
       setLoading(false);
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
@@ -174,7 +177,7 @@ export function useBulletinFetch(
       setError(message);
       // Settle this fetchKey even on failure so isStale clears and the UI is not
       // stuck with a permanent loading indicator alongside the error.
-      lastFetchedKeyRef.current = fetchKey;
+      setCompletedFetchKey(fetchKey);
       setLoading(false);
     } finally {
       window.clearTimeout(timeoutId);
@@ -189,13 +192,13 @@ export function useBulletinFetch(
   // fetchKey makes transient filter "settling" cheap and idempotent.
   useEffect(() => {
     if (!filtersReady) return;
-    if (lastFetchedKeyRef.current === fetchKey) return;
+    if (completedFetchKey === fetchKey) return;
     void refreshRef.current();
-  }, [filtersReady, fetchKey]);
+  }, [filtersReady, fetchKey, completedFetchKey]);
 
   // Skeleton whenever the on-screen jobs don't match the active filter/page key
   // (including the gap between a URL change and the fetch effect starting).
-  const isStale = lastFetchedKeyRef.current !== fetchKey;
+  const isStale = completedFetchKey !== fetchKey;
   const effectiveLoading = loading || isStale || !filtersReady;
 
   return {
