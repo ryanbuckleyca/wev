@@ -8,6 +8,7 @@ import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels'
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
 
+import { normalizeOrgType } from '@/lib/organizations/org-type';
 import { buildFilterOptions, type BulletinFilterOptions } from './filter-options';
 import { throwBulletinQueryError } from './fts-errors';
 import { resolveOrgSlugs } from './resolve-org-slugs';
@@ -41,6 +42,8 @@ export type BulletinQueryInput = {
   sortBy: string;
   postedWithin: string;
   orgs: string[];
+  orgTypes: string[];
+  sectors: string[];
   provs: string[];
   munis: string[];
   emps: string[];
@@ -111,8 +114,59 @@ function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
   });
 }
 
-function applyBulletinFilters(query: any, input: BulletinQueryInput) {
+/**
+ * Resolve organization IDs matching type/sector filters.
+ * Returns null when neither filter is active; otherwise the matching IDs
+ * (possibly empty — caller should force an empty jobs result).
+ *
+ * Type matching uses canonicalize via normalizeOrgType so legacy DB values
+ * like "non-profit" still match the canonical "nonprofit" filter option.
+ */
+export async function resolveOrganizationIdsByTypeAndSector(
+  supabase: any,
+  orgTypes: string[],
+  sectors: string[],
+): Promise<number[] | null> {
+  if (orgTypes.length === 0 && sectors.length === 0) return null;
+
+  let query = supabase.from('organizations').select('id, type');
+  if (sectors.length > 0) {
+    query = query.in('sector_id', sectors);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error resolving org IDs for type/sector filter:', error.message);
+    throw new Error('Failed to resolve organization filters');
+  }
+
+  const rows = (data ?? []) as Array<{ id: number; type: string | null }>;
+  if (orgTypes.length === 0) {
+    return rows.map((row) => row.id);
+  }
+
+  const typeSet = new Set(orgTypes);
+  return rows
+    .filter((row) => {
+      const canonical = normalizeOrgType(row.type);
+      return canonical != null && typeSet.has(canonical);
+    })
+    .map((row) => row.id);
+}
+
+function applyBulletinFilters(
+  query: any,
+  input: BulletinQueryInput,
+  organizationIds: number[] | null = null,
+) {
   if (input.orgs.length) query = query.in('organization', input.orgs);
+  if (organizationIds !== null) {
+    // No matching orgs → force empty result (organization_id is never -1).
+    query =
+      organizationIds.length === 0
+        ? query.eq('organization_id', -1)
+        : query.in('organization_id', organizationIds);
+  }
   if (input.provs.length) {
     const normalizedProvs = input.provs.map(normalizeLocation);
     query = query.in('search_province', normalizedProvs);
@@ -151,10 +205,16 @@ export async function fetchBulletinQueryPayload(
   const end = start + input.limit - 1;
   const searchColumn = input.locale === 'fr' ? 'fts_fr' : 'fts_en';
 
+  const organizationIds = await resolveOrganizationIdsByTypeAndSector(
+    supabase,
+    input.orgTypes,
+    input.sectors,
+  );
+
   const buildJobsQuery = (vectorColumn: string) => {
     let query = supabase.from('matched_jobs').select(BULLETIN_JOB_SELECT, { count: 'exact' });
     query = applySearchFilter(query, vectorColumn, input.searchQuery);
-    query = applyBulletinFilters(query, input);
+    query = applyBulletinFilters(query, input, organizationIds);
     query = applyBulletinAgeFilter(query, input.postedWithin);
 
     switch (input.sortBy) {
@@ -242,6 +302,8 @@ function productBaselineInput(locale: 'en' | 'fr'): BulletinQueryInput {
     sortBy: 'date-desc',
     postedWithin: PRODUCT_DEFAULT_POSTED_WITHIN,
     orgs: [],
+    orgTypes: [],
+    sectors: [],
     provs: [],
     munis: [],
     emps: [],

@@ -30,6 +30,8 @@ export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
 export type BulletinFilters = {
   searchQuery: string;
   selectedOrganizations: string[];
+  selectedOrgTypes: string[];
+  selectedSectors: string[];
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedEmploymentTypes: string[];

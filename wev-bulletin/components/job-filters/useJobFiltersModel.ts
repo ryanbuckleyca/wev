@@ -17,6 +17,9 @@ import {
   getJobLanguageLabel,
   getWorkTypeLabel,
 } from '@/lib/bulletin/filter-labels';
+import { ORG_TYPES } from '@/lib/organizations/constants';
+import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { SECTORS_LIST } from '@/lib/sectors';
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import type { JobFiltersProps } from './types';
 import { useBulletinFilterContext } from '@/contexts/BulletinFilterContext';
@@ -42,14 +45,16 @@ export interface JobFiltersModel {
   workTypeOptions: { value: string; label: string }[];
   languageOptions: { value: string; label: string }[];
   postedWithinOptions: { value: string; label: string }[];
-  organizations: string[];
+  orgTypes: string[];
+  sectors: string[];
   provinces: string[];
   employmentTypes: string[];
   sources: string[];
   municipalitiesByProvince: Record<string, string[]>;
   allMunicipalities: string[];
   indeterminateProvinces: Set<string>;
-  handleOrganizationToggle: (organization: string) => void;
+  handleOrgTypeToggle: (orgType: string) => void;
+  handleSectorToggle: (sector: string) => void;
   handleProvinceToggle: (province: string) => void;
   handleMunicipalityToggle: (municipality: string) => void;
   handleEmploymentTypeToggle: (employmentType: string) => void;
@@ -72,6 +77,10 @@ export function useJobFiltersModel({
     setSearchQuery: onSearchChange,
     selectedOrganizations,
     setSelectedOrganizations: onOrganizationsChange,
+    selectedOrgTypes,
+    setSelectedOrgTypes: onOrgTypesChange,
+    selectedSectors,
+    setSelectedSectors: onSectorsChange,
     selectedProvinces,
     setSelectedProvinces: onProvincesChange,
     selectedMunicipalities,
@@ -97,6 +106,8 @@ export function useJobFiltersModel({
     applySuggestedDefaults,
   } = controls;
   const t = useTranslations();
+  const tOrgs = useTranslations('organizations');
+  const tSectors = useTranslations('taxonomy.sectors');
   const hasProfileWorkTypes = profileWorkTypes.length > 0;
   const defaultWorkTypes = hasProfileWorkTypes ? profileWorkTypes : EMPTY_WORK_TYPES;
   const normalizedSelectedWorkTypes = normalizeWorkTypes(selectedWorkTypes);
@@ -117,9 +128,22 @@ export function useJobFiltersModel({
     [profileLanguages, t],
   );
 
+  const orgTypeLabel = useCallback(
+    (type: string) => getOrganizationTypeLabel(type, tOrgs) ?? type,
+    [tOrgs],
+  );
+
+  const sectorLabel = useCallback(
+    (sectorId: string) =>
+      tSectors.has(`${sectorId}.label`) ? tSectors(`${sectorId}.label`) : sectorId,
+    [tSectors],
+  );
+
   const isSuggestedDefaults =
     !searchQuery &&
     selectedOrganizations.length === 0 &&
+    selectedOrgTypes.length === 0 &&
+    selectedSectors.length === 0 &&
     selectedProvinces.length === 0 &&
     selectedMunicipalities.length === 0 &&
     selectedEmploymentTypes.length === 0 &&
@@ -145,9 +169,13 @@ export function useJobFiltersModel({
           selectedProvinces,
           selectedMunicipalities,
           selectedOrganizations,
+          selectedOrgTypes,
+          selectedSectors,
           selectedEmploymentTypes,
           selectedSources,
           selectedLanguages,
+          orgTypeLabel,
+          sectorLabel,
           onPostedWithinChange,
           onShowNonSseChange,
           onShowJobsWithoutSalaryChange,
@@ -156,6 +184,8 @@ export function useJobFiltersModel({
           onProvincesChange,
           onMunicipalitiesChange,
           onOrganizationsChange,
+          onOrgTypesChange,
+          onSectorsChange,
           onEmploymentTypesChange,
           onSourcesChange,
           onLanguagesChange,
@@ -167,20 +197,26 @@ export function useJobFiltersModel({
       onLanguagesChange,
       onMunicipalitiesChange,
       onOrganizationsChange,
+      onOrgTypesChange,
       onPostedWithinChange,
       onProvincesChange,
       onSearchChange,
+      onSectorsChange,
       onShowJobsWithoutSalaryChange,
       onShowNonSseChange,
       onSourcesChange,
       onWorkTypesChange,
+      orgTypeLabel,
       postedWithin,
       searchQuery,
+      sectorLabel,
       selectedEmploymentTypes,
       selectedLanguages,
       selectedMunicipalities,
       selectedOrganizations,
+      selectedOrgTypes,
       selectedProvinces,
+      selectedSectors,
       selectedSources,
       selectedWorkTypes,
       showJobsWithoutSalary,
@@ -189,23 +225,37 @@ export function useJobFiltersModel({
     ],
   );
 
-  const {
-    organizations,
-    provinces,
-    municipalitiesByProvince,
-    employmentTypes,
-    sources,
-    languages,
-  } = useMemo(
+  const { provinces, municipalitiesByProvince, employmentTypes, sources, languages } = useMemo(
     () => externalFilterOptions ?? buildFilterOptions(jobs),
     [externalFilterOptions, jobs],
   );
 
-  const handleOrganizationToggle = useCallback(
-    (organization: string) => {
-      onOrganizationsChange(toggleSelection(selectedOrganizations, organization));
+  const orgTypes = useMemo(() => [...ORG_TYPES], []);
+  const sectors = useMemo(() => [...SECTORS_LIST], []);
+
+  // When provinces are selected, only show municipalities from those provinces.
+  const scopedMunicipalitiesByProvince = useMemo(() => {
+    if (selectedProvinces.length === 0) return municipalitiesByProvince;
+    const scoped: Record<string, string[]> = {};
+    for (const province of selectedProvinces) {
+      const munis = municipalitiesByProvince[province];
+      if (munis?.length) scoped[province] = munis;
+    }
+    return scoped;
+  }, [municipalitiesByProvince, selectedProvinces]);
+
+  const handleOrgTypeToggle = useCallback(
+    (orgType: string) => {
+      onOrgTypesChange(toggleSelection(selectedOrgTypes, orgType));
     },
-    [onOrganizationsChange, selectedOrganizations],
+    [onOrgTypesChange, selectedOrgTypes],
+  );
+
+  const handleSectorToggle = useCallback(
+    (sector: string) => {
+      onSectorsChange(toggleSelection(selectedSectors, sector));
+    },
+    [onSectorsChange, selectedSectors],
   );
 
   const handleProvinceToggle = useCallback(
@@ -265,8 +315,8 @@ export function useJobFiltersModel({
   );
 
   const allMunicipalities = useMemo(
-    () => getAllMunicipalities(municipalitiesByProvince),
-    [municipalitiesByProvince],
+    () => getAllMunicipalities(scopedMunicipalitiesByProvince),
+    [scopedMunicipalitiesByProvince],
   );
 
   const indeterminateProvinces = useMemo(
@@ -311,14 +361,16 @@ export function useJobFiltersModel({
     workTypeOptions,
     languageOptions,
     postedWithinOptions,
-    organizations,
+    orgTypes,
+    sectors,
     provinces,
     employmentTypes,
     sources,
-    municipalitiesByProvince,
+    municipalitiesByProvince: scopedMunicipalitiesByProvince,
     allMunicipalities,
     indeterminateProvinces,
-    handleOrganizationToggle,
+    handleOrgTypeToggle,
+    handleSectorToggle,
     handleProvinceToggle,
     handleMunicipalityToggle,
     handleEmploymentTypeToggle,
