@@ -1,5 +1,7 @@
 'use client';
 
+import { Leaf1Outlined, Leaf1Solid } from '@lineiconshq/free-icons';
+import { Lineicons } from '@lineiconshq/react-lineicons';
 import { useTranslations } from 'next-intl';
 import type { PostedWithinSelection } from '@/lib/bulletin/job-query';
 import type { WorkType } from '@/lib/work-types';
@@ -34,6 +36,8 @@ export default function JobFilters(props: JobFiltersProps) {
     selectedSources,
     selectedWorkTypes,
     selectedLanguages,
+    showNonSse,
+    setShowNonSse: onShowNonSseChange,
     showJobsWithoutSalary,
     setShowJobsWithoutSalary: onShowJobsWithoutSalaryChange,
     postedWithin,
@@ -72,6 +76,35 @@ export default function JobFilters(props: JobFiltersProps) {
 
       <Collapsible id="job-filters-content" isOpen={filtersExpanded} className="p-6">
         <div className="flex flex-col gap-6">
+          <div data-testid={JOB_BOARD_TEST_IDS.sseToggle}>
+            <BooleanFilterRow
+              checked={showNonSse}
+              onCheckedChange={onShowNonSseChange}
+              label={t('filters.showNonSse')}
+              icon={
+                <Lineicons
+                  icon={showNonSse ? Leaf1Solid : Leaf1Outlined}
+                  size={16}
+                  className="shrink-0 text-primary"
+                  aria-hidden
+                />
+              }
+              description={
+                <>
+                  {t('filters.sse.description')}
+                  <a
+                    href="https://solidarityeconomyprinciples.org/wp-content/uploads/2023/02/SE-Principles-2-pager-handout.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 text-wev-brand-accent hover:text-wev-primary-text hover:underline"
+                  >
+                    {t('filters.sse.learnMore')}
+                  </a>
+                </>
+              }
+            />
+          </div>
+
           <div data-testid={JOB_BOARD_TEST_IDS.salaryToggle}>
             <BooleanFilterRow
               checked={showJobsWithoutSalary}
