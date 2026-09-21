@@ -20,6 +20,8 @@ const BULLETIN_URL_KEYS = [
   'langs',
   'q',
   'org',
+  'type',
+  'sector',
   'employment',
   'source',
   'nonSse',
@@ -128,6 +130,8 @@ export function useBulletinFetch(
       if (filters.showJobsWithoutSalary) params.set('nosal', 'true');
 
       filters.selectedOrganizations.forEach((o) => params.append('orgs', o));
+      filters.selectedOrgTypes.forEach((t) => params.append('types', t));
+      filters.selectedSectors.forEach((s) => params.append('sectors', s));
       filters.selectedProvinces.forEach((p) => params.append('provs', p));
       filters.selectedMunicipalities.forEach((m) => params.append('munis', m));
       filters.selectedEmploymentTypes.forEach((e) => params.append('emps', e));

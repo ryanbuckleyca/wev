@@ -5,6 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
+import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
+import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 // ---------------------------------------------------------------------------
@@ -322,5 +324,42 @@ export const fetchOrganizationFilterOptions = cache(
       availableLanguages: availableOptions.languages,
       availableSectors: availableOptions.sectors,
     };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// fetchSectorIndexStats
+// ---------------------------------------------------------------------------
+
+/**
+ * Sector-card front door for the org index.
+ * Counts match the product default universe (SSE-only unless `sseOnly` is false).
+ * Pages past PostgREST `max_rows` so counts stay complete as the catalog grows.
+ */
+export const fetchSectorIndexStats = cache(
+  async (opts: { sseOnly?: boolean } = {}): Promise<SectorIndexCard[]> => {
+    const sseOnly = opts.sseOnly ?? true;
+
+    let rows: Array<{ name: string | null; type: string | null; sector_id: string | null }>;
+    try {
+      rows = await fetchAllPagedRows(async (from, to) => {
+        let query = supabaseServer
+          .from('organizations')
+          .select('name, type, sector_id')
+          .not('sector_id', 'is', null)
+          .order('id', { ascending: true });
+
+        if (sseOnly) {
+          query = query.eq('is_sse', true);
+        }
+
+        return query.range(from, to);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`fetchSectorIndexStats error: ${message}`);
+    }
+
+    return buildSectorIndexCards(rows);
   },
 );

@@ -92,6 +92,8 @@ describe('server-data', () => {
       sortBy: 'date-desc',
       postedWithin: 'all',
       orgs: [],
+      orgTypes: [],
+      sectors: [],
       provs: [],
       munis: [],
       emps: [],
@@ -118,6 +120,45 @@ describe('server-data', () => {
       expect(mockQuery.in).toHaveBeenCalledWith('organization', ['Org1']);
       expect(mockQuery.is).toHaveBeenCalledWith('is_sse', true);
       expect(mockQuery.order).toHaveBeenCalled();
+    });
+
+    it('expands branded Source filters to both board source names', async () => {
+      await fetchBulletinQueryPayload({
+        ...defaultInput,
+        srcs: ['WorkInNonProfits', 'Ma Communauté'],
+      });
+
+      const sourceInCalls = mockQuery.in.mock.calls.filter(
+        (call: unknown[]) => call[0] === 'source',
+      );
+      expect(sourceInCalls).toHaveLength(1);
+      expect((sourceInCalls[0][1] as string[]).sort()).toEqual([
+        'Ma Communauté (bénévolat)',
+        'Ma Communauté (emplois)',
+        'Ma Communauté Bénévolat',
+        'Ma Communauté Emplois',
+        'Work In NonProfits Jobs',
+        'Work In NonProfits Volunteer',
+        'WorkInNonProfits Jobs',
+        'WorkInNonProfits Volunteer',
+      ]);
+    });
+
+    it('applies org type and sector filters on matched_jobs join columns', async () => {
+      await fetchBulletinQueryPayload({
+        ...defaultInput,
+        orgTypes: ['nonprofit'],
+        sectors: ['housing-collective-real-estate'],
+      });
+
+      expect(mockQuery.in).toHaveBeenCalledWith(
+        'org_type',
+        expect.arrayContaining(['nonprofit', 'non-profit']),
+      );
+      expect(mockQuery.in).toHaveBeenCalledWith('org_sector_id', [
+        'housing-collective-real-estate',
+      ]);
+      expect(mockSupabase.from).not.toHaveBeenCalledWith('organizations');
     });
 
     it('throws migration guidance when locale FTS columns are missing during search', async () => {

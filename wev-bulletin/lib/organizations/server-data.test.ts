@@ -64,6 +64,7 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
 import {
   fetchOrganizationIndex,
   fetchOrganizationFilterOptions,
+  fetchSectorIndexStats,
   getOrganizationJobs,
 } from './server-data';
 
@@ -361,6 +362,38 @@ describe('organizations/server-data', () => {
 
       expect(options.types).toEqual(['cooperative', 'nonprofit']);
       expect(options.availableTypes).toEqual(['cooperative']);
+    });
+  });
+
+  describe('fetchSectorIndexStats', () => {
+    it('pages SSE orgs with sectors and builds index cards', async () => {
+      organizationsQuery.setResult({
+        data: [
+          {
+            name: 'Alpha Farm',
+            type: 'nonprofit',
+            sector_id: 'agriculture-food-systems',
+          },
+          {
+            name: 'Radio Co-op',
+            type: 'cooperative',
+            sector_id: 'arts-culture-information',
+          },
+        ],
+        error: null,
+      });
+
+      const cards = await fetchSectorIndexStats({ sseOnly: true });
+
+      expect(organizationsQuery.eq).toHaveBeenCalledWith('is_sse', true);
+      expect(organizationsQuery.not).toHaveBeenCalledWith('sector_id', 'is', null);
+      expect(organizationsQuery.order).toHaveBeenCalledWith('id', { ascending: true });
+      expect(organizationsQuery.range).toHaveBeenCalledWith(0, 999);
+      expect(cards.map((c) => c.id)).toEqual([
+        'agriculture-food-systems',
+        'arts-culture-information',
+      ]);
+      expect(cards[0].orgCount).toBe(1);
     });
   });
 });

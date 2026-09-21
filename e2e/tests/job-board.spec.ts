@@ -14,8 +14,8 @@ const FILTER_LABELS = {
   municipality: {
     toronto: "Toronto",
   },
-  organization: {
-    partner1: "WEV Partner 1",
+  organizationType: {
+    nonprofit: "Nonprofit",
   },
   postedWithin: {
     oneWeek: "1 week",
@@ -153,7 +153,7 @@ test.describe("Job board", () => {
   }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
-    await jobBoardPage.selectFilterButton(
+    await jobBoardPage.selectFilterRadio(
       "postedWithin",
       FILTER_LABELS.postedWithin.oneWeek,
     );
@@ -172,7 +172,7 @@ test.describe("Job board", () => {
       expectations,
     }) => {
       await loadEnglishJobBoard(jobBoardPage);
-      await jobBoardPage.selectFilterButton(
+      await jobBoardPage.toggleFilterCheckbox(
         "workType",
         FILTER_LABELS.workType[key],
       );
@@ -204,18 +204,21 @@ test.describe("Job board", () => {
     });
   }
 
-  test("filters by organization", async ({ jobBoardPage, expectations }) => {
+  test("filters by organization type", async ({
+    jobBoardPage,
+    expectations,
+  }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.toggleFilterCheckbox(
-      "organization",
-      FILTER_LABELS.organization.partner1,
+      "organizationType",
+      FILTER_LABELS.organizationType.nonprofit,
     );
     await jobBoardPage.waitForResultsToUpdate();
 
     await expectVisibleResults(
       jobBoardPage,
-      expectations.organizationCounts.partner1,
+      expectations.orgTypeCounts.nonprofit,
       expectations,
     );
   });
@@ -306,7 +309,6 @@ test.describe("Job board", () => {
     ).toHaveCount(1);
   });
 
-
   test("shows filter-specific empty state message when filters hide all jobs", async ({
     jobBoardPage,
   }) => {
@@ -320,7 +322,7 @@ test.describe("Job board", () => {
       FILTER_LABELS.province.on,
     );
     await jobBoardPage.waitForResultsToUpdate();
-    await jobBoardPage.selectFilterButton(
+    await jobBoardPage.toggleFilterCheckbox(
       "workType",
       FILTER_LABELS.workType.remote,
     );

@@ -45,6 +45,18 @@ describe('bulletin filter option helpers', () => {
     });
   });
 
+  it('collapses paired source boards into one Source option', () => {
+    const options = buildFilterOptions([
+      makeJob({ source: 'WorkInNonProfits Jobs' }),
+      makeJob({ id: 'job-2', source: 'WorkInNonProfits Volunteer' }),
+      makeJob({ id: 'job-3', source: 'Ma Communauté Emplois' }),
+      makeJob({ id: 'job-4', source: 'Ma Communauté Bénévolat' }),
+      makeJob({ id: 'job-5', source: 'GoodWork' }),
+    ]);
+
+    expect(options.sources).toEqual(['GoodWork', 'Ma Communauté', 'WorkInNonProfits']);
+  });
+
   it('toggles province selection alongside its municipalities', () => {
     const selected = toggleProvinceSelection({
       province: 'Ontario',

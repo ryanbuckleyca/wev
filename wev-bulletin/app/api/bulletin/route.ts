@@ -5,6 +5,8 @@ import {
   type BulletinQueryInput,
 } from '@/lib/bulletin/server-data';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
+import { isOrgType } from '@/lib/organizations/org-type';
+import { isValidSector } from '@/lib/sectors';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { createClient } from '@/lib/supabase/server';
 
@@ -47,6 +49,8 @@ export async function GET(request: Request) {
 
     // Parse array filters natively
     const orgs = searchParams.getAll('orgs');
+    const orgTypes = searchParams.getAll('types').filter(isOrgType);
+    const sectors = searchParams.getAll('sectors').filter(isValidSector);
     const provs = searchParams.getAll('provs');
     const munis = searchParams.getAll('munis');
     const emps = searchParams.getAll('emps');
@@ -89,6 +93,8 @@ export async function GET(request: Request) {
       sortBy,
       postedWithin,
       orgs,
+      orgTypes,
+      sectors,
       provs,
       munis,
       emps,

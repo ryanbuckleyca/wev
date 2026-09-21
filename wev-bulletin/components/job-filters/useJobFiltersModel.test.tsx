@@ -14,6 +14,10 @@ const mockControls = {
   setSearchQuery: vi.fn(),
   selectedOrganizations: ['Org One'],
   setSelectedOrganizations: vi.fn(),
+  selectedOrgTypes: [] as string[],
+  setSelectedOrgTypes: vi.fn(),
+  selectedSectors: [] as string[],
+  setSelectedSectors: vi.fn(),
   selectedProvinces: ['Ontario'],
   setSelectedProvinces: vi.fn(),
   selectedMunicipalities: ['Toronto'],
@@ -166,13 +170,33 @@ describe('useJobFiltersModel', () => {
     expect(result.current.sources).toContain('Source One');
     expect(result.current.sources).toContain('Source Two');
 
-    // Verify same is true for organizations
-    expect(result.current.organizations).toContain('Org One');
-    expect(result.current.organizations).toContain('Org Two');
-
     // Verify same is true for provinces
     expect(result.current.provinces).toContain('Ontario');
     expect(result.current.provinces).toContain('Nova Scotia');
+
+    // Org type / sector options are taxonomy-driven, not derived from page jobs.
+    expect(result.current.orgTypes).toContain('nonprofit');
+    expect(result.current.sectors.length).toBeGreaterThan(0);
+  });
+
+  it('scopes municipality list to selected provinces', () => {
+    mockControls.selectedProvinces = ['Ontario'];
+    const props = createProps();
+    const { result } = renderHook(() => useJobFiltersModel(props), {
+      wrapper: Wrapper,
+    });
+
+    expect(Object.keys(result.current.municipalitiesByProvince)).toEqual(['Ontario']);
+    expect(result.current.allMunicipalities).toEqual(['Toronto']);
+
+    mockControls.selectedProvinces = [];
+    const { result: unscoped } = renderHook(() => useJobFiltersModel(props), {
+      wrapper: Wrapper,
+    });
+    expect(Object.keys(unscoped.current.municipalitiesByProvince).sort()).toEqual([
+      'Nova Scotia',
+      'Ontario',
+    ]);
   });
 
   it('verifies language filter behavior', () => {

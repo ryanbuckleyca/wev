@@ -12,6 +12,8 @@ import { buildFilterOptions, type BulletinFilterOptions } from './filter-options
 import { throwBulletinQueryError } from './fts-errors';
 import { resolveOrgSlugs } from './resolve-org-slugs';
 import { formatSearchQuery, normalizeLocation } from './search-utils';
+import { expandSourceFilterSelection } from './source-brands';
+import { expandOrgTypeFilterSelection } from '@/lib/organizations/org-type';
 
 // Re-exported for callers that historically imported these from server-data.
 export {
@@ -41,6 +43,8 @@ export type BulletinQueryInput = {
   sortBy: string;
   postedWithin: string;
   orgs: string[];
+  orgTypes: string[];
+  sectors: string[];
   provs: string[];
   munis: string[];
   emps: string[];
@@ -113,6 +117,12 @@ function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
 
 function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.orgs.length) query = query.in('organization', input.orgs);
+  // Org type/sector live on matched_jobs via JOIN (org_type / org_sector_id) —
+  // same idea as get_active_organizations p_org_types / p_sectors, not an ID expand.
+  if (input.orgTypes.length) {
+    query = query.in('org_type', expandOrgTypeFilterSelection(input.orgTypes));
+  }
+  if (input.sectors.length) query = query.in('org_sector_id', input.sectors);
   if (input.provs.length) {
     const normalizedProvs = input.provs.map(normalizeLocation);
     query = query.in('search_province', normalizedProvs);
@@ -122,7 +132,9 @@ function applyBulletinFilters(query: any, input: BulletinQueryInput) {
     query = query.in('search_municipality', normalizedMunis);
   }
   if (input.emps.length) query = query.in('employment_type', input.emps);
-  if (input.srcs.length) query = query.in('source', input.srcs);
+  if (input.srcs.length) {
+    query = query.in('source', expandSourceFilterSelection(input.srcs));
+  }
   return applyNonFacetFilters(query, input);
 }
 
@@ -242,6 +254,8 @@ function productBaselineInput(locale: 'en' | 'fr'): BulletinQueryInput {
     sortBy: 'date-desc',
     postedWithin: PRODUCT_DEFAULT_POSTED_WITHIN,
     orgs: [],
+    orgTypes: [],
+    sectors: [],
     provs: [],
     munis: [],
     emps: [],
