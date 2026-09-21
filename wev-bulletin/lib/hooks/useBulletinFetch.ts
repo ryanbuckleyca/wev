@@ -71,9 +71,14 @@ export function useBulletinFetch(
   // Key of the data currently in state. Differs from fetchKey while a new
   // filter/page request is in flight — drives the list skeleton on the same
   // render as the URL change (before the fetch effect runs).
-  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(() =>
-    hydrateInitial ? buildFetchKey(locale, filters, sortBy, currentPage) : null,
-  );
+  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(() => {
+    // Mirror hydrateInitial without reading mount refs (react-hooks/refs).
+    const hydrate =
+      !!initialData &&
+      !initialData.userId &&
+      !BULLETIN_URL_KEYS.some((key) => searchParams?.has(key));
+    return hydrate ? buildFetchKey(locale, filters, sortBy, currentPage) : null;
+  });
 
   const [jobsOnPage, setJobsOnPage] = useState<JobPosting[]>(() =>
     hydrateInitial ? (initialData?.jobs ?? []) : [],
