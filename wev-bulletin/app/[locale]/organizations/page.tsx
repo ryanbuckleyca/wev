@@ -64,6 +64,17 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     activityDays,
   } = parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
 
+  // Match OrganizationIndexClient: sector cards only when no user filters are active.
+  const showSectorIndex =
+    !searchQuery &&
+    sseOnly &&
+    provinces.length === 0 &&
+    municipalities.length === 0 &&
+    orgTypes.length === 0 &&
+    languages.length === 0 &&
+    sectors.length === 0 &&
+    activityDays == null;
+
   const [initialData, filterOptions, sectorIndex] = await Promise.all([
     fetchOrganizationIndex(
       {
@@ -82,7 +93,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       user ? supabaseAuth : undefined,
     ),
     fetchOrganizationFilterOptions(activityDays),
-    fetchSectorIndexStats({ sseOnly: true }),
+    showSectorIndex ? fetchSectorIndexStats({ sseOnly: true }) : Promise.resolve([]),
   ]);
 
   return (

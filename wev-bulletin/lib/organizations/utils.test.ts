@@ -91,6 +91,13 @@ describe('expandOrgTypeFilterSelection', () => {
     expect(values).toEqual(expect.arrayContaining(['nonprofit', 'non-profit']));
   });
 
+  it('includes spaced and cased mutual-aid spellings for nonprofit', () => {
+    const values = expandOrgTypeFilterSelection(['nonprofit']);
+    expect(values).toEqual(
+      expect.arrayContaining(['mutualaid', 'mutual aid', 'Mutual Aid', 'mutual-aid']),
+    );
+  });
+
   it('passes through unrelated selections', () => {
     expect(expandOrgTypeFilterSelection(['government'])).toEqual(
       expect.arrayContaining(['government']),

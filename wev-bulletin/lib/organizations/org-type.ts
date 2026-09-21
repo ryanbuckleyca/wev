@@ -22,6 +22,48 @@ const ORG_TYPE_ALIASES: Record<string, OrgType> = {
   other: 'other',
 };
 
+/**
+ * Raw spellings that may appear in organizations.type for a given alias key.
+ * Used by expandOrgTypeFilterSelection so PostgREST `.in('org_type', …)` hits
+ * spaced/hyphenated/cased variants, not only the compacted alias key.
+ */
+const ORG_TYPE_ALIAS_RAW_FORMS: Record<string, readonly string[]> = {
+  nonprofit: ['non-profit', 'non_profit', 'Non-Profit', 'Non Profit', 'Nonprofit'],
+  cooperative: [
+    'co-operative',
+    'co_operative',
+    'Co-operative',
+    'Co Operative',
+    'Cooperative',
+  ],
+  socialenterprise: [
+    'social enterprise',
+    'social-enterprise',
+    'Social Enterprise',
+    'SocialEnterprise',
+  ],
+  mutualaid: ['mutual aid', 'Mutual Aid', 'mutual-aid', 'Mutual-Aid'],
+  mutualaidgroup: [
+    'mutual aid group',
+    'Mutual Aid Group',
+    'mutual-aid-group',
+    'Mutual-Aid-Group',
+  ],
+  mutualsociety: ['mutual society', 'Mutual Society', 'mutual-society'],
+  communityassociation: [
+    'community association',
+    'Community Association',
+    'community-association',
+  ],
+  communityproject: ['community project', 'Community Project', 'community-project'],
+  creditunion: ['credit union', 'Credit Union', 'credit-union', 'Credit-Union'],
+  government: ['Government'],
+  union: ['Union'],
+  other: ['Other'],
+  mutual: ['Mutual'],
+  community: ['Community'],
+};
+
 /** Normalize a raw type string for i18n lookup (e.g. non-profit → nonprofit). */
 export function normalizeOrgTypeKey(type: string): string {
   return type.toLowerCase().replace(/[\s_-]+/g, '');
@@ -59,17 +101,9 @@ export function expandOrgTypeFilterSelection(selected: readonly string[]): strin
     for (const [aliasKey, mapped] of Object.entries(ORG_TYPE_ALIASES)) {
       if (mapped !== canonical) continue;
       expanded.add(aliasKey);
-    }
-
-    if (canonical === 'nonprofit') {
-      expanded.add('non-profit');
-      expanded.add('non_profit');
-      expanded.add('Non-Profit');
-    }
-    if (canonical === 'cooperative') {
-      expanded.add('co-operative');
-      expanded.add('co_operative');
-      expanded.add('Co-operative');
+      for (const form of ORG_TYPE_ALIAS_RAW_FORMS[aliasKey] ?? []) {
+        expanded.add(form);
+      }
     }
   }
 

@@ -11,7 +11,12 @@ export const SOURCE_BRANDS = [
     brand: 'WorkInNonProfits',
     match: /work\s*in\s*non\s*profits/i,
     /** Canonical `sources.name` / `jobs.source` values for this board. */
-    aliases: ['WorkInNonProfits Jobs', 'WorkInNonProfits Volunteer'],
+    aliases: [
+      'WorkInNonProfits Jobs',
+      'WorkInNonProfits Volunteer',
+      'Work In NonProfits Jobs',
+      'Work In NonProfits Volunteer',
+    ],
   },
   {
     brand: 'Ma Communauté',

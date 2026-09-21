@@ -44,6 +44,8 @@ describe('brandSourceOptions', () => {
 describe('expandSourceFilterSelection', () => {
   it('expands a brand to seeded aliases without facet data', () => {
     expect(expandSourceFilterSelection(['WorkInNonProfits']).sort()).toEqual([
+      'Work In NonProfits Jobs',
+      'Work In NonProfits Volunteer',
       'WorkInNonProfits Jobs',
       'WorkInNonProfits Volunteer',
     ]);
@@ -57,6 +59,8 @@ describe('expandSourceFilterSelection', () => {
 
   it('expands a legacy raw name to the full brand set', () => {
     expect(expandSourceFilterSelection(['WorkInNonProfits Volunteer']).sort()).toEqual([
+      'Work In NonProfits Jobs',
+      'Work In NonProfits Volunteer',
       'WorkInNonProfits Jobs',
       'WorkInNonProfits Volunteer',
     ]);
@@ -69,7 +73,13 @@ describe('expandSourceFilterSelection', () => {
   it('merges extra known facet names into the expansion', () => {
     expect(
       expandSourceFilterSelection(['WorkInNonProfits'], ['Work In NonProfits Extra']).sort(),
-    ).toEqual(['Work In NonProfits Extra', 'WorkInNonProfits Jobs', 'WorkInNonProfits Volunteer']);
+    ).toEqual([
+      'Work In NonProfits Extra',
+      'Work In NonProfits Jobs',
+      'Work In NonProfits Volunteer',
+      'WorkInNonProfits Jobs',
+      'WorkInNonProfits Volunteer',
+    ]);
   });
 });
 

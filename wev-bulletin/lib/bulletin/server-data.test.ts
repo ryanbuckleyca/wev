@@ -137,6 +137,8 @@ describe('server-data', () => {
         'Ma Communauté (emplois)',
         'Ma Communauté Bénévolat',
         'Ma Communauté Emplois',
+        'Work In NonProfits Jobs',
+        'Work In NonProfits Volunteer',
         'WorkInNonProfits Jobs',
         'WorkInNonProfits Volunteer',
       ]);
