@@ -5,7 +5,8 @@ Per-job flow:
   1. Build job text: job_title | organization | summary | description (truncated to Jina limit)
   2. Embed with task="retrieval.query" via JinaEmbeddingService
   3. Call match_skills_by_embedding RPC → top 80 candidates
-  4. Adaptive selection: floor (0.25) → top-10 cap
+  4. Combined scoring: embedding_similarity × label_relevance (lexical overlap),
+     floor at 0.18 → top-10 cap
   5. Write all selected candidates to job_skills
   6. Write top 10 by score to jobs.skills (respects jobs_skills_max_10_check constraint)
 
@@ -19,6 +20,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -84,6 +86,79 @@ from utils.db import fetch_all_rows, supabase  # noqa: E402
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Lexical relevance helpers (ported from wev-bulletin/lib/nlp-utils.ts)
+# ---------------------------------------------------------------------------
+
+STOP_WORDS = {
+    "a", "an", "the", "of", "to", "in", "and", "or", "for", "with", "on", "at",
+    "by", "from", "as", "is", "are", "was", "were", "be", "been", "being",
+    "this", "that", "these", "those", "it", "its", "their", "they", "them",
+    "he", "she", "his", "her", "we", "our", "you", "your", "i", "my", "not",
+    "no", "nor", "so", "than", "then", "too", "very", "can", "will",
+}
+
+# ESCO occupation-/sector-specific skill labels are heavily templated
+# ("manage X operations", "supervise Y staff", "oversee Z process"). These
+# verbs and process-nouns recur across thousands of unrelated skills and carry
+# almost no domain signal alone — nearly any operations-heavy job description
+# contains several of them. Excluding them forces the relevance check to
+# hinge on the actual domain noun (the X/Y/Z), which is where the real signal is.
+GENERIC_MGMT_TERMS = {
+    "manage", "managing", "managed", "manager", "management",
+    "oversee", "overseeing", "overseen",
+    "supervise", "supervising", "supervised", "supervisor", "supervision",
+    "monitor", "monitoring", "monitored",
+    "coordinate", "coordinating", "coordinated", "coordinator",
+    "operate", "operating", "operated", "operation", "operations",
+    "operational", "operationally",
+    "process", "processes", "processing",
+    "activity", "activities",
+    "department", "departments",
+    "staff", "staffing",
+    "proper", "properly",
+    "perform", "performing", "performed",
+    "support", "supporting", "supported",
+    "conduct", "conducting", "conducted",
+    "follow", "following", "followed",
+}
+
+_TOKEN_RE = re.compile(r"[^a-z0-9'\-]+")
+
+
+def tokenize(text: str) -> list[str]:
+    """Lowercase, strip punctuation (keep apostrophes/hyphens), drop <2-char tokens."""
+    return [w for w in _TOKEN_RE.sub(" ", text.lower()).split() if len(w) >= 2]
+
+
+def build_job_word_set(job: dict) -> set[str]:
+    """Full (untruncated) bag of words from the posting, for lexical relevance checks."""
+    parts = [job.get("job_title", ""), job.get("organization", ""),
+             job.get("summary", ""), job.get("description", "")]
+    return set(tokenize(" ".join(p for p in parts if p)))
+
+
+def label_relevance(label: str, job_words: set[str]) -> float:
+    """Fraction of a skill label's content words (non-stopword, non-generic-
+    management) that literally appear in the job's word set.
+
+    Returns 1.0 (neutral — defer entirely to embedding score) when every word
+    in the label is a stopword or generic-management term, since there's
+    nothing left to check lexically.
+
+    KNOWN LIMITATION: a single common English word that's also a domain noun
+    (e.g. "well" — water well vs. the adverb "as well") can still slip through
+    as a false hit. Don't try to solve this with a bigger word list up front —
+    add specific words to STOP_WORDS as real false positives turn up.
+    """
+    content = [w for w in tokenize(label)
+               if w not in STOP_WORDS and w not in GENERIC_MGMT_TERMS]
+    if not content:
+        return 1.0
+    hits = sum(1 for w in content if w in job_words)
+    return hits / len(content)
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -118,27 +193,29 @@ def build_job_embedding_text(job: dict) -> str:
 
 def select_skills(
     candidates: list[dict],
+    job_words: set[str],
     max_count: int = 10,
-    floor: float = 0.25,
+    combined_floor: float = 0.18,
 ) -> tuple[list[dict], float]:
-    """Two-stage adaptive skill selection.
-
-    1. Floor filter — removes genuinely unrelated matches (absolute minimum)
-    2. Top-K cap — prevents runaway results, keeps highest-confidence skills
-
-    Args:
-        candidates: Raw list of dicts with at minimum a ``score`` float field.
-        max_count:  Hard cap on returned skills (default 10, matches DB constraint).
-        floor:      Absolute minimum score — do NOT raise above 0.32.
-
-    Returns:
-        Tuple of (selected candidates sorted by score desc, floor used as cutoff).
+    """Select skills by combined (embedding similarity × lexical relevance)
+    confidence. Each candidate needs 'score' (embedding similarity, 0..1) and
+    'preferred_label_en'. Returned candidates have 'embedding_score' (original)
+    and 'relevance' added, and 'score' OVERWRITTEN with the combined value —
+    so the existing downstream code that reads s["score"] for job_skills
+    inserts and jobs.skills updates persists the combined confidence with no
+    further changes needed there.
     """
-    above_floor = [c for c in candidates if c["score"] > floor]
+    scored = []
+    for c in candidates:
+        relevance = label_relevance(c.get("preferred_label_en", ""), job_words)
+        combined = c["score"] * relevance
+        scored.append({**c, "embedding_score": c["score"], "relevance": relevance, "score": combined})
+
+    above_floor = [c for c in scored if c["score"] > combined_floor]
     if not above_floor:
-        return [], floor
+        return [], combined_floor
     selected = sorted(above_floor, key=lambda c: c["score"], reverse=True)[:max_count]
-    return selected, floor
+    return selected, combined_floor
 
 
 # ---------------------------------------------------------------------------
@@ -206,9 +283,10 @@ def _tag_single_job(
         result["error"] = str(e)
         return result
 
-    # 4. Adaptive skill selection (floor → cap)
+    # 4. Adaptive skill selection (embedding × lexical relevance → cap)
     candidates_raw = candidates
-    selected, cutoff = select_skills(candidates_raw)
+    job_words = build_job_word_set(job)
+    selected, cutoff = select_skills(candidates_raw, job_words)
     source = "jina-v3"
 
     top_score_str = f"{selected[0]['score']:.3f}" if selected else "n/a"

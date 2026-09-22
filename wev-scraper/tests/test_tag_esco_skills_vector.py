@@ -2,9 +2,10 @@
 
 Tests:
 - test_build_job_embedding_text_*: correct format, missing fields omitted
-- test_select_skills_floor: candidates below floor are excluded
-- test_select_skills_cap: result length never exceeds max_count
-- test_select_skills_elbow: all above-floor candidates returned (up to cap)
+- test_select_skills_*: combined scoring (embedding × lexical relevance)
+- test_label_relevance_*: lexical overlap scoring
+- test_tokenize_*: tokenization edge cases
+- test_build_job_word_set: bag-of-words from job dict
 - test_dry_run_no_writes: zero DB calls with dry_run=True
 """
 
@@ -15,8 +16,80 @@ from unittest.mock import MagicMock, patch
 from llm.jina_embedding import MAX_API_EMBEDDING_INPUT_CHARS
 from scripts.tag_esco_skills_vector import (
     build_job_embedding_text,
+    build_job_word_set,
+    label_relevance,
     select_skills,
+    tokenize,
 )
+
+# ---------------------------------------------------------------------------
+# tokenize
+# ---------------------------------------------------------------------------
+
+def test_tokenize_basic():
+    assert tokenize("Hello World") == ["hello", "world"]
+
+
+def test_tokenize_drops_short_tokens():
+    assert tokenize("I am a dev") == ["am", "dev"]
+
+
+def test_tokenize_keeps_hyphens_and_apostrophes():
+    result = tokenize("self-managed don't")
+    assert "self-managed" in result
+    assert "don't" in result
+
+
+# ---------------------------------------------------------------------------
+# build_job_word_set
+# ---------------------------------------------------------------------------
+
+def test_build_job_word_set_combines_fields():
+    job = {
+        "job_title": "Bookkeeper",
+        "organization": "Acme Corp",
+        "summary": "Manage accounts",
+        "description": "Handle financial records",
+    }
+    words = build_job_word_set(job)
+    assert "bookkeeper" in words
+    assert "acme" in words
+    assert "accounts" in words
+    assert "financial" in words
+    assert "records" in words
+
+
+def test_build_job_word_set_handles_none_fields():
+    job = {"job_title": "Coordinator", "organization": None, "summary": None, "description": None}
+    words = build_job_word_set(job)
+    assert "coordinator" in words
+
+
+# ---------------------------------------------------------------------------
+# label_relevance
+# ---------------------------------------------------------------------------
+
+def test_label_relevance_full_match():
+    job_words = {"grape", "harvest"}
+    assert label_relevance("manage grape harvest", job_words) == 1.0
+
+
+def test_label_relevance_no_match():
+    job_words = {"budget", "accounting", "finance"}
+    assert label_relevance("manage grape harvest", job_words) == 0.0
+
+
+def test_label_relevance_partial_match():
+    job_words = {"grape", "budget", "finance"}
+    # "grape" hits, "harvest" misses → 0.5
+    assert label_relevance("manage grape harvest", job_words) == 0.5
+
+
+def test_label_relevance_all_stopwords_and_generic():
+    """Labels made entirely of stop words + generic management terms return 1.0 (neutral)."""
+    job_words = {"anything"}
+    assert label_relevance("manage the operations", job_words) == 1.0
+
 
 # ---------------------------------------------------------------------------
 # build_job_embedding_text
@@ -65,48 +138,104 @@ def test_build_job_embedding_text_no_trailing_separator():
 # select_skills
 # ---------------------------------------------------------------------------
 
-def _make_candidates(scores: list[float]) -> list[dict]:
-    return [{"concept_uri": f"uri-{i}", "score": s} for i, s in enumerate(scores)]
+def _make_candidates(scores: list[float], labels: list[str] | None = None) -> list[dict]:
+    if labels is None:
+        labels = [f"Skill {i}" for i in range(len(scores))]
+    return [
+        {"concept_uri": f"uri-{i}", "score": s, "preferred_label_en": labels[i]}
+        for i, s in enumerate(scores)
+    ]
+
+
+def test_select_skills_requires_job_words():
+    """select_skills now requires a job_words argument."""
+    candidates = _make_candidates([0.40], labels=["accounting"])
+    job_words = {"accounting"}
+    result, _ = select_skills(candidates, job_words)
+    assert len(result) == 1
 
 
 def test_select_skills_floor_excludes_all_below():
-    candidates = _make_candidates([0.20, 0.22, 0.24])
-    result, _ = select_skills(candidates, floor=0.25)
+    """All candidates below combined floor are excluded."""
+    # With job_words containing all label words, combined = embedding * 1.0
+    candidates = _make_candidates([0.10, 0.12, 0.15], labels=["alpha", "beta", "gamma"])
+    job_words = {"alpha", "beta", "gamma"}
+    result, _ = select_skills(candidates, job_words, combined_floor=0.18)
     assert result == []
 
 
 def test_select_skills_floor_keeps_above():
-    candidates = _make_candidates([0.20, 0.30, 0.40])
-    result, _ = select_skills(candidates, floor=0.25)
-    scores = [c["score"] for c in result]
-    assert 0.20 not in scores
-    assert 0.30 in scores
-    assert 0.40 in scores
+    """Candidates above combined floor are kept."""
+    candidates = _make_candidates([0.10, 0.30, 0.40], labels=["alpha", "beta", "gamma"])
+    job_words = {"alpha", "beta", "gamma"}
+    result, _ = select_skills(candidates, job_words, combined_floor=0.18)
+    combined_scores = [c["score"] for c in result]
+    # 0.10 * 1.0 = 0.10 → excluded
+    # 0.30 * 1.0 = 0.30 → kept
+    # 0.40 * 1.0 = 0.40 → kept
+    assert len(result) == 2
+    assert all(s > 0.18 for s in combined_scores)
 
 
 def test_select_skills_cap():
-    # 20 candidates all above floor, no obvious cliff → cap at max_count
-    candidates = _make_candidates([0.30 + i * 0.001 for i in range(20)])
-    result, _ = select_skills(candidates, max_count=10, floor=0.25)
+    """Result length never exceeds max_count."""
+    candidates = _make_candidates(
+        [0.30 + i * 0.001 for i in range(20)],
+        labels=[f"skill-{i}" for i in range(20)],
+    )
+    # Make all labels match so combined = embedding * 1.0
+    job_words = {f"skill-{i}" for i in range(20)}
+    result, _ = select_skills(candidates, job_words, max_count=10, combined_floor=0.18)
     assert len(result) <= 10
 
 
-def test_select_skills_elbow():
-    # With floor+cap, all scores above floor are kept (up to max_count)
-    # The elbow is handled by find_elbow_cutoff separately if needed in future
-    scores = [0.71, 0.68, 0.65, 0.61, 0.41, 0.38, 0.35]
-    candidates = _make_candidates(scores)
-    result, cutoff = select_skills(candidates, max_count=10, floor=0.25)
-    result_scores = [c["score"] for c in result]
-    # All above floor should be present (7 candidates, all > 0.25)
-    assert len(result) == 7
-    assert cutoff == 0.25
-    assert all(s > 0.25 for s in result_scores)
+def test_select_skills_irrelevant_label_excluded():
+    """A candidate with high embedding score but irrelevant label is excluded.
+
+    This is the core fix: "manage grape harvest" against a job about operations
+    management (no "grape" or "harvest") should be zeroed out by relevance.
+    """
+    candidates = _make_candidates(
+        [0.40],
+        labels=["manage grape harvest"],
+    )
+    job_words = {"operations", "budget", "scheduling", "coordinator"}
+    result, _ = select_skills(candidates, job_words, combined_floor=0.18)
+    # "grape" and "harvest" not in job_words → relevance = 0.0 → combined = 0.0
+    assert result == []
+
+
+def test_select_skills_relevant_label_survives():
+    """A candidate with a relevant label survives with a reasonable combined score."""
+    candidates = _make_candidates(
+        [0.40],
+        labels=["monitor financial accounts"],
+    )
+    job_words = {"financial", "accounts", "bookkeeping", "ledger"}
+    result, _ = select_skills(candidates, job_words, combined_floor=0.18)
+    assert len(result) == 1
+    # combined = 0.40 * 1.0 (both "financial" and "accounts" hit)
+    assert result[0]["score"] == 0.40 * 1.0
+
+
+def test_select_skills_adds_embedding_score_and_relevance():
+    """Selected candidates have embedding_score and relevance fields."""
+    candidates = _make_candidates([0.40], labels=["financial accounting"])
+    job_words = {"financial", "accounting"}
+    result, _ = select_skills(candidates, job_words)
+    assert "embedding_score" in result[0]
+    assert "relevance" in result[0]
+    assert result[0]["embedding_score"] == 0.40
+    assert result[0]["relevance"] == 1.0
 
 
 def test_select_skills_sorted_descending():
-    candidates = _make_candidates([0.35, 0.55, 0.45])
-    result, _ = select_skills(candidates, floor=0.25)
+    candidates = _make_candidates(
+        [0.35, 0.55, 0.45],
+        labels=["alpha", "beta", "gamma"],
+    )
+    job_words = {"alpha", "beta", "gamma"}
+    result, _ = select_skills(candidates, job_words, combined_floor=0.18)
     scores = [c["score"] for c in result]
     assert scores == sorted(scores, reverse=True)
 
