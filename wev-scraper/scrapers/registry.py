@@ -2,6 +2,7 @@ import re
 from typing import Dict, Type
 
 from scrapers.centraide import CentraideScraper
+from scrapers.chantier import ChantierScraper
 from scrapers.charityvillage import CharityVillageScraper
 from scrapers.coco import CocoScraper
 from scrapers.cooperationcanada import CooperationCanadaScraper
@@ -31,6 +32,7 @@ SCRAPER_MAP: Dict[str, Type] = {
     "idealist": IdealistScraper,
     "idealistintern": IdealistScraper,
     "coopcan": CooperationCanadaScraper,
+    "chantier": ChantierScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -88,6 +90,9 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "idealistintern": "idealistintern",
     "cooperation canada": "coopcan",
     "coopcan": "coopcan",
+    "chantier": "chantier",
+    "chantier de l'économie sociale": "chantier",
+    "chantier de l economie sociale": "chantier",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {

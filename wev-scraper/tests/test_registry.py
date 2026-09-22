@@ -1,3 +1,4 @@
+from scrapers.chantier import ChantierScraper
 from scrapers.cooperationcanada import CooperationCanadaScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
@@ -65,6 +66,13 @@ def test_get_scraper_class_idealist_boards():
 def test_get_scraper_class_cooperation_canada():
     assert get_scraper_class({"slug": "coopcan"}) is CooperationCanadaScraper
     assert get_scraper_class({"name": "Cooperation Canada"}) is CooperationCanadaScraper
+
+
+def test_get_scraper_class_chantier():
+    assert get_scraper_class({"slug": "chantier"}) is ChantierScraper
+    assert (
+        get_scraper_class({"name": "Chantier de l'économie sociale"}) is ChantierScraper
+    )
 
 
 def test_source_matches_slug_by_legacy_slug():
