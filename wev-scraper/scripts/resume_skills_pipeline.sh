@@ -19,30 +19,30 @@ export GEMINI_SSE_PRIMARY_MODEL="${GEMINI_SSE_PRIMARY_MODEL:-gemini-3.6-flash}"
 export GEMINI_SSE_LITE_MODEL="${GEMINI_SSE_LITE_MODEL:-gemini-3.5-flash-lite}"
 
 LOG_DIR="${LOG_DIR:-/tmp/wev-skills}"
-mkdir -p "$LOG_DIR"
+mkdir -p "${LOG_DIR}"
 
 echo "=============================================="
 echo "Step 1/2: LLM skills_raw extraction (force re-extract)"
-echo "  UNIFIED_SKIP_GROQ=$UNIFIED_SKIP_GROQ"
-echo "  PRIMARY=$GEMINI_SSE_PRIMARY_MODEL LITE=$GEMINI_SSE_LITE_MODEL"
+echo "  UNIFIED_SKIP_GROQ=${UNIFIED_SKIP_GROQ}"
+echo "  PRIMARY=${GEMINI_SSE_PRIMARY_MODEL} LITE=${GEMINI_SSE_LITE_MODEL}"
 echo "=============================================="
 python -m scripts.unified_post_processor \
-  --task skills \
-  --prod \
-  --force-reextract-skills \
-  --page-limit 200 \
-  2>&1 | tee "$LOG_DIR/extract_bulk.log"
+	--task skills \
+	--prod \
+	--force-reextract-skills \
+	--page-limit 200 \
+	2>&1 | tee "${LOG_DIR}/extract_bulk.log"
 
 echo "=============================================="
 echo "Step 2/2: Local Jina ESCO retag (replace job_skills)"
 echo "=============================================="
 python -m scripts.tag_esco_skills_vector \
-  --publish \
-  --retag \
-  --backfill \
-  --workers "${TAG_ESCO_WORKERS:-4}" \
-  2>&1 | tee "$LOG_DIR/retag_bulk.log"
+	--publish \
+	--retag \
+	--backfill \
+	--workers "${TAG_ESCO_WORKERS:-4}" \
+	2>&1 | tee "${LOG_DIR}/retag_bulk.log"
 
 echo "=============================================="
-echo "Pipeline complete. Logs in $LOG_DIR"
+echo "Pipeline complete. Logs in ${LOG_DIR}"
 echo "=============================================="

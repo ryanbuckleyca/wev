@@ -234,5 +234,3 @@ export async function shortlistEscoCandidates({
     .map((m) => metaByUri.get(m.concept_uri))
     .filter((row): row is EscoMetaRow => Boolean(row));
 }
-
-

@@ -31,7 +31,13 @@ export type LocationState = {
   province: string;
 };
 
-export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, SOFT_PROFILE_SKILLS, MAX_PROFILE_VALUES };
+export {
+  adjustCutoffOnRemove,
+  adjustCutoffOnReorder,
+  MAX_PROFILE_SKILLS,
+  SOFT_PROFILE_SKILLS,
+  MAX_PROFILE_VALUES,
+};
 
 export type CvImportStateUpdate<T> = {
   items: T[];
