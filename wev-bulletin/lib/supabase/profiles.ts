@@ -1,5 +1,5 @@
 import { createClient } from './client';
-import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
+import { type RatedValue, type RatedSkill, getRankWeight } from '@/lib/value-ratings';
 import { type Database } from './database.types';
 import { parseCvImportMetadata, type CvImportMetadata } from '@/lib/cv/types';
 
@@ -115,6 +115,74 @@ export async function getProfile(userId: string): Promise<Profile> {
 }
 
 /**
+ * Replace profile_skills junction rows to match the skills array / ratings.
+ * Triggers recompute profiles.skill_embedding.
+ *
+ * Upserts first, then deletes orphans — never delete-all-then-insert — so a
+ * failed write cannot leave an empty junction after profiles.skills was updated.
+ */
+async function syncProfileSkills(
+  userId: string,
+  skills: string[],
+  skillsRated: RatedSkill[] | null | undefined,
+): Promise<void> {
+  const supabase = createClient();
+
+  if (skills.length === 0) {
+    const { error: deleteError } = await supabase
+      .from('profile_skills')
+      .delete()
+      .eq('user_id', userId);
+    if (deleteError) {
+      throw new Error(deleteError.message || 'Failed to clear profile_skills');
+    }
+    return;
+  }
+
+  const rankByUri = new Map(
+    (skillsRated ?? []).filter((r) => r.skill).map((r) => [r.skill, r.rank] as const),
+  );
+  const rankedCount = [...rankByUri.values()].filter((r) => r != null).length;
+
+  const rows = skills.map((skillId) => ({
+    user_id: userId,
+    skill_id: skillId,
+    score: getRankWeight(rankByUri.get(skillId), Math.max(rankedCount, 1)),
+    source: 'profile',
+  }));
+
+  const { error: upsertError } = await supabase.from('profile_skills').upsert(rows, {
+    onConflict: 'user_id,skill_id',
+  });
+  if (upsertError) {
+    throw new Error(upsertError.message || 'Failed to write profile_skills');
+  }
+
+  const { data: existing, error: listError } = await supabase
+    .from('profile_skills')
+    .select('skill_id')
+    .eq('user_id', userId);
+  if (listError) {
+    throw new Error(listError.message || 'Failed to list profile_skills');
+  }
+
+  const keep = new Set(skills);
+  const orphans = (existing ?? [])
+    .map((row) => row.skill_id)
+    .filter((skillId) => !keep.has(skillId));
+  if (orphans.length === 0) return;
+
+  const { error: orphanError } = await supabase
+    .from('profile_skills')
+    .delete()
+    .eq('user_id', userId)
+    .in('skill_id', orphans);
+  if (orphanError) {
+    throw new Error(orphanError.message || 'Failed to prune profile_skills');
+  }
+}
+
+/**
  * Update a user's profile
  */
 export async function updateProfile(userId: string, updates: ProfileUpdateData): Promise<Profile> {
@@ -138,6 +206,17 @@ export async function updateProfile(userId: string, updates: ProfileUpdateData):
       .filter(Boolean)
       .join(' — ');
     throw new Error(msg || 'Failed to update profile');
+  }
+
+  // Sync after the profiles row commit. Upsert-then-prune (not delete-all) so a
+  // failed sync cannot empty the junction while profiles.skills is already new.
+  if (updates.skills !== undefined) {
+    try {
+      await syncProfileSkills(userId, updates.skills, updates.skills_rated);
+    } catch (syncErr) {
+      console.error('Error syncing profile_skills:', syncErr);
+      throw syncErr instanceof Error ? syncErr : new Error('Failed to sync profile_skills');
+    }
   }
 
   return normalizeProfileRow(data as ProfileRow);

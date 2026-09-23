@@ -115,6 +115,33 @@ describe('skill-matcher', () => {
       expect(result).toHaveLength(0); // dropped due to relevance < 0.4
     });
 
+    it('keeps a lower-ranked candidate when top-1 fails relevance', () => {
+      // With match_count>1, a poor top-1 label must not wipe the phrase.
+      const rows: BatchMatchRow[] = [
+        {
+          query_index: 0,
+          concept_uri: 'irrelevant',
+          preferred_label_en: 'deep sea water management',
+          preferred_label_fr: '',
+          similarity: 0.95,
+        },
+        {
+          query_index: 0,
+          concept_uri: 'relevant',
+          preferred_label_en: 'team leadership',
+          preferred_label_fr: '',
+          similarity: 0.85,
+        },
+      ];
+      const phrases = [
+        { phrase: 'team leadership', evidence: 'Led a team', prominence: 8 },
+      ];
+      const cvWords = new Set(['led', 'team', 'leadership']);
+
+      const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
+      expect(result.map((r) => r.concept_uri)).toEqual(['relevant']);
+    });
+
     it('sorts results by score descending', () => {
       const rows: BatchMatchRow[] = [
         {

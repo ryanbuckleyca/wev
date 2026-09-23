@@ -105,6 +105,7 @@ class Jobs(BaseModel):
     )
     search_municipality: Optional[str] = None
     search_province: Optional[str] = None
+    skills_raw: Optional[List[str]] = None
 
 
 class Cities(BaseModel):

@@ -8,9 +8,10 @@ import type { SkillPhrase } from './llm';
 import type { Reranker } from './reranker';
 import type { RerankCandidate } from './prompts';
 
-const MAX_SKILLS = 10;
-const HYDRATE_CANDIDATES_LIMIT = 30;
-const RPC_MATCHES_PER_PHRASE = 10;
+const MAX_SKILLS = 50;
+const HYDRATE_CANDIDATES_LIMIT = 50;
+/** Small pool so lexical relevance can pick an alternate when top-1 is a poor label match. */
+const RPC_MATCHES_PER_PHRASE = 5;
 const SCORE_FLOOR = Number.parseFloat(process.env.CV_SKILLS_SCORE_FLOOR ?? '') || 0.25;
 const RELEVANCE_FLOOR = 0.4;
 

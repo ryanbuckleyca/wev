@@ -101,7 +101,7 @@ export function buildPrompt(cvText: string, locale: CvLocale = 'en'): string {
     return `Tu analyses le CV d'une candidate ou d'un candidat. Effectue deux taches:
 
 TACHE A - COMPETENCES NORMALISEES
-Extrait 12 a 18 competences professionnelles distinctes du CV sous forme de capacites reutilisables et normalisees.
+Extrait TOUTES les competences professionnelles distinctes du CV sous forme de capacites reutilisables et normalisees (vise 15 a 30+ phrases).
 Pour chaque competence, attribue un score de "prominence" de 1 a 10 indiquant a quel point cette competence est centrale dans le parcours de la personne selon:
 - Duree: plusieurs annees d'usage comptent plus qu'une seule mention
 - Profondeur: un travail senior/lead compte plus qu'un usage accessoire d'un outil
@@ -144,7 +144,7 @@ Retourne uniquement du JSON:
   return `You are analyzing a candidate's CV. Perform two tasks:
 
 TASK A — NORMALIZED SKILLS
-Extract 12 to 18 distinct professional skills from the CV as short, reusable, normalized capabilities.
+Extract ALL distinct professional skills from the CV as short, reusable, normalized capabilities (aim for 15 to 30+ phrases).
 For each skill, assign a "prominence" score from 1 to 10 reflecting how central that skill is to the candidate's career based on:
 - Duration: years of sustained use outweighs a single mention
 - Depth: senior/lead-level work outweighs incidental use of a tool
