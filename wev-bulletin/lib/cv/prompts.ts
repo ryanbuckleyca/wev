@@ -24,9 +24,7 @@ export type RerankCandidate = {
 function formatRerankCandidates(candidates: RerankCandidate[]): string {
   return candidates
     .map((c, i) => {
-      const desc = c.description
-        ? ` — ${c.description.slice(0, RERANK_DESCRIPTION_CHARS)}`
-        : '';
+      const desc = c.description ? ` — ${c.description.slice(0, RERANK_DESCRIPTION_CHARS)}` : '';
       return `${i + 1}. [${c.conceptUri}] ${c.label}${desc}`;
     })
     .join('\n');

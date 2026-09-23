@@ -2,7 +2,11 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfileForm, SOFT_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
+import {
+  useProfileForm,
+  SOFT_PROFILE_SKILLS,
+  MAX_PROFILE_VALUES,
+} from '@/lib/hooks/useProfileForm';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import WorkSettingSection from '@/components/profile/WorkSettingSection';

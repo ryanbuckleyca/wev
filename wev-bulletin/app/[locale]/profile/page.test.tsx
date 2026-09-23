@@ -275,9 +275,10 @@ describe('ProfilePage skills integration', () => {
   });
 
   it('blocks save and shows error when skills exceed limit', { timeout: 60_000 }, async () => {
-    // This test renders 10 hydrated skills, opens a modal, searches for a skill,
-    // selects a result, and validates the save is blocked.  Under full-suite
-    // resource contention it can exceed the 30 s global timeout.
+    // Renders MAX_PROFILE_SKILLS hydrated skills, opens a modal, searches for a
+    // skill beyond the hard cap, selects it, and validates save is blocked.
+    // Under full-suite resource contention it can exceed the 30 s global timeout.
+    const overflowUri = `uri-${MAX_PROFILE_SKILLS + 1}`;
 
     // vi.useFakeTimers(); // Removed fake timers
     const user = userEvent.setup({ delay: null }); // Removed advanceTimers
@@ -312,7 +313,7 @@ describe('ProfilePage skills integration', () => {
         return jsonResponse({
           skills: [
             {
-              concept_uri: 'uri-11',
+              concept_uri: overflowUri,
               term: 'Extra skill',
               definition: null,
               scope_note: null,
@@ -327,7 +328,7 @@ describe('ProfilePage skills integration', () => {
         return jsonResponse({
           skills: [
             {
-              concept_uri: 'uri-11',
+              concept_uri: overflowUri,
               term: 'Extra skill',
               definition: null,
               scope_note: null,

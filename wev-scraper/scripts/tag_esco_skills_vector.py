@@ -82,7 +82,6 @@ else:
 # only after `ensure_env_loaded()`, optional `.env.production`, and the --prod gate
 # above. noqa: E402 tells ruff/flake8 to allow imports after executable code.
 from llm.jina_embedding import (  # noqa: E402
-    MAX_API_EMBEDDING_INPUT_CHARS,
     ConfigurationError,
     JinaEmbeddingService,
 )

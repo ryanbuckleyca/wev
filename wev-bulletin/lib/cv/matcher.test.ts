@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { shortlistEscoCandidates, selectFinalSkills, rankAndFilterCandidates, type BatchMatchRow } from './matcher';
+import {
+  shortlistEscoCandidates,
+  selectFinalSkills,
+  rankAndFilterCandidates,
+  type BatchMatchRow,
+} from './matcher';
 
 async function runMatcher(options: any) {
   const candidates = await shortlistEscoCandidates(options);
@@ -133,9 +138,7 @@ describe('skill-matcher', () => {
           similarity: 0.85,
         },
       ];
-      const phrases = [
-        { phrase: 'team leadership', evidence: 'Led a team', prominence: 8 },
-      ];
+      const phrases = [{ phrase: 'team leadership', evidence: 'Led a team', prominence: 8 }];
       const cvWords = new Set(['led', 'team', 'leadership']);
 
       const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
@@ -303,7 +306,9 @@ describe('skill-matcher', () => {
 
     it('throws when esco_skills metadata hydration fails', async () => {
       const mockRpc = vi.fn().mockResolvedValue({
-        data: [{ query_index: 0, concept_uri: 'react', preferred_label_en: 'react', similarity: 0.9 }],
+        data: [
+          { query_index: 0, concept_uri: 'react', preferred_label_en: 'react', similarity: 0.9 },
+        ],
         error: null,
       });
       const mockSelect = vi.fn().mockResolvedValue({
@@ -354,9 +359,7 @@ describe('skill-matcher', () => {
       const reranker = vi.fn().mockResolvedValue(['b', 'a']);
 
       const result = await runMatcher({
-        skillPhrases: [
-          { phrase: 'team leadership', evidence: 'Led teams', prominence: 10 },
-        ],
+        skillPhrases: [{ phrase: 'team leadership', evidence: 'Led teams', prominence: 10 }],
         embeddings: [[0.1]],
         cvText: 'Led React teams and demonstrated leadership',
         userId: 'u1',
@@ -392,9 +395,7 @@ describe('skill-matcher', () => {
       const reranker = vi.fn().mockResolvedValue([]);
 
       const result = await runMatcher({
-        skillPhrases: [
-          { phrase: 'team leadership', evidence: 'Led teams', prominence: 10 },
-        ],
+        skillPhrases: [{ phrase: 'team leadership', evidence: 'Led teams', prominence: 10 }],
         embeddings: [[0.1]],
         cvText: 'Led React teams with leadership skills',
         userId: 'u1',
