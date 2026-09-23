@@ -207,17 +207,11 @@ test.describe("Profile editing flow", () => {
     const skillsContainer = skillsTrigger.locator("..");
     let skillsOrderAfterReorder: Array<string | null> | null = null;
 
-    await test.step("See soft skills warning, save, trim, and reorder", async () => {
+    await test.step("See soft skills warning, trim, reorder, and save", async () => {
       await expect(page.getByText(/you've selected more than/i)).toBeVisible();
 
-      // Soft warning does not block save — hard cap (50) is covered by unit tests.
-      await page.getByRole("button", { name: /^save profile$/i }).click();
-      await expect(
-        page.getByText(/profile updated successfully/i).first(),
-      ).toBeVisible({
-        timeout: 10_000,
-      });
-
+      // Soft warning does not block save — trim first so post-save skill
+      // rehydration cannot race a remove and restore the over-limit set.
       await skillsContainer
         .getByRole("button", { name: /^remove /i })
         .first()

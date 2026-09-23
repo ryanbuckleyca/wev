@@ -83,6 +83,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   // Track the last profile snapshot we hydrated from
   const hydratedKeyRef = useRef<string | null>(null);
+  // Bumped on local skill edits so in-flight post-save hydrations cannot overwrite them.
+  const skillsHydrationEpochRef = useRef(0);
 
   const workValues: WorkValue[] = useMemo(() => {
     const tCurrent = (key: string, opts?: { defaultValue: string }) => tValues(key, opts ?? {});
@@ -148,8 +150,13 @@ export function useProfileForm(locale: 'en' | 'fr') {
       return;
     }
 
+    const skillsEpochAtStart = skillsHydrationEpochRef.current;
     void fetchSkillsByUri(profileSkills, locale)
       .then((fetched) => {
+        // A local edit (remove/toggle/reorder/import) landed while this fetch was in
+        // flight — usually right after save refreshes profile.updated_at.
+        if (skillsEpochAtStart !== skillsHydrationEpochRef.current) return;
+
         const psr = profile.skills_rated;
         if (psr && psr.length > 0) {
           const { sorted, cutoff } = partitionByRating(fetched, psr);
@@ -161,11 +168,14 @@ export function useProfileForm(locale: 'en' | 'fr') {
         }
       })
       .catch(() => {
+        if (skillsEpochAtStart !== skillsHydrationEpochRef.current) return;
         skills.setItems([]);
         skills.setCutoff(0);
       })
       .finally(() => {
-        setHydrationComplete(true);
+        if (skillsEpochAtStart === skillsHydrationEpochRef.current) {
+          setHydrationComplete(true);
+        }
       });
   }, [profile, locale, values, skills]);
 
@@ -270,6 +280,34 @@ export function useProfileForm(locale: 'en' | 'fr') {
     }
   }, [formData, values, skills, updateProfile, t]);
 
+  const bumpSkillsHydrationEpoch = useCallback(() => {
+    skillsHydrationEpochRef.current += 1;
+  }, []);
+
+  const handleSkillToggle = useCallback(
+    (item: EscoSkill) => {
+      bumpSkillsHydrationEpoch();
+      skills.toggle(item);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
+  const handleSkillReorder = useCallback(
+    (from: number, to: number, explicitCutoff?: number) => {
+      bumpSkillsHydrationEpoch();
+      skills.reorder(from, to, explicitCutoff);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
+  const handleSkillRemove = useCallback(
+    (id: string) => {
+      bumpSkillsHydrationEpoch();
+      skills.remove(id);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
   const handleApplyCvImport = useCallback(
     ({
       skills: nextSkills,
@@ -284,6 +322,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
       // Apply to local state so the user can review before saving.
       // Keep in-progress manual selections when the CV returns an empty list
       // for a category, while still replacing that category on non-empty imports.
+      bumpSkillsHydrationEpoch();
       const nextSkillsState = resolveCvImportState(skills.items, skills.cutoff, nextSkills);
       skills.setItems(nextSkillsState.items);
       skills.setCutoff(nextSkillsState.cutoff);
@@ -296,7 +335,7 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
       notify.success(t('cvImportSuccess'));
     },
-    [skills, values, t],
+    [bumpSkillsHydrationEpoch, skills, values, t],
   );
 
   return {
@@ -307,9 +346,9 @@ export function useProfileForm(locale: 'en' | 'fr') {
     setFormData,
     selectedSkills: skills.items,
     skillCutoff: skills.cutoff,
-    handleSkillToggle: skills.toggle,
-    handleSkillReorder: skills.reorder,
-    handleSkillRemove: skills.remove,
+    handleSkillToggle,
+    handleSkillReorder,
+    handleSkillRemove,
     workValues,
     selectedValues: values.items,
     valueCutoff: values.cutoff,
