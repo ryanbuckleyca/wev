@@ -2,6 +2,8 @@
 
 Tries backends in order:
   gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (when available).
+Hard daily/free-tier 429s burn that backend for the process; the run aborts
+only once every API backend in the chain has hit one.
 When ``ENV_MODE=local``, Ollama is also tried earlier for offline preference on
 unified (non-SSE-grounded) batches.
 
@@ -14,11 +16,18 @@ Live **Google Search** in the Gemini SDK is off for ``task=unified`` unless
 
 import logging
 import os
+import time
 from typing import Any, Dict, List
 
-from llm.base import BaseLLMProvider, LLMProviderError
+from llm.base import BaseLLMProvider, LLMProviderError, error_suggests_try_next_provider
 from llm.config import should_use_grounding
-from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
+from llm.cooldown import (
+    DailyQuotaExhaustedError,
+    ProviderCooldownMixin,
+    get_cooldown_minutes,
+    is_daily_quota_exhausted_error,
+    is_quota_exhausted_error,
+)
 from llm.gemini import GeminiProvider
 from llm.gemini_fallback import gemini_sse_lite_model, gemini_sse_primary_model
 from llm.groq import GroqProvider
@@ -34,6 +43,14 @@ logger = logging.getLogger(__name__)
 # Single prompt shape for every backend: always request SSE *fields* (model infers from text).
 UNIFIED_INCLUDE_SSE_FIELDS = True
 
+# Transient Gemini capacity (503 / high demand): retry same model before falling through.
+_GEMINI_TRANSIENT_RETRIES = 4
+_GEMINI_TRANSIENT_BACKOFF_S = 15.0
+
+
+def _is_gemini_provider_name(name: str) -> bool:
+    return "gemini" in (name or "").lower()
+
 
 
 
@@ -45,6 +62,8 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         # Track providers with quota exhaustion and when they can be retried
         self._exhausted_until: dict[str, float] = {}
         self._cooldown_seconds = get_cooldown_minutes() * 60
+        # Providers that hit a hard daily/free-tier 429 this process — skip for the rest of the run
+        self._daily_quota_exhausted: set[str] = set()
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -54,12 +73,19 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
         ] if is_local_env() else []
 
+        skip_groq = os.environ.get("UNIFIED_SKIP_GROQ", "").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+
         candidates = [
             *local_first,
             (primary, lambda: GeminiProvider(api_key=api_key, model=primary), f"Gemini ({primary})"),
             (lite, lambda: GeminiProvider(api_key=api_key, model=lite), f"Gemini ({lite})"),
-            ("groq", lambda: GroqProvider(), "Groq"),
         ]
+        if not skip_groq:
+            candidates.append(("groq", lambda: GroqProvider(), "Groq"))
+        else:
+            logger.warning("Skipping LLM provider groq (UNIFIED_SKIP_GROQ set)")
         # Always append Ollama last when not already first (API-exhausted fallback).
         if not is_local_env():
             candidates.append(
@@ -87,6 +113,25 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 logger.warning("Skipping LLM provider %s (not usable): %s", name, e)
 
         self.last_successful_provider = None
+
+    def _api_provider_names(self) -> list[str]:
+        """Backends that count toward 'all models exhausted' (excludes ollama)."""
+        return [p["name"] for p in self.providers if p["name"] != "ollama"]
+
+    def _all_api_daily_quotas_exhausted(self) -> bool:
+        names = self._api_provider_names()
+        return bool(names) and all(n in self._daily_quota_exhausted for n in names)
+
+    def _raise_if_all_daily_quotas_exhausted(self, cause: Exception | None = None) -> None:
+        if self._all_api_daily_quotas_exhausted():
+            exhausted = self._api_provider_names()
+            print(
+                "\n🛑 All LLM backends hit daily/free-tier quota — aborting run.\n"
+                f"   Exhausted: {', '.join(exhausted)}\n"
+                "   Swap GEMINI_API_KEY / GROQ_API_KEY (new projects) or enable billing, then resume.\n",
+                flush=True,
+            )
+            raise DailyQuotaExhaustedError(exhausted, cause)
 
 
 
@@ -126,11 +171,11 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             f"\n\nWORK VALUES TAXONOMY:\n{_get_formatted_taxonomy()}\n",
         ]
 
-        job_chunks = format_job_chunks(jobs, max_desc_chars=4000)
+        job_chunks = format_job_chunks(jobs, max_desc_chars=8000)
         for chunk in job_chunks:
             prompt_parts.append(f"\n{chunk}")
 
-        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
+        fields = "index, summary, language, values, skills_raw, is_sse, sse_confidence" if include_sse else "index, summary, language, values, skills_raw"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
@@ -203,6 +248,14 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                                 "Unexpected language value from LLM: %r — omitting", lang
                             )
                             item.pop("language", None)
+                if isinstance(item, dict) and "skills_raw" in item:
+                    raw_skills = item.get("skills_raw")
+                    if isinstance(raw_skills, list):
+                        valid_skills = [str(s).strip() for s in raw_skills if str(s).strip()]
+                        item["skills_raw"] = valid_skills
+                    else:
+                        logger.warning("Unexpected skills_raw value from LLM (not a list): %r — omitting", raw_skills)
+                        item.pop("skills_raw", None)
             return items
 
         # 1. Try raw response first
@@ -233,7 +286,12 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         for provider_info in self.providers:
             provider_name = provider_info['name']
 
-            # Skip providers in cooldown period after quota exhaustion
+            # Skip backends that already burned their daily/free-tier quota this run
+            if provider_name in self._daily_quota_exhausted:
+                attempted_providers.append(f"{provider_name} (daily quota)")
+                continue
+
+            # Skip providers in cooldown period after soft RPM/TPM exhaustion
             if self._is_provider_in_cooldown(provider_name):
                 attempted_providers.append(f"{provider_name} (cooldown)")
                 continue
@@ -259,14 +317,47 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                         results.append(None)
                     return results[:len(batch)]
 
-                all_results = provider.complete_batch(
-                    items=jobs,
-                    build_prompt=build_prompt,
-                    parse_response=parse_response,
-                    system=system,
-                    task="unified",
-                    raise_for_fallback=True,
+                # On Gemini, retry transient 503/high-demand before falling to the next backend.
+                attempts = (
+                    _GEMINI_TRANSIENT_RETRIES if _is_gemini_provider_name(provider_name) else 1
                 )
+                all_results = None
+                for attempt in range(attempts):
+                    try:
+                        all_results = provider.complete_batch(
+                            items=jobs,
+                            build_prompt=build_prompt,
+                            parse_response=parse_response,
+                            system=system,
+                            task="unified",
+                            raise_for_fallback=True,
+                        )
+                        break
+                    except Exception as e:
+                        transient = error_suggests_try_next_provider(e)
+                        if (
+                            transient
+                            and _is_gemini_provider_name(provider_name)
+                            and attempt < attempts - 1
+                            and not is_quota_exhausted_error(e)
+                        ):
+                            wait = _GEMINI_TRANSIENT_BACKOFF_S * (attempt + 1)
+                            logger.warning(
+                                "Gemini %s transient error (attempt %s/%s): %s — retrying in %.0fs",
+                                provider_name,
+                                attempt + 1,
+                                attempts,
+                                e,
+                                wait,
+                            )
+                            print(
+                                f"  ⏳ Gemini busy ({provider_name}), retrying in {wait:.0f}s "
+                                f"(attempt {attempt + 1}/{attempts})…",
+                                flush=True,
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise
 
                 self.last_successful_provider = provider_name
                 _gs = should_use_grounding("unified")
@@ -294,7 +385,18 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 last_error = e
                 error_msg = str(e).lower()
 
-                # Mark provider as exhausted if quota/rate limit hit
+                # Hard daily/free-tier 429: burn this backend for the run, try the next.
+                # Abort only once every API backend (primary Gemini → lite → Groq) is burned.
+                if is_daily_quota_exhausted_error(e):
+                    self._daily_quota_exhausted.add(provider_name)
+                    print(
+                        f"  ⚠️ Daily/free-tier quota hit on {provider_name} — trying next backend…",
+                        flush=True,
+                    )
+                    self._raise_if_all_daily_quotas_exhausted(e)
+                    continue
+
+                # Soft RPM/TPM: mark cooldown and try the next provider
                 if is_quota_exhausted_error(e):
                     self._mark_provider_exhausted(provider_name)
                 elif "not available" in error_msg:
@@ -303,8 +405,13 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                     logger.warning(f"💥 Failed with {provider_name}: {e}")
                 continue
 
-        if not last_error and all("(cooldown)" in p for p in attempted_providers):
-            error_msg = f"All providers skipped due to cooldown. Attempted: {attempted_providers}"
+        # If every API backend burned daily quota while others were mid-cooldown, abort now.
+        self._raise_if_all_daily_quotas_exhausted(last_error)
+
+        if not last_error and all(
+            "(cooldown)" in p or "(daily quota)" in p for p in attempted_providers
+        ):
+            error_msg = f"All providers skipped due to cooldown/quota. Attempted: {attempted_providers}"
         else:
             error_msg = f"All providers failed. Last error: {last_error}"
         logger.error(f"❌ {error_msg}")

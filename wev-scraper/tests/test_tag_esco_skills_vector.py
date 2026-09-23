@@ -1,10 +1,7 @@
 """Unit tests for tag_esco_skills_vector helpers.
 
 Tests:
-- test_build_job_embedding_text_*: correct format, missing fields omitted
-- test_select_skills_floor: candidates below floor are excluded
-- test_select_skills_cap: result length never exceeds max_count
-- test_select_skills_elbow: all above-floor candidates returned (up to cap)
+- test_select_skills_*: combined scoring
 - test_dry_run_no_writes: zero DB calls with dry_run=True
 """
 
@@ -12,103 +9,102 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from llm.jina_embedding import MAX_API_EMBEDDING_INPUT_CHARS
 from scripts.tag_esco_skills_vector import (
-    build_job_embedding_text,
+    replace_job_skills,
     select_skills,
 )
-
-# ---------------------------------------------------------------------------
-# build_job_embedding_text
-# ---------------------------------------------------------------------------
-
-def test_build_job_embedding_text_all_fields():
-    job = {
-        "job_title": "Software Engineer",
-        "organization": "Acme Corp",
-        "summary": "Build great things",
-        "description": "A" * 2000,
-    }
-    text = build_job_embedding_text(job)
-    assert "Software Engineer" in text
-    assert "Acme Corp" in text
-    assert "Build great things" in text
-    assert "A" * 2000 in text  # full description included (under char cap)
-
-
-def test_build_job_embedding_text_respects_token_safe_char_cap():
-    job = {
-        "job_title": "T",
-        "organization": "O",
-        "summary": "S",
-        "description": "D" * (MAX_API_EMBEDDING_INPUT_CHARS * 2),
-    }
-    text = build_job_embedding_text(job)
-    assert len(text) == MAX_API_EMBEDDING_INPUT_CHARS
-
-
-def test_build_job_embedding_text_missing_fields():
-    job = {"job_title": "Coordinator"}
-    text = build_job_embedding_text(job)
-    assert text == "Coordinator"
-    assert " | " not in text
-
-
-def test_build_job_embedding_text_no_trailing_separator():
-    job = {"job_title": "Manager", "organization": "Org"}
-    text = build_job_embedding_text(job)
-    assert not text.endswith(" | ")
-    assert text == "Manager | Org"
-
 
 # ---------------------------------------------------------------------------
 # select_skills
 # ---------------------------------------------------------------------------
 
-def _make_candidates(scores: list[float]) -> list[dict]:
-    return [{"concept_uri": f"uri-{i}", "score": s} for i, s in enumerate(scores)]
+def _make_candidates(scores: list[float], labels: list[str] | None = None) -> list[dict]:
+    if labels is None:
+        labels = [f"Skill {i}" for i in range(len(scores))]
+    return [
+        {"concept_uri": f"uri-{i}", "score": s, "preferred_label_en": labels[i]}
+        for i, s in enumerate(scores)
+    ]
 
 
 def test_select_skills_floor_excludes_all_below():
-    candidates = _make_candidates([0.20, 0.22, 0.24])
-    result, _ = select_skills(candidates, floor=0.25)
+    """All candidates below combined floor are excluded."""
+    candidates = _make_candidates([0.10, 0.12, 0.15], labels=["alpha", "beta", "gamma"])
+    result, _ = select_skills(candidates, combined_floor=0.50)
     assert result == []
 
 
 def test_select_skills_floor_keeps_above():
-    candidates = _make_candidates([0.20, 0.30, 0.40])
-    result, _ = select_skills(candidates, floor=0.25)
+    """Candidates above combined floor are kept."""
+    candidates = _make_candidates([0.10, 0.60, 0.70], labels=["alpha", "beta", "gamma"])
+    result, _ = select_skills(candidates, combined_floor=0.50)
     scores = [c["score"] for c in result]
-    assert 0.20 not in scores
-    assert 0.30 in scores
-    assert 0.40 in scores
+    assert len(result) == 2
+    assert all(s > 0.50 for s in scores)
 
 
 def test_select_skills_cap():
-    # 20 candidates all above floor, no obvious cliff → cap at max_count
-    candidates = _make_candidates([0.30 + i * 0.001 for i in range(20)])
-    result, _ = select_skills(candidates, max_count=10, floor=0.25)
-    assert len(result) <= 10
-
-
-def test_select_skills_elbow():
-    # With floor+cap, all scores above floor are kept (up to max_count)
-    # The elbow is handled by find_elbow_cutoff separately if needed in future
-    scores = [0.71, 0.68, 0.65, 0.61, 0.41, 0.38, 0.35]
-    candidates = _make_candidates(scores)
-    result, cutoff = select_skills(candidates, max_count=10, floor=0.25)
-    result_scores = [c["score"] for c in result]
-    # All above floor should be present (7 candidates, all > 0.25)
-    assert len(result) == 7
-    assert cutoff == 0.25
-    assert all(s > 0.25 for s in result_scores)
+    """Result length never exceeds the 50 sanity ceiling."""
+    candidates = _make_candidates(
+        [0.60 + i * 0.001 for i in range(60)],
+        labels=[f"skill-{i}" for i in range(60)],
+    )
+    result, _ = select_skills(candidates, combined_floor=0.50)
+    assert len(result) == 50
 
 
 def test_select_skills_sorted_descending():
-    candidates = _make_candidates([0.35, 0.55, 0.45])
-    result, _ = select_skills(candidates, floor=0.25)
+    candidates = _make_candidates(
+        [0.55, 0.75, 0.65],
+        labels=["alpha", "beta", "gamma"],
+    )
+    result, _ = select_skills(candidates, combined_floor=0.50)
     scores = [c["score"] for c in result]
     assert scores == sorted(scores, reverse=True)
+
+
+def test_replace_job_skills_upserts_before_orphan_delete():
+    """Upsert must run before delete so a failed write cannot empty the junction."""
+    calls: list[str] = []
+    table = MagicMock()
+
+    upsert_chain = MagicMock()
+    upsert_chain.execute = MagicMock(side_effect=lambda: calls.append("upsert") or MagicMock())
+    table.upsert = MagicMock(return_value=upsert_chain)
+
+    delete_chain = MagicMock()
+    delete_chain.eq = MagicMock(return_value=delete_chain)
+    delete_chain.not_ = MagicMock()
+    delete_chain.not_.in_ = MagicMock(return_value=delete_chain)
+    delete_chain.execute = MagicMock(side_effect=lambda: calls.append("delete") or MagicMock())
+    table.delete = MagicMock(return_value=delete_chain)
+
+    with patch("scripts.tag_esco_skills_vector.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        replace_job_skills(
+            "job-1",
+            [{"job_id": "job-1", "skill_id": "uri-a", "score": 0.9, "source": "jina-v3"}],
+        )
+
+    assert calls == ["upsert", "delete"]
+    table.upsert.assert_called_once()
+    delete_chain.not_.in_.assert_called_once_with("skill_id", ["uri-a"])
+
+
+def test_replace_job_skills_empty_clears_all():
+    table = MagicMock()
+    delete_chain = MagicMock()
+    delete_chain.eq = MagicMock(return_value=delete_chain)
+    delete_chain.execute = MagicMock(return_value=MagicMock(data=[]))
+    table.delete = MagicMock(return_value=delete_chain)
+
+    with patch("scripts.tag_esco_skills_vector.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        replace_job_skills("job-1", [])
+
+    table.delete.assert_called_once()
+    table.upsert.assert_not_called()
+    delete_chain.eq.assert_called_once_with("job_id", "job-1")
 
 
 # ---------------------------------------------------------------------------
@@ -139,19 +135,72 @@ def test_dry_run_no_writes():
     candidates = _make_rpc_candidates(3)
 
     mock_supabase = MagicMock()
-    mock_supabase.rpc.return_value.execute.return_value.data = candidates
+    mock_supabase.rpc.return_value.execute.return_value.data = [
+        {**c, "query_index": i} for i, c in enumerate(candidates[:2])
+    ]
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-dry-run",
+            "job_title": "Coordinator",
+            "organization": "Org",
+            "summary": None,
+            "description": "Coordinate things",
+            "skills_raw": ["budget management", "vendor coordination"],
+        }
+    ]
 
-    job = {
-        "id": "job-dry-run",
-        "job_title": "Coordinator",
-        "organization": "Org",
-        "summary": None,
-        "description": "Coordinate things",
-    }
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+    ):
+        fake_svc = _make_fake_svc()
+        fake_svc.embed.return_value = [[0.1] * 1024, [0.2] * 1024]
+        mock_svc_cls.return_value = fake_svc
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
 
-    with patch("scripts.tag_esco_skills_vector.supabase", mock_supabase):
-        from scripts.tag_esco_skills_vector import _tag_single_job
-        result = _tag_single_job(job, _make_fake_svc(), dry_run=True)
+        result = tag_esco_skills_vector(job_ids=["job-dry-run"], dry_run=True)
 
-    mock_supabase.table.assert_not_called()
-    assert result["error"] is None
+    # dry-run may still SELECT/RPC, but must not write
+    for call in mock_supabase.table.return_value.method_calls:
+        assert call[0] not in ("upsert", "update", "insert", "delete")
+    assert result["errors"] == 0
+    assert result["processed"] == 1
+
+
+def test_retag_clears_jobs_without_skills_raw_phrases():
+    """--retag must wipe stale job_skills / jobs.skills when phrases are missing."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-no-phrases",
+            "job_title": "Teaser",
+            "organization": "Org",
+            "summary": None,
+            "description": "See website",
+            "skills_raw": [],
+        }
+    ]
+    delete_chain = MagicMock()
+    delete_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.delete.return_value = delete_chain
+    update_chain = MagicMock()
+    update_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.update.return_value = update_chain
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+    ):
+        mock_svc_cls.return_value = _make_fake_svc()
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(job_ids=["job-no-phrases"], retag=True, dry_run=False)
+
+    mock_supabase.table.return_value.delete.assert_called()
+    mock_supabase.table.return_value.update.assert_called()
+    update_chain.eq.assert_called_with("id", "job-no-phrases")
+    # skills cleared to empty list
+    assert mock_supabase.table.return_value.update.call_args[0][0] == {"skills": []}
+    assert result["processed"] == 1
+    assert result["inserted"] == 0
+    mock_supabase.rpc.assert_not_called()

@@ -52,7 +52,7 @@ def fetch_unprocessed_jobs():
             supabase.table("jobs")
             .select(
                 "id, listing_url, summary, values, is_sse, language, "
-                "organization_id, skills, description, job_title, organization, scraped_at"
+                "organization_id, skills, skills_raw, description, job_title, organization, scraped_at"
             )
             .order("scraped_at", desc=False)
             .range(page * page_size, (page + 1) * page_size - 1)
@@ -84,7 +84,16 @@ def fetch_unprocessed_jobs():
         if j.get("language") not in VALID_LANGUAGES:
             needs.append("language")
 
-        if not j.get("skills"):
+        # None = never extracted. [] = extracted empty (done). Non-empty phrases
+        # without jobs.skills still need ESCO tagging.
+        skills_raw = j.get("skills_raw")
+        if skills_raw is None:
+            needs.append("skills")
+        elif (
+            not j.get("skills")
+            and isinstance(skills_raw, list)
+            and any(str(s).strip() for s in skills_raw)
+        ):
             needs.append("skills")
 
         if j.get("organization_id") is None:
@@ -200,7 +209,7 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
         unified_chunk = [
             j["id"]
             for j, needs in unprocessed[i : i + chunk_size]
-            if any(req in needs for req in ("summary", "values", "sse", "language"))
+            if any(req in needs for req in ("summary", "values", "sse", "language", "skills"))
         ]
 
         if unified_chunk:

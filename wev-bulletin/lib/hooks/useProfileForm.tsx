@@ -14,6 +14,7 @@ import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
 import {
   MAX_PROFILE_SKILLS,
+  SOFT_PROFILE_SKILLS,
   MAX_PROFILE_VALUES,
   partitionByRating,
   validateProfileLimits,
@@ -30,7 +31,13 @@ export type LocationState = {
   province: string;
 };
 
-export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
+export {
+  adjustCutoffOnRemove,
+  adjustCutoffOnReorder,
+  MAX_PROFILE_SKILLS,
+  SOFT_PROFILE_SKILLS,
+  MAX_PROFILE_VALUES,
+};
 
 export type CvImportStateUpdate<T> = {
   items: T[];

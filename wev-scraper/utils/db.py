@@ -6,6 +6,7 @@ from supabase import Client, create_client
 from lib.compensation import extract_and_guard
 from settings import get_supabase_settings
 from utils.env import is_truthy_env
+from utils.location_parser import looks_like_us_location
 from utils.log import scraper_log
 from utils.url import get_listing_url_variant
 
@@ -287,6 +288,15 @@ def save_job(job, source_id, *, resolver=None):
     """
     if not job.get("organization") or not job.get("job_title") or not job.get("listing_url"):
         scraper_log(f"Skipping job due to missing required fields: {job.get('listing_url') or 'no_url'}")
+        return "skipped", None
+
+    # Canada-only board: drop explicit US locations regardless of source URL.
+    # (Geocodio Canada-bias otherwise maps them to lookalikes like Boiestown NB.)
+    if looks_like_us_location(job.get("location")):
+        scraper_log(
+            f"Skipping US job: {job.get('listing_url')} "
+            f"(location={job.get('location')!r})"
+        )
         return "skipped", None
 
     scraper_log(f"Checking for existing job with URL: {job['listing_url']}")

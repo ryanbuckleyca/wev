@@ -6,11 +6,11 @@
  *
  * Pipeline:
  *   1. Parser     — reads the CV (PDF/DOCX) using server-side parsers.
- *   2. Groq LLM   — reads the text, extracts 12–18 contextual skill phrases
+ *   2. Groq LLM   — extracts ALL distinct skill phrases (typically 15–30+)
  *      with prominence scores (1–10) AND infers 3–5 work values.
- *   3. Jina + DB  — batch-embeds the skill phrases and runs match_skills_by_embedding
- *      per phrase to find the closest ESCO skill for each. Ranks by similarity × prominence,
- *      deduplicates by concept_uri, returns top 10.
+ *   3. Jina + DB  — batch-embeds phrases and runs match_skills_by_embedding
+ *      (1 best ESCO match per phrase). Ranks by similarity × prominence,
+ *      deduplicates by concept_uri, returns up to 50 (sanity ceiling).
  *
  * Why multiple stages? Embedding the whole CV as a single vector produces a
  * "centroid" that is dominated by whichever domain has the most text.

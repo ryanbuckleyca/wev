@@ -430,7 +430,7 @@
     "skillsSearching": "Searching skills...",
     "skillsMaxReached": "Maximum {max} skills selected. Remove one to add another.",
     "skillsHardMaxReached": "Maximum {max} skills reached. Remove one to add another.",
-    "skillsSoftLimitWarning": "You've selected more than {max} skills. We recommend limiting to 15 for better matching results.",
+    "skillsSoftLimitWarning": "You've selected more than {max} skills. Matching still works, but a tighter set often ranks more clearly.",
     "skillsMaxExceeded": "Please remove {current, number} {current, plural, one {skill} other {skills}} to meet the maximum of {max}.",
     "skillsMatchedAlias": "Matches:",
     "skillsDone": "Done",

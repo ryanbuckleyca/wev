@@ -40,6 +40,43 @@ def is_quota_exhausted_error(exc: Exception) -> bool:
     )
 
 
+def is_daily_quota_exhausted_error(exc: Exception) -> bool:
+    """Return True for hard daily/free-tier quota (not soft RPM/TPM 429s).
+
+    Free-tier day caps look like:
+      429 RESOURCE_EXHAUSTED … free_tier_requests, limit: 20
+      GenerateRequestsPerDayPerProjectPerModel-FreeTier
+
+    Soft rate limits also return 429 but say "retry in Ns" without free_tier /
+    per-day metrics — those should backoff, not abort the whole run.
+    """
+    err = str(exc).lower()
+    if "429" not in err and "resource_exhausted" not in err:
+        return False
+    return (
+        "free_tier" in err
+        or "free tier" in err
+        or "perday" in err
+        or "per_day" in err
+        or "requestsperday" in err
+        or "daily quota" in err
+        or "generaterequestsperday" in err
+    )
+
+
+class DailyQuotaExhaustedError(Exception):
+    """Raised when every API backend in the chain has hit a daily/free-tier 429."""
+
+    def __init__(self, providers: list[str], cause: Exception | None = None):
+        self.providers = providers
+        self.cause = cause
+        names = ", ".join(providers) if providers else "(none)"
+        detail = f" Last error: {cause}" if cause else ""
+        super().__init__(
+            f"All LLM backends exhausted daily/free-tier quota: {names}.{detail}"
+        )
+
+
 class ProviderCooldownMixin:
     """Mix-in that adds time-bounded quota-cooldown tracking.
 

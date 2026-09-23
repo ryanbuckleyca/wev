@@ -74,7 +74,7 @@ from utils.log import scraper_log  # noqa: E402
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
 
-TaskType = Literal["all", "summary", "values", "sse", "language"]
+TaskType = Literal["all", "summary", "values", "sse", "language", "skills"]
 
 
 @dataclass
@@ -89,6 +89,62 @@ class ProcessingOptions:
     # Only meaningful when task="language": skips the already-tagged check and
     # re-processes every fetched job regardless of its current language value.
     force_language_reprocess: bool = False
+    # Re-extract skills_raw when the existing phrase list is shorter than this.
+    # None = only process jobs where skills_raw is NULL (unless force).
+    # An empty list [] means "extracted, no skills" and is not re-processed.
+    reextract_skills_below: int | None = None
+    # Re-extract skills_raw for every fetched job that has a description,
+    # ignoring existing phrase lists (used after prompt quality changes).
+    force_reextract_skills: bool = False
+
+
+def _skills_raw_count(job: Dict[str, Any]) -> int:
+    raw = job.get("skills_raw")
+    if not isinstance(raw, list):
+        return 0
+    return sum(1 for s in raw if str(s).strip())
+
+
+def _needs_skills_reextract(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
+    """True when this job should get a fresh skills_raw extraction.
+
+    ``skills_raw is None`` (never extracted) needs work. ``[]`` means the LLM
+    already decided the posting has no transferable skills — do not re-run
+    unless force / reextract-below.
+    """
+    if not (job.get("description") or "").strip():
+        return False
+    if opts.force_reextract_skills:
+        return True
+    raw = job.get("skills_raw")
+    if raw is None or not isinstance(raw, list):
+        return True
+    if opts.reextract_skills_below is not None:
+        return _skills_raw_count(job) < opts.reextract_skills_below
+    return False
+
+
+def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
+    """Return True if a job requires processing for the given task."""
+    if opts.task == "all":
+        return (
+            not (job.get("summary") or "").strip()
+            or not job.get("values")
+            or _needs_skills_reextract(job, opts)
+            or job.get("is_sse") is None
+            or job.get("language") not in VALID_LANGUAGES
+        )
+    if opts.task == "sse":
+        return job.get("is_sse") is None
+    if opts.task == "values":
+        return not job.get("values")
+    if opts.task == "skills":
+        return _needs_skills_reextract(job, opts)
+    if opts.task == "summary":
+        return not job.get("summary")
+    if opts.task == "language":
+        return opts.force_language_reprocess or job.get("language") not in VALID_LANGUAGES
+    raise ValueError(f"Unknown task: {opts.task!r}")
 
 
 def _fetch_jobs(
@@ -105,7 +161,7 @@ def _fetch_jobs(
     rows in a single page. Uses cursor-based pagination via before_scraped_at.
     """
     query = supabase.table("jobs").select(
-        "id, description, summary, values, is_sse, sse_details, language, scraped_at, "
+        "id, description, summary, values, is_sse, sse_details, language, skills_raw, scraped_at, "
         "organization, organization_id, job_title, location, employment_type, wage, "
         "organizations(is_sse)"
     )
@@ -128,26 +184,6 @@ def _fetch_jobs(
     return query.execute().data
 
 
-def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
-    """Return True if a job requires processing for the given task."""
-    if opts.task == "all":
-        return (
-            not (job.get("summary") or "").strip()
-            or not job.get("values")
-            or job.get("is_sse") is None
-            or job.get("language") not in VALID_LANGUAGES
-        )
-    if opts.task == "sse":
-        return job.get("is_sse") is None
-    if opts.task == "values":
-        return not job.get("values")
-    if opts.task == "summary":
-        return not job.get("summary")
-    if opts.task == "language":
-        return opts.force_language_reprocess or job.get("language") not in VALID_LANGUAGES
-    raise ValueError(f"Unknown task: {opts.task!r}")
-
-
 def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any]:
     """Process jobs using unified LLM approach.
 
@@ -162,7 +198,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
     counts = {
         "processed": 0,
-        "updated": {"sse": 0, "values": 0, "summary": 0, "language": 0},
+        "updated": {"sse": 0, "values": 0, "summary": 0, "language": 0, "skills_raw": 0},
         "skipped": 0,
         "errors": 0,
         "provider_used": None
@@ -171,22 +207,27 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
     print("=" * 70)
     print("UNIFIED POST-PROCESSOR")
     if opts.task == "all":
-        print("Task: all (summary + values + sse + language)")
+        print("Task: all (summary + values + sse + language + skills_raw)")
     else:
         print(f"Task: {opts.task}")
     print(f"Dry run: {opts.dry_run}")
+    if opts.reextract_skills_below is not None:
+        print(f"Re-extract skills_raw below: {opts.reextract_skills_below} phrases")
+    if opts.force_reextract_skills:
+        print("Force re-extract skills_raw: yes (all fetched jobs with a description)")
     print("=" * 70)
 
     task_descriptions = {
         "summary": "Job summarization (1 sentence)",
         "values": "Values tagging (from taxonomy)",
+        "skills": "Skills extraction (raw phrases)",
         "sse": "SSE classification (with Google Search)",
         "language": "Language tagging (en, fr, or bilingual)",
     }
 
     if opts.task == "all":
         print("✓ Tasks to perform:")
-        for t in ["summary", "values", "sse", "language"]:
+        for t in ["summary", "values", "skills", "sse", "language"]:
             print(f"  - {task_descriptions[t]}")
     else:
         print(f"✓ Task to perform: {task_descriptions.get(opts.task, opts.task)}")
@@ -252,6 +293,15 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         try:
             result = processor.process_jobs(batch)
         except Exception as e:
+            # Imported lazily: cooldown helpers must not pull LLM stack at module load.
+            from llm.cooldown import DailyQuotaExhaustedError
+
+            if isinstance(e, DailyQuotaExhaustedError):
+                scraper_log(f"🛑 Aborting: {e}")
+                counts["errors"] += len(batch)
+                counts["aborted_quota"] = True
+                counts["processed"] = processed_count
+                return counts
             scraper_log(f"✗ Batch processing failed: {e}")
             counts["errors"] += len(batch)
             continue
@@ -295,6 +345,8 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
                             counts["updated"]["sse"] += 1
                         if "language" in update_data:
                             counts["updated"]["language"] += 1
+                        if "skills_raw" in update_data:
+                            counts["updated"]["skills_raw"] += 1
                         processed_count += 1
                     except Exception as e:
                         scraper_log(f"✗ DB write permanently failed for job {job['id']}: {e}")
@@ -303,7 +355,7 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
                 processed_count += 1
 
             if opts.verbose:
-                actions = [k for k in ("summary", "values", "language") if k in job_result]
+                actions = [k for k in ("summary", "values", "language", "skills_raw") if k in job_result]
                 if "is_sse" in job_result:
                     actions.append("SSE")
                 print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
@@ -347,6 +399,12 @@ def _build_update_data(task: TaskType, job_result: dict, job: dict | None = None
         update_data["values"] = job_result["values"]
         if job_result.get("values_rated"):
             update_data["values_rated"] = job_result["values_rated"]
+
+    if task in ["all", "skills"] and "skills_raw" in job_result:
+        # Persist intentional empty lists (thin teasers) so we do not re-extract forever.
+        raw = job_result["skills_raw"]
+        if isinstance(raw, list):
+            update_data["skills_raw"] = [str(s).strip() for s in raw if str(s).strip()]
 
     if task in ["all", "sse"] and "is_sse" in job_result:
         proposed = job_result["is_sse"]
@@ -471,7 +529,7 @@ def _enqueue_job_match_recalc(job_id: str, db_client) -> None:
 def main():
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Unified post-processor for jobs")
-    parser.add_argument("--task", choices=["sse", "values", "summary", "language", "all"],
+    parser.add_argument("--task", choices=["sse", "values", "summary", "language", "skills", "all"],
                        default="all", help="What to process")
     parser.add_argument("--since-days", type=int, help="Process jobs created since N days ago")
     parser.add_argument("--force-language-reprocess", action="store_true",
@@ -503,6 +561,18 @@ def main():
         help="Target the production database using local LLMs/embeddings",
     )
     parser.add_argument("--verbose", action="store_true", help="Detailed logging")
+    parser.add_argument(
+        "--reextract-skills-below",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Also re-extract skills_raw for jobs that already have fewer than N phrases",
+    )
+    parser.add_argument(
+        "--force-reextract-skills",
+        action="store_true",
+        help="Re-extract skills_raw for every fetched job with a description (ignore existing phrases)",
+    )
 
     args = parser.parse_args()
 
@@ -515,6 +585,8 @@ def main():
         verbose=args.verbose,
         since_days=args.since_days,
         force_language_reprocess=args.force_language_reprocess,
+        reextract_skills_below=args.reextract_skills_below,
+        force_reextract_skills=args.force_reextract_skills,
     ))
 
     # Print summary
@@ -525,16 +597,26 @@ def main():
     print(f"Skipped: {result['skipped']}")
     print(f"Provider used: {result['provider_used']}")
 
-    if result['updated']['summary'] > 0:
+    if result['updated'].get('summary', 0) > 0:
         print(f"Summaries updated: {result['updated']['summary']}")
-    if result['updated']['values'] > 0:
+    if result['updated'].get('values', 0) > 0:
         print(f"Values updated: {result['updated']['values']}")
-    if result['updated']['sse'] > 0:
+    if result['updated'].get('sse', 0) > 0:
         print(f"SSE classifications updated: {result['updated']['sse']}")
-    if result['updated']['language'] > 0:
+    if result['updated'].get('language', 0) > 0:
         print(f"Language tags updated: {result['updated']['language']}")
+    if result['updated'].get('skills_raw', 0) > 0:
+        print(f"Raw skills extracted: {result['updated']['skills_raw']}")
 
     print(f"Errors: {result['errors']}")
+
+    if result.get("aborted_quota"):
+        print(
+            "\nAborted: all LLM backends exhausted daily/free-tier quota (429). "
+            "Swap GEMINI_API_KEY / GROQ_API_KEY or enable billing, then re-run — "
+            "already-done jobs are skipped."
+        )
+        sys.exit(2)
 
     if result['errors'] > 0:
         sys.exit(1)

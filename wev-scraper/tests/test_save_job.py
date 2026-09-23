@@ -134,6 +134,18 @@ def test_save_job_returns_none_id_on_missing_fields(mock_sb):
     assert job_id is None
 
 
+@patch("utils.db.supabase")
+def test_save_job_skips_us_location(mock_sb):
+    from utils.db import save_job
+
+    job = _make_job()
+    job["location"] = "Boston, Massachusetts, United States"
+    status, job_id = save_job(job, "source-id")
+    assert status == "skipped"
+    assert job_id is None
+    mock_sb.table.assert_not_called()
+
+
 # ── job_ids collection in _process_jobs_for_source ────────────────────────────
 
 @patch("scrape.add_url_dedup_variants")

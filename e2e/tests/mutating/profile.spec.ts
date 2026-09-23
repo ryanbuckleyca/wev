@@ -128,19 +128,46 @@ test.describe("Profile editing flow", () => {
     });
 
     await test.step("Import CV to auto-fill skills and values", async () => {
-      // Mock the CV extraction API to avoid calling the real LLM in E2E tests
+      // Soft warning is count > 25. Prefetch real ESCO URIs so profile_skills FK saves work.
+      const collected: Array<{
+        uri: string;
+        preferredLabel: { en: string; fr: string };
+        skillType: string;
+        reuseLevel: string;
+      }> = [];
+      for (const q of ["a", "manage", "write"]) {
+        if (collected.length >= 26) break;
+        const res = await page.request.get(
+          `/api/skills/search?q=${encodeURIComponent(q)}&locale=en&limit=20`,
+        );
+        expect(res.ok()).toBeTruthy();
+        const body = (await res.json()) as {
+          skills: Array<{
+            concept_uri: string;
+            term: string;
+            skill_type: string | null;
+            reuse_level: string | null;
+          }>;
+        };
+        for (const s of body.skills ?? []) {
+          if (collected.some((c) => c.uri === s.concept_uri)) continue;
+          collected.push({
+            uri: s.concept_uri,
+            preferredLabel: { en: s.term, fr: s.term },
+            skillType: s.skill_type ?? "skill",
+            reuseLevel: s.reuse_level ?? "cross-sector",
+          });
+          if (collected.length >= 26) break;
+        }
+      }
+      expect(collected.length).toBeGreaterThanOrEqual(26);
+      const softLimitSkills = collected.slice(0, 26);
+
       await page.route("**/api/cv/extract", async (route) => {
         await route.fulfill({
           status: 200,
           json: {
-            skills: [
-              {
-                uri: "http://data.europa.eu/esco/skill/e87498c3-f09b-4ca0-be58-3cc22b4044af",
-                preferredLabel: { en: "React", fr: "React" },
-                skillType: "skill",
-                reuseLevel: "cross-sector",
-              },
-            ],
+            skills: softLimitSkills,
             values: ["Advancement"],
             metadata: {
               filename: "test.pdf",
@@ -153,22 +180,19 @@ test.describe("Profile editing flow", () => {
         });
       });
 
-      // The file input is hidden, so we need to set its files directly via the locator
       await page.getByTestId("cv-file-input").setInputFiles({
         name: "test.pdf",
         mimeType: "application/pdf",
         buffer: Buffer.from("dummy content"),
       });
 
-      // Verify the extracted skill was added to the UI
       const skillsContainer = page
         .getByRole("button", { name: /search and add skills/i })
         .locator("..");
       await expect(
-        skillsContainer.getByRole("button", { name: /^remove React/i }),
-      ).toBeVisible({ timeout: 10_000 });
+        skillsContainer.getByRole("button", { name: /^remove /i }),
+      ).toHaveCount(26, { timeout: 10_000 });
 
-      // Verify the extracted value was added to the UI
       const valuesContainer = page
         .getByRole("button", { name: /search and add work values/i })
         .locator("..");
@@ -183,38 +207,17 @@ test.describe("Profile editing flow", () => {
     const skillsContainer = skillsTrigger.locator("..");
     let skillsOrderAfterReorder: Array<string | null> | null = null;
 
-    await test.step("Select too many skills and see save error", async () => {
-      await skillsTrigger.click();
-      const dialog = page.getByRole("dialog", {
-        name: /search and select skills/i,
-      });
-      await expect(dialog).toBeVisible();
-
-      await dialog.getByPlaceholder(/search to add skills/i).fill("a");
-
-      const listbox = dialog.getByRole("listbox", {
-        name: /skill search results/i,
-      });
-      await expect(listbox.getByRole("option").first()).toBeVisible({
-        timeout: 10_000,
-      });
-
-      for (let i = 0; i < 10; i += 1) {
-        await listbox.getByRole("option").nth(i).click();
-      }
-
-      await dialog.getByRole("button", { name: /^done/i }).click();
-      await expect(dialog).toBeHidden();
-
+    await test.step("See soft skills warning, save, trim, and reorder", async () => {
       await expect(page.getByText(/you've selected more than/i)).toBeVisible();
 
+      // Soft warning does not block save — hard cap (50) is covered by unit tests.
       await page.getByRole("button", { name: /^save profile$/i }).click();
-      await expect(page.getByText(/please remove 1 skill/i)).toBeVisible({
+      await expect(
+        page.getByText(/profile updated successfully/i).first(),
+      ).toBeVisible({
         timeout: 10_000,
       });
-    });
 
-    await test.step("Remove extra skill, reorder, and save", async () => {
       await skillsContainer
         .getByRole("button", { name: /^remove /i })
         .first()

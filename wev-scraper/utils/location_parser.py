@@ -273,6 +273,73 @@ def is_country_only_location(location: Optional[str]) -> bool:
     return bool(re.fullmatch(r"(?i)canada|ca", text))
 
 
+# Explicit US country markers. Bare "US"/"us" omitted (too many English false positives).
+_US_COUNTRY_RE = re.compile(
+    r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)\b"
+)
+
+# Full US state / DC names. Abbreviations alone are risky (CA ≠ California here).
+_US_STATE_NAMES = (
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+    "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana",
+    "maine", "maryland", "massachusetts", "michigan", "minnesota",
+    "mississippi", "missouri", "montana", "nebraska", "nevada",
+    "new hampshire", "new jersey", "new mexico", "new york",
+    "north carolina", "north dakota", "ohio", "oklahoma", "oregon",
+    "pennsylvania", "rhode island", "south carolina", "south dakota",
+    "tennessee", "texas", "utah", "vermont", "virginia", "washington",
+    "west virginia", "wisconsin", "wyoming", "district of columbia",
+)
+_US_STATE_NAME_RE = re.compile(
+    r"(?i)\b(?:" + "|".join(re.escape(n) for n in _US_STATE_NAMES) + r")\b"
+)
+
+# US state codes that do not collide with Canadian province codes.
+# (CA provinces: AB BC MB NB NL NS NT NU ON PE QC SK YT — none match US codes
+# except we still exclude CA to avoid "Toronto, CA" / country-code confusion.)
+_US_STATE_CODES = (
+    "AL", "AK", "AZ", "AR", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA",
+    "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO",
+    "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK",
+    "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI",
+    "WV", "WY",
+)
+_US_STATE_CODE_RE = re.compile(
+    r"(?i)(?:,|\s)\s*(" + "|".join(_US_STATE_CODES) + r")\s*(?:,|$|\s+united|\s+usa|\s+u\.s)"
+)
+
+
+def looks_like_us_location(location: Optional[str]) -> bool:
+    """True when *location* is a United States–only place string.
+
+    Used to (a) refuse Canada-biased Geocodio queries that snap to lookalikes
+    (Boston→Boiestown NB, Carolina→Caroline AB) and (b) drop US-only jobs on save.
+
+    Hybrid CA/US remote strings (``Remote in Canada or USA``, ``Western Canada
+    or Western USA``) return False so Canadian-eligible roles are kept.
+    """
+    if not location or not str(location).strip():
+        return False
+    text = str(location).strip()
+    has_us = bool(
+        _US_COUNTRY_RE.search(text)
+        or _US_STATE_NAME_RE.search(text)
+        or _US_STATE_CODE_RE.search(text)
+    )
+    if not has_us:
+        return False
+    # Canada also named as an allowed region → not US-only
+    if re.search(r"(?i)\bcanad(?:a|ian)s?\b", text):
+        return False
+    return True
+
+
+def _is_intentional_us_geocode_query(query: str) -> bool:
+    """True for org-HQ style queries we *do* want to resolve in the US (…, USA)."""
+    return bool(re.search(r",\s*USA\s*$", query, re.I)) or query.rstrip().upper().endswith("USA")
+
+
 def location_has_no_geocodeable_city(location: Optional[str]) -> bool:
     """True when Geocodio cannot be expected to return a municipality.
 
@@ -437,9 +504,15 @@ def parse_address_with_geocodio(location: Optional[str]) -> dict:
         # Fall through to normal geocoding if checks fail
         pass
 
-    allow_us = bool(re.search(r",\s*USA\s*$", query, re.I)) or query.rstrip().upper().endswith(
-        "USA"
-    )
+    allow_us = _is_intentional_us_geocode_query(query)
+
+    # US job strings must not be Canada-suffixed — Geocodio then returns lookalikes
+    # (Boston→Boiestown NB, South Carolina→Caroline AB). Org HQ aliases end in
+    # ", USA" and keep allow_us geocoding.
+    if looks_like_us_location(location) or looks_like_us_location(query):
+        if not allow_us:
+            print(f"\tGeocoding '{location}'... skipped (US location)")
+            return _empty
 
     try:
         result = _geocode_with_geocodio(query, allow_us=allow_us)
