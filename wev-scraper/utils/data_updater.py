@@ -52,7 +52,11 @@ def update_jobs_data(job_ids=None, force_update=False):
         try:
             # Normalize all fields (includes Geocodio call with rate limiting)
             normalized = normalize_job_data(job)
-            
+            if normalized is None:
+                print(f"\t⊘ Job {job_id} skipped (US-only location)")
+                skipped += 1
+                continue
+
             # Update job in database
             update_data = {
                 "job_title": normalized["job_title"],

@@ -2,17 +2,16 @@
 """Vector-based ESCO skill tagger using Jina v3 embeddings.
 
 Per-job flow:
-  1. Build job text: job_title | organization | summary | description (truncated to Jina limit)
-  2. Embed with task="retrieval.query" via JinaEmbeddingService
-  3. Call match_skills_by_embedding RPC → top 80 candidates
-  4. Combined scoring: embedding_similarity × label_relevance (lexical overlap),
-     floor at 0.18 → top-10 cap
-  5. Write all selected candidates to job_skills
-  6. Write top 10 by score to jobs.skills (respects jobs_skills_max_10_check constraint)
+  1. Read LLM-extracted skill phrases from jobs.skills_raw
+  2. Embed phrases (batched) with task="retrieval.query" via JinaEmbeddingService
+  3. Call match_skills_by_embedding → best 1 ESCO match per phrase
+  4. Keep matches above similarity floor (default 0.40), cap at 50 (DB sanity ceiling)
+  5. Upsert selected rows to job_skills (with score)
+  6. Mirror URIs onto jobs.skills
 
 Usage:
-    python -m scripts.tag_esco_skills_vector [--dry-run] [--prod] [--backfill]
-        [--job-ids ID ...] [--limit N] [--retag]
+    python -m scripts.tag_esco_skills_vector [--dry-run] [--prod|--publish] [--backfill]
+        [--job-ids ID ...] [--limit N] [--retag] [--workers N]
 """
 
 from __future__ import annotations
@@ -20,9 +19,10 @@ from __future__ import annotations
 import argparse
 import logging
 import os
-import re
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 # Load env before any DB import. Mirror unified_post_processor.py: always load
@@ -32,7 +32,9 @@ from pathlib import Path
 from settings import ensure_env_loaded, load_env_file  # noqa: E402
 
 ensure_env_loaded()
-if "--prod" in sys.argv[1:]:
+_has_prod = "--prod" in sys.argv[1:]
+_has_publish = "--publish" in sys.argv[1:]
+if _has_prod or _has_publish:
     _root = Path(__file__).resolve().parent.parent.parent
     _scraper = Path(__file__).resolve().parent.parent
     _prod_env = (
@@ -41,20 +43,23 @@ if "--prod" in sys.argv[1:]:
         else _scraper / ".env.production"
     )
     if not _prod_env.exists():
-        print(f"❌ {_prod_env} not found — required for --prod.", file=sys.stderr)
+        print(f"❌ {_prod_env} not found — required for --prod/--publish.", file=sys.stderr)
         sys.exit(1)
     load_env_file(_prod_env)
-    # Match unified_post_processor.py: base .env may have ENV_MODE=local (local Jina
-    # embeddings need torch + HF). Prod skill tagging should use Jina API
-    # (JINA_API_KEY) instead.
-    os.environ["ENV_MODE"] = "prod"
-    print("▶ LLM/embed routing: ENV_MODE=prod (Jina API, not local torch)")
+    if _has_prod:
+        # Full prod: use Jina API (JINA_API_KEY) instead of local torch.
+        os.environ["ENV_MODE"] = "prod"
+        print("▶ LLM/embed routing: ENV_MODE=prod (Jina API, not local torch)")
+    else:
+        # Publish: prod DB credentials but keep ENV_MODE=local for local embeddings.
+        os.environ["ENV_MODE"] = "local"
+        print("▶ LLM/embed routing: ENV_MODE=local (--publish → local HuggingFace Jina)")
 
 # --prod confirmation before utils.db import
-if "--prod" in sys.argv[1:] and os.environ.get("CONFIRM_PROD_RUN") == "YES":
+if (_has_prod or _has_publish) and os.environ.get("CONFIRM_PROD_RUN") == "YES":
     os.environ["USE_PROD_DB"] = "1"
     print("🔥 Using PRODUCTION database (confirmation skipped)")
-elif "--prod" in sys.argv[1:]:
+elif _has_prod or _has_publish:
     if sys.stdin.isatty():
         print("\nWARNING: You are about to run against the PRODUCTION database.")
         print("This will modify real data.\n")
@@ -85,228 +90,173 @@ from utils.db import fetch_all_rows, supabase  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Lexical relevance helpers (ported from wev-bulletin/lib/nlp-utils.ts)
-# ---------------------------------------------------------------------------
-
-STOP_WORDS = {
-    "a", "an", "the", "of", "to", "in", "and", "or", "for", "with", "on", "at",
-    "by", "from", "as", "is", "are", "was", "were", "be", "been", "being",
-    "this", "that", "these", "those", "it", "its", "their", "they", "them",
-    "he", "she", "his", "her", "we", "our", "you", "your", "i", "my", "not",
-    "no", "nor", "so", "than", "then", "too", "very", "can", "will",
-}
-
-# ESCO occupation-/sector-specific skill labels are heavily templated
-# ("manage X operations", "supervise Y staff", "oversee Z process"). These
-# verbs and process-nouns recur across thousands of unrelated skills and carry
-# almost no domain signal alone — nearly any operations-heavy job description
-# contains several of them. Excluding them forces the relevance check to
-# hinge on the actual domain noun (the X/Y/Z), which is where the real signal is.
-GENERIC_MGMT_TERMS = {
-    "manage", "managing", "managed", "manager", "management",
-    "oversee", "overseeing", "overseen",
-    "supervise", "supervising", "supervised", "supervisor", "supervision",
-    "monitor", "monitoring", "monitored",
-    "coordinate", "coordinating", "coordinated", "coordinator",
-    "operate", "operating", "operated", "operation", "operations",
-    "operational", "operationally",
-    "process", "processes", "processing",
-    "activity", "activities",
-    "department", "departments",
-    "staff", "staffing",
-    "proper", "properly",
-    "perform", "performing", "performed",
-    "support", "supporting", "supported",
-    "conduct", "conducting", "conducted",
-    "follow", "following", "followed",
-}
-
-_TOKEN_RE = re.compile(r"[^a-z0-9'\-]+")
-
-
-def tokenize(text: str) -> list[str]:
-    """Lowercase, strip punctuation (keep apostrophes/hyphens), drop <2-char tokens."""
-    return [w for w in _TOKEN_RE.sub(" ", text.lower()).split() if len(w) >= 2]
-
-
-def build_job_word_set(job: dict) -> set[str]:
-    """Full (untruncated) bag of words from the posting, for lexical relevance checks."""
-    parts = [job.get("job_title", ""), job.get("organization", ""),
-             job.get("summary", ""), job.get("description", "")]
-    return set(tokenize(" ".join(p for p in parts if p)))
-
-
-def label_relevance(label: str, job_words: set[str]) -> float:
-    """Fraction of a skill label's content words (non-stopword, non-generic-
-    management) that literally appear in the job's word set.
-
-    Returns 1.0 (neutral — defer entirely to embedding score) when every word
-    in the label is a stopword or generic-management term, since there's
-    nothing left to check lexically.
-
-    KNOWN LIMITATION: a single common English word that's also a domain noun
-    (e.g. "well" — water well vs. the adverb "as well") can still slip through
-    as a false hit. Don't try to solve this with a bigger word list up front —
-    add specific words to STOP_WORDS as real false positives turn up.
-    """
-    content = [w for w in tokenize(label)
-               if w not in STOP_WORDS and w not in GENERIC_MGMT_TERMS]
-    if not content:
-        return 1.0
-    hits = sum(1 for w in content if w in job_words)
-    return hits / len(content)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def build_job_embedding_text(job: dict) -> str:
-    """Build the embedding input text for a job.
-
-    Concatenates available fields with ' | ' separator, omitting absent/empty ones.
-    Format: {job_title} | {organization} | {summary} | {description}
-
-    The string sent to :meth:`JinaEmbeddingService.embed` is a single element of
-    the API ``input`` list: ``{"input": [text], "model": "...", "task": "...", ...}``.
-    The server enforces a **token** cap (~8194 for jina-embeddings-v3), not a
-    character cap. Slicing at 32k **characters** assumed ~4 chars per token (rough
-    for English only); French/CJK/emoji-heavy text can exceed the token limit long
-    before 32k chars, which caused 400 errors. The combined string is cut to
-    :data:`llm.jina_embedding.MAX_API_EMBEDDING_INPUT_CHARS` instead.
-
-    NOTE: organization is included for industry inference. Monitor match quality
-    and consider dropping it if it introduces noise on org-heavy job titles.
-    """
-    parts = []
-    if job.get("job_title"):
-        parts.append(job["job_title"].strip())
-    if job.get("organization"):
-        parts.append(job["organization"].strip())
-    if job.get("summary"):
-        parts.append(job["summary"].strip())
-    if job.get("description"):
-        parts.append(job["description"].strip())
-    return " | ".join(parts)[:MAX_API_EMBEDDING_INPUT_CHARS]
-
 
 def select_skills(
     candidates: list[dict],
-    job_words: set[str],
-    max_count: int = 10,
-    combined_floor: float = 0.18,
+    combined_floor: float = 0.40,
 ) -> tuple[list[dict], float]:
-    """Select skills by combined (embedding similarity × lexical relevance)
-    confidence. Each candidate needs 'score' (embedding similarity, 0..1) and
-    'preferred_label_en'. Returned candidates have 'embedding_score' (original)
-    and 'relevance' added, and 'score' OVERWRITTEN with the combined value —
-    so the existing downstream code that reads s["score"] for job_skills
-    inserts and jobs.skills updates persists the combined confidence with no
-    further changes needed there.
-    """
-    scored = []
-    for c in candidates:
-        relevance = label_relevance(c.get("preferred_label_en", ""), job_words)
-        combined = c["score"] * relevance
-        scored.append({**c, "embedding_score": c["score"], "relevance": relevance, "score": combined})
+    """Select skills by similarity confidence.
 
-    above_floor = [c for c in scored if c["score"] > combined_floor]
+    Returns all candidates above the floor, sorted by descending score,
+    capped at 50 (the DB constraint limit). A floor of 0.40 balances
+    recall vs. noise for cosine similarity between short extracted
+    phrases and ESCO skill labels.
+    """
+    above_floor = [c for c in candidates if c["score"] > combined_floor]
     if not above_floor:
         return [], combined_floor
-    selected = sorted(above_floor, key=lambda c: c["score"], reverse=True)[:max_count]
+    selected = sorted(above_floor, key=lambda c: c["score"], reverse=True)[:50]
     return selected, combined_floor
 
 
-# ---------------------------------------------------------------------------
-# Per-job tagging
-# ---------------------------------------------------------------------------
+def replace_job_skills(job_id: str, rows: list[dict]) -> None:
+    """Replace ``job_skills`` for *job_id* without stranding an empty junction.
 
-def _tag_single_job(
-    job: dict,
-    svc: JinaEmbeddingService,
-    *,
-    dry_run: bool,
-) -> dict:
-    """Tag one job. Returns a result dict with keys: job_id, inserted, top_skills, source, error."""
-    job_id = job["id"]
-    job_title = job.get("job_title", "?")
+    Upserts the new set first, then deletes skill_ids not in that set. A failed
+    upsert leaves prior rows intact. Passing an empty *rows* clears all tags.
+    """
+    if not rows:
+        supabase.table("job_skills").delete().eq("job_id", job_id).execute()
+        return
+    keep_ids = [r["skill_id"] for r in rows]
+    supabase.table("job_skills").upsert(rows, on_conflict="job_id,skill_id").execute()
+    (
+        supabase.table("job_skills")
+        .delete()
+        .eq("job_id", job_id)
+        .not_.in_("skill_id", keep_ids)
+        .execute()
+    )
 
-    result = {"job_id": job_id, "inserted": 0, "top_skills": [], "source": None, "error": None}
 
-    # 1. Build embedding text
-    text = build_job_embedding_text(job)
-    if not text.strip():
-        logger.warning(f"[vector-tagger] job {job_id} ({job_title}): no text to embed, skipping")
-        result["error"] = "no_text"
-        return result
+def _is_transient_supabase_error(exc: BaseException) -> bool:
+    """True for HTTP/2 / connection drops that usually succeed on retry.
 
-    # 2. Embed with retry (JinaEmbeddingService handles 429/5xx internally)
-    max_retries = 3
-    backoff = 2.0
-    embedding = None
+    Seen under parallel workers sharing one PostgREST client: ConnectionTerminated
+    (error_code 9 = CANCEL), Server disconnected, SSL EOF, and bare numeric
+    h2 error codes when the exception stringifies poorly.
+    """
+    msg = str(exc).strip().lower()
+    if msg.isdigit():
+        return True
+    needles = (
+        "connectionterminated",
+        "server disconnected",
+        "connection reset",
+        "remotely closed",
+        "broken pipe",
+        "eof occurred",
+        "ssl",
+        "goaway",
+        "timed out",
+        "timeout",
+        "temporarily unavailable",
+        "503",
+        "502",
+        "504",
+    )
+    return any(n in msg for n in needles)
+
+
+def _with_supabase_retries(op, *, label: str, max_retries: int = 4):
+    """Run a Supabase call with backoff on transient connection failures."""
+    backoff = 0.75
+    last_exc: BaseException | None = None
     for attempt in range(max_retries + 1):
         try:
-            embeddings = svc.embed([text], task="retrieval.query")
-            embedding = embeddings[0]
-            break
+            return op()
         except Exception as e:
-            if attempt < max_retries:
-                logger.warning(
-                    f"[vector-tagger] job {job_id}: embed attempt {attempt + 1} failed ({e}), "
-                    f"retrying in {backoff}s"
-                )
-                time.sleep(backoff)
-                backoff *= 2
-            else:
-                logger.error(f"[vector-tagger] job {job_id} ({job_title}): embedding failed after {max_retries} retries — {e}")
-                result["error"] = str(e)
-                return result
+            last_exc = e
+            if attempt >= max_retries or not _is_transient_supabase_error(e):
+                raise
+            logger.warning(
+                f"[vector-tagger] {label}: transient error ({e!r}), "
+                f"retry {attempt + 1}/{max_retries} in {backoff:.1f}s"
+            )
+            time.sleep(backoff)
+            backoff = min(backoff * 2, 8.0)
+    assert last_exc is not None
+    raise last_exc
 
-    # 3. Call match_skills_by_embedding RPC → top 80 candidates
+
+# ---------------------------------------------------------------------------
+# Main tagger
+# ---------------------------------------------------------------------------
+
+def _match_and_write_job(
+    *,
+    job: dict,
+    valid_phrases: list[str],
+    embeddings: list[list[float]],
+    dry_run: bool,
+    print_lock: threading.Lock,
+) -> dict:
+    """Match one job's phrase embeddings to ESCO and write job_skills.
+
+    Returns a stats dict: processed, inserted, zero_match, top1_score, error.
+    Embeddings are assumed already computed (local MPS stays single-threaded).
+    """
+    job_id = job["id"]
+    job_title = job.get("job_title", "?")
+    best_candidates: dict[str, dict] = {}
+
     try:
-        rpc_resp = supabase.rpc(
-            "match_skills_by_embedding",
-            {"query_embedding": embedding, "match_count": 80},
-        ).execute()
-        candidates = [
-            {
-                "concept_uri": row["concept_uri"],
-                "preferred_label_en": row.get("preferred_label_en", ""),
-                "preferred_label_fr": row.get("preferred_label_fr", ""),
-                "score": row["similarity"],
-            }
-            for row in (rpc_resp.data or [])
-        ]
-    except Exception as e:
-        logger.error(f"[vector-tagger] job {job_id} ({job_title}): RPC failed — {e}")
-        result["error"] = str(e)
-        return result
+        query_embeddings = [f"[{','.join(map(str, emb))}]" for emb in embeddings]
 
-    # 4. Adaptive skill selection (embedding × lexical relevance → cap)
-    candidates_raw = candidates
-    job_words = build_job_word_set(job)
-    selected, cutoff = select_skills(candidates_raw, job_words)
+        def _rpc():
+            return supabase.rpc(
+                "match_skills_by_embedding",
+                {"query_embeddings": query_embeddings, "match_count": 1},
+            ).execute()
+
+        rpc_resp = _with_supabase_retries(_rpc, label=f"job {job_id} match RPC")
+
+        for row in (rpc_resp.data or []):
+            uri = row["concept_uri"]
+            score = row["similarity"]
+            if uri not in best_candidates or score > best_candidates[uri]["score"]:
+                best_candidates[uri] = {
+                    "concept_uri": uri,
+                    "preferred_label_en": row.get("preferred_label_en", ""),
+                    "preferred_label_fr": row.get("preferred_label_fr", ""),
+                    "score": score,
+                    "matched_phrase": "...",
+                }
+    except Exception as e:
+        logger.error(f"[vector-tagger] job {job_id} ({job_title}): batch RPC failed — {e!r}")
+        return {"processed": 0, "inserted": 0, "zero_match": 0, "top1_score": None, "error": 1}
+
+    candidates_raw = list(best_candidates.values())
+    selected, cutoff = select_skills(candidates_raw)
     source = "jina-v3"
 
     top_score_str = f"{selected[0]['score']:.3f}" if selected else "n/a"
-    print(
-        f"  job {job_id[:8]}… {job_title[:40]!r}: "
-        f"{len(candidates_raw)} candidates → {len(selected)} selected "
-        f"(elbow cutoff: {cutoff:.3f}, top score: {top_score_str})"
-    )
+    with print_lock:
+        print(
+            f"  job {job_id[:8]}… {job_title[:40]!r}: "
+            f"{len(valid_phrases)} phrases → {len(candidates_raw)} unique ESCO hits → {len(selected)} selected "
+            f"(floor: {cutoff:.3f}, top score: {top_score_str})"
+        )
 
+    zero_match = 0
+    top1_score = None
     if not selected:
         logger.warning(f"[vector-tagger] job {job_id} ({job_title}): zero matches after elbow selection")
+        zero_match = 1
+    else:
+        top1_score = selected[0]["score"]
 
-    top10 = selected[:10]
+    top50 = selected[:50]
 
     if dry_run:
-        result["top_skills"] = top10
-        result["source"] = source
-        return result
+        return {
+            "processed": 1,
+            "inserted": 0,
+            "zero_match": zero_match,
+            "top1_score": top1_score,
+            "error": 0,
+        }
 
-    # 5. Insert all selected into job_skills
     if selected:
         job_skills_rows = [
             {
@@ -318,32 +268,43 @@ def _tag_single_job(
             for s in selected
         ]
         try:
-            supabase.table("job_skills").upsert(
-                job_skills_rows, on_conflict="job_id,skill_id"
-            ).execute()
-            result["inserted"] = len(job_skills_rows)
+            _with_supabase_retries(
+                lambda: replace_job_skills(job_id, job_skills_rows),
+                label=f"job {job_id} replace job_skills",
+            )
+            inserted = len(job_skills_rows)
         except Exception as e:
-            logger.error(f"[vector-tagger] job {job_id}: job_skills upsert failed — {e}")
-            result["error"] = str(e)
-            return result
+            logger.error(f"[vector-tagger] job {job_id}: job_skills replace failed — {e!r}")
+            return {"processed": 0, "inserted": 0, "zero_match": zero_match, "top1_score": top1_score, "error": 1}
+    else:
+        try:
+            _with_supabase_retries(
+                lambda: replace_job_skills(job_id, []),
+                label=f"job {job_id} clear job_skills",
+            )
+            inserted = 0
+        except Exception as e:
+            logger.error(f"[vector-tagger] job {job_id}: job_skills clear failed — {e!r}")
+            return {"processed": 0, "inserted": 0, "zero_match": zero_match, "top1_score": top1_score, "error": 1}
 
-    # 6. Write top 10 to jobs.skills (respects jobs_skills_max_10_check constraint)
-    top10_uris = [s["concept_uri"] for s in top10]
+    top50_uris = [s["concept_uri"] for s in top50]
     try:
-        supabase.table("jobs").update({"skills": top10_uris}).eq("id", job_id).execute()
+        _with_supabase_retries(
+            lambda: supabase.table("jobs").update({"skills": top50_uris}).eq("id", job_id).execute(),
+            label=f"job {job_id} update jobs.skills",
+        )
     except Exception as e:
-        logger.error(f"[vector-tagger] job {job_id}: jobs.skills update failed — {e}")
-        result["error"] = str(e)
-        return result
+        logger.error(f"[vector-tagger] job {job_id}: jobs.skills update failed — {e!r}")
+        return {"processed": 0, "inserted": inserted, "zero_match": zero_match, "top1_score": top1_score, "error": 1}
 
-    result["top_skills"] = top10
-    result["source"] = source
-    return result
+    return {
+        "processed": 1,
+        "inserted": inserted,
+        "zero_match": zero_match,
+        "top1_score": top1_score,
+        "error": 0,
+    }
 
-
-# ---------------------------------------------------------------------------
-# Main tagger
-# ---------------------------------------------------------------------------
 
 def tag_esco_skills_vector(
     *,
@@ -352,26 +313,30 @@ def tag_esco_skills_vector(
     retag: bool = False,
     backfill: bool = False,
     limit: int | None = None,
+    workers: int = 4,
 ) -> dict:
-    """Tag jobs with ESCO skills via vector similarity.
+    """Tag jobs with ESCO skills via vector similarity in batches.
 
     Args:
         job_ids:  Specific job IDs to process. Mutually exclusive with backfill.
-        dry_run:  Log top 5 candidates per job without writing to DB.
+        dry_run:  Log top candidates per job without writing to DB.
         retag:    Re-process jobs that already have job_skills rows.
         backfill: Process all jobs with no job_skills rows with source LIKE 'jina-v3%'.
         limit:    Cap jobs processed.
+        workers:  Parallel threads for match RPC + DB writes (embeddings stay serial).
 
     Returns:
         Summary dict: processed, inserted, zero_match_jobs, avg_top1_score, errors.
     """
+    workers = max(1, int(workers))
     print("=" * 70)
-    print("ESCO VECTOR SKILL TAGGER")
+    print("ESCO VECTOR SKILL TAGGER (BATCHED)")
     print("=" * 70)
     print(f"Dry run:     {'yes' if dry_run else 'no'}")
     print(f"Retag:       {'yes' if retag else 'no'}")
     print(f"Backfill:    {'yes' if backfill else 'no'}")
     print(f"Limit:       {limit if limit else 'none'}")
+    print(f"Workers:     {workers} (match/write; embed serial)")
     print()
 
     # Initialize embedding service
@@ -384,11 +349,16 @@ def tag_esco_skills_vector(
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
 
     # Fetch jobs
-    columns = "id, job_title, organization, summary, description"
+    columns = "id, job_title, organization, summary, description, skills_raw"
     try:
         if job_ids:
-            resp = supabase.table("jobs").select(columns).in_("id", job_ids).execute()
-            jobs = resp.data or []
+            jobs = []
+            chunk_size = 100
+            for i in range(0, len(job_ids), chunk_size):
+                chunk = job_ids[i:i + chunk_size]
+                resp = supabase.table("jobs").select(columns).in_("id", chunk).execute()
+                if resp.data:
+                    jobs.extend(resp.data)
         elif backfill and retag:
             # Retag all jobs (ignore existing job_skills rows)
             jobs = fetch_all_rows("jobs", columns, order_by="id", desc=True)
@@ -416,35 +386,147 @@ def tag_esco_skills_vector(
         print("Nothing to do.")
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 0}
 
-    # Process jobs
+    start_time = time.time()
+
+    # 1. Collect all phrases across all jobs
+    jobs_with_phrases = []
+    all_phrases = []
+    jobs_cleared_no_phrases = 0
+
+    for job in jobs:
+        skills_raw = job.get("skills_raw")
+        valid_phrases: list[str] = []
+        if isinstance(skills_raw, list):
+            valid_phrases = [str(s).strip() for s in skills_raw if str(s).strip()]
+
+        if not valid_phrases:
+            # On --retag, clear stale junction/tags for phrase-less jobs so old
+            # whole-job embedding mistags do not survive extract→tag gaps.
+            if retag and not dry_run:
+                job_id = job["id"]
+                try:
+                    _with_supabase_retries(
+                        lambda jid=job_id: replace_job_skills(jid, []),
+                        label=f"job {job_id} clear job_skills (no phrases)",
+                    )
+                    _with_supabase_retries(
+                        lambda jid=job_id: supabase.table("jobs")
+                        .update({"skills": []})
+                        .eq("id", jid)
+                        .execute(),
+                        label=f"job {job_id} clear jobs.skills (no phrases)",
+                    )
+                    jobs_cleared_no_phrases += 1
+                except Exception as e:
+                    logger.error(
+                        f"[vector-tagger] job {job_id}: clear on empty skills_raw failed — {e!r}"
+                    )
+            continue
+
+        start_idx = len(all_phrases)
+        all_phrases.extend(valid_phrases)
+        end_idx = len(all_phrases)
+
+        jobs_with_phrases.append({
+            "job": job,
+            "phrases": valid_phrases,
+            "start_idx": start_idx,
+            "end_idx": end_idx
+        })
+
+    print(f"Collected {len(all_phrases)} phrases across {len(jobs_with_phrases)} jobs.")
+    if jobs_cleared_no_phrases:
+        print(f"Cleared stale tags on {jobs_cleared_no_phrases} retag jobs with no skills_raw phrases.")
+
+    if not jobs_with_phrases:
+        print("No jobs with skills_raw phrases — nothing to embed.")
+        return {
+            "processed": jobs_cleared_no_phrases,
+            "inserted": 0,
+            "zero_match_jobs": 0,
+            "avg_top1_score": 0.0,
+            "errors": 0,
+        }
+
+    # 2. Embed all phrases in batches
+    # We can batch the embeddings into chunks to avoid passing too many to the API or model at once.
+    CHUNK_SIZE = 500
+    all_embeddings = []
+    
+    for i in range(0, len(all_phrases), CHUNK_SIZE):
+        chunk = all_phrases[i:i + CHUNK_SIZE]
+        max_retries = 3
+        backoff = 2.0
+        for attempt in range(max_retries + 1):
+            try:
+                print(f"Embedding chunk {i} to {i + len(chunk)}...")
+                chunk_embeddings = svc.embed(chunk, task="retrieval.query")
+                all_embeddings.extend(chunk_embeddings)
+                break
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.warning(f"Embed attempt {attempt + 1} failed ({e}), retrying in {backoff}s")
+                    time.sleep(backoff)
+                    backoff *= 2
+                else:
+                    logger.error(f"Embedding failed after {max_retries} retries — {e}")
+                    return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
+
+    # 3. Match + write per job (I/O-bound — parallelize across workers).
+    # Local Jina/MPS embedding above stays serial; concurrency is for Supabase RPC/writes.
     processed = 0
     total_inserted = 0
     zero_match_jobs = 0
     top1_scores: list[float] = []
     errors = 0
-    start_time = time.time()
+    print_lock = threading.Lock()
+    done = 0
+    total_jobs = len(jobs_with_phrases)
 
-    for job in jobs:
-        result = _tag_single_job(job, svc, dry_run=dry_run)
+    def _run_one(item: dict) -> dict:
+        return _match_and_write_job(
+            job=item["job"],
+            valid_phrases=item["phrases"],
+            embeddings=all_embeddings[item["start_idx"] : item["end_idx"]],
+            dry_run=dry_run,
+            print_lock=print_lock,
+        )
 
-        if result["error"]:
-            errors += 1
-        else:
-            processed += 1
-            total_inserted += result["inserted"]
-            if not result["top_skills"]:
-                zero_match_jobs += 1
-            else:
-                top1_scores.append(result["top_skills"][0]["score"])
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_run_one, item): item for item in jobs_with_phrases}
+        for fut in as_completed(futures):
+            try:
+                stats = fut.result()
+            except Exception as e:
+                item = futures[fut]
+                jid = item["job"]["id"]
+                logger.error(f"[vector-tagger] job {jid}: unexpected worker failure — {e}")
+                errors += 1
+                done += 1
+                continue
+
+            processed += stats["processed"]
+            total_inserted += stats["inserted"]
+            zero_match_jobs += stats["zero_match"]
+            errors += stats["error"]
+            if stats["top1_score"] is not None:
+                top1_scores.append(stats["top1_score"])
+            done += 1
+            if done % 50 == 0 or done == total_jobs:
+                with print_lock:
+                    print(f"  … progress {done}/{total_jobs} jobs")
 
     elapsed = time.time() - start_time
     avg_top1 = sum(top1_scores) / len(top1_scores) if top1_scores else 0.0
+    processed += jobs_cleared_no_phrases
 
     print()
     print("=" * 70)
     print("SUMMARY")
     print("=" * 70)
     print(f"  Jobs processed       : {processed}")
+    if jobs_cleared_no_phrases:
+        print(f"    (cleared no-phrase): {jobs_cleared_no_phrases}")
     print(f"  job_skills inserted  : {total_inserted}")
     print(f"  Avg top-1 similarity : {avg_top1:.3f}")
     print(f"  Jobs with 0 matches  : {zero_match_jobs}")
@@ -518,11 +600,18 @@ def _filter_untagged_jobs(jobs: list[dict]) -> list[dict]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Tag ESCO skills via Jina v3 vector embeddings")
     parser.add_argument("--dry-run", action="store_true", help="Log candidates without writing to DB")
-    parser.add_argument("--prod", action="store_true", help="Target production DB (handled at module load)")
+    parser.add_argument("--prod", action="store_true", help="Target production DB with remote Jina API")
+    parser.add_argument("--publish", action="store_true", help="Target production DB with local Jina embeddings")
     parser.add_argument("--retag", action="store_true", help="Re-process jobs that already have job_skills rows")
     parser.add_argument("--backfill", action="store_true", help="Process all jobs with no jina-v3 job_skills rows")
     parser.add_argument("--job-ids", nargs="+", metavar="ID", help="Process specific job IDs")
     parser.add_argument("--limit", type=int, default=None, help="Cap jobs processed")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=int(os.environ.get("TAG_ESCO_WORKERS", "4")),
+        help="Parallel threads for match RPC + DB writes (default: 4, or TAG_ESCO_WORKERS)",
+    )
     args = parser.parse_args()
 
     tag_esco_skills_vector(
@@ -531,6 +620,7 @@ def main() -> None:
         retag=args.retag,
         backfill=args.backfill,
         limit=args.limit,
+        workers=args.workers,
     )
 
 

@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { useRequireAuth } from '@/lib/hooks/useRequireAuth';
-import { useProfileForm, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
+import { useProfileForm, SOFT_PROFILE_SKILLS, MAX_PROFILE_VALUES } from '@/lib/hooks/useProfileForm';
 import SkillsSelector from '@/components/profile/skills/SkillsSelector';
 import ValuesSelector from '@/components/profile/values/ValuesSelector';
 import WorkSettingSection from '@/components/profile/WorkSettingSection';
@@ -134,8 +134,8 @@ export default function ProfilePage() {
               <CompetencySection
                 label={t('profile.skills')}
                 count={selectedSkills.length}
-                max={MAX_PROFILE_SKILLS}
-                overLimitWarning={t('profile.skillsSoftLimitWarning', { max: MAX_PROFILE_SKILLS })}
+                max={SOFT_PROFILE_SKILLS}
+                overLimitWarning={t('profile.skillsSoftLimitWarning', { max: SOFT_PROFILE_SKILLS })}
               >
                 <SkillsSelector
                   selectedSkills={selectedSkills}
