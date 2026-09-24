@@ -242,12 +242,12 @@ describe('useProfileForm', () => {
   });
 
   it('does not let a stale post-save skills hydrate overwrite a local remove', async () => {
-    let resolveFetch: ((skills: unknown) => void) | undefined;
+    let resolveFetch: ((skills: any) => void) | undefined;
     vi.mocked(fetchSkillsByUri).mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveFetch = resolve;
-        }),
+        }) as any,
     );
 
     let profileState = {
