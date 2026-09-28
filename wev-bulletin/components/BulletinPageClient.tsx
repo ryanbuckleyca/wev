@@ -67,6 +67,7 @@ export default function BulletinPageClient({
   const filters = useBulletinFilters({
     initialProfile,
     initialUserId,
+    isAdmin: effectiveIsAdmin,
   });
 
   const data = useBulletinData(

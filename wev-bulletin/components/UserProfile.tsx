@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Link } from '@/i18n/navigation';
+import { Link, usePathname } from '@/i18n/navigation';
 import notify from '@/lib/toast';
 import { getSiteBaseUrl } from '@/lib/site-url';
 import Button from '@/components/Button';
@@ -29,6 +29,7 @@ export default function UserProfile({
 }: UserProfileProps) {
   const t = useTranslations();
   const locale = useLocale();
+  const pathname = usePathname();
   const { user, role, loading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -51,6 +52,12 @@ export default function UserProfile({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Close menus after client-side navigation (e.g. Jobs / Organizations links)
+  useEffect(() => {
+    setIsOpen(false);
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -134,7 +141,12 @@ export default function UserProfile({
                   </Link>
                 </div>
                 {children && (
-                  <nav className="border-t border-border pt-3 space-y-1">{children}</nav>
+                  <nav
+                    className="border-t border-border pt-3 space-y-1"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {children}
+                  </nav>
                 )}
                 {(showThemeInMenu || showLocaleInMenu) && (
                   <>
@@ -222,7 +234,14 @@ export default function UserProfile({
               </Link>
             </nav>
 
-            {children && <nav className="border-t border-border p-3 space-y-1">{children}</nav>}
+            {children && (
+              <nav
+                className="border-t border-border p-3 space-y-1"
+                onClick={() => setIsOpen(false)}
+              >
+                {children}
+              </nav>
+            )}
 
             {(showThemeInMenu || showLocaleInMenu) && (
               <div className="p-3 border-t border-border space-y-3 transition-colors duration-700 ease-in-out">

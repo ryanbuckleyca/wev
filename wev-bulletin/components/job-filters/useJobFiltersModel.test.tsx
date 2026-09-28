@@ -97,6 +97,7 @@ function createProps(): JobFiltersProps {
     filterOptions: buildFilterOptions(jobs),
     filteredJobsCount: 1,
     totalJobsCount: 2,
+    isAdmin: true,
   };
 }
 
@@ -143,6 +144,15 @@ describe('useJobFiltersModel', () => {
     expect(mockControls.setPostedWithin).toHaveBeenCalledWith('2-weeks');
     expect(mockControls.setSearchQuery).toHaveBeenCalledWith('');
     expect(mockControls.setSelectedProvinces).toHaveBeenCalledWith([]);
+  });
+
+  it('hides the non-SSE chip for non-admin users', () => {
+    const props = { ...createProps(), isAdmin: false };
+    const { result } = renderHook(() => useJobFiltersModel(props), {
+      wrapper: Wrapper,
+    });
+
+    expect(result.current.activeFilterChips.map((chip) => chip.id)).not.toContain('nonSse');
   });
 
   it('should NOT hide other sources when a source is selected', () => {

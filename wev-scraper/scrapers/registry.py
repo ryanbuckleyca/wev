@@ -2,12 +2,15 @@ import re
 from typing import Dict, Type
 
 from scrapers.centraide import CentraideScraper
+from scrapers.chantier import ChantierScraper
 from scrapers.charityvillage import CharityVillageScraper
 from scrapers.coco import CocoScraper
+from scrapers.cooperationcanada import CooperationCanadaScraper
 from scrapers.csi import CSIScraper
 from scrapers.cwc import CWCScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
+from scrapers.idealist import IdealistScraper
 from scrapers.macommunaute import MaCommunauteScraper
 from scrapers.winp import WinpScraper
 from scrapers.workinculture import WorkInCultureScraper
@@ -26,6 +29,10 @@ SCRAPER_MAP: Dict[str, Type] = {
     "workinculture": WorkInCultureScraper,
     "winpvol": WinpScraper,
     "winpjobs": WinpScraper,
+    "idealist": IdealistScraper,
+    "idealistintern": IdealistScraper,
+    "coopcan": CooperationCanadaScraper,
+    "chantier": ChantierScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -77,6 +84,15 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "workinnonprofits jobs": "winpjobs",
     "work in nonprofits jobs": "winpjobs",
     "winpjobs": "winpjobs",
+    "idealist": "idealist",
+    "idealist jobs": "idealist",
+    "idealist internships": "idealistintern",
+    "idealistintern": "idealistintern",
+    "cooperation canada": "coopcan",
+    "coopcan": "coopcan",
+    "chantier": "chantier",
+    "chantier de l'économie sociale": "chantier",
+    "chantier de l economie sociale": "chantier",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {

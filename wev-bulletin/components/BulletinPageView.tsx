@@ -76,6 +76,7 @@ export default function BulletinPageView({
             filteredJobsCount={data.totalMatchingJobs}
             totalJobsCount={data.availableJobsCount}
             loading={data.loading}
+            isAdmin={isAdmin}
           />
 
           {/* Keep toolbar chrome mounted — only the scrape timestamp is async. */}
@@ -114,16 +115,18 @@ export default function BulletinPageView({
             skillLabels={data.skillLabels}
           />
 
-          <Pagination
-            currentPage={filters.currentPage}
-            onPageChange={(page) => {
-              void filters.setCurrentPage(page);
-              window.scrollTo({ top: 0, behavior: 'auto' });
-            }}
-            totalPages={data.totalPages}
-            totalItems={data.totalMatchingJobs}
-            itemsPerPage={data.itemsPerPage}
-          />
+          {!data.loading && (
+            <Pagination
+              currentPage={filters.currentPage}
+              onPageChange={(page) => {
+                void filters.setCurrentPage(page);
+                window.scrollTo({ top: 0, behavior: 'auto' });
+              }}
+              totalPages={data.totalPages}
+              totalItems={data.totalMatchingJobs}
+              itemsPerPage={data.itemsPerPage}
+            />
+          )}
         </div>
       </main>
     </BulletinFilterProvider>

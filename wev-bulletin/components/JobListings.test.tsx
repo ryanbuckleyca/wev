@@ -70,6 +70,27 @@ describe('JobListings empty state', () => {
     expect(screen.queryByText(/loading/i)).not.toBeInTheDocument();
   });
 
+  it('shows skeleton cards while loading even when previous jobs are still in state', () => {
+    const { container } = renderWithFilters(
+      {
+        ...defaultProps,
+        loading: true,
+        totalJobsCount: 10,
+        jobs: [
+          {
+            id: 'job-1',
+            title: 'Stale Job',
+            organization_name: 'Org',
+          } as any,
+        ],
+      },
+      createMockFilters(),
+    );
+
+    expect(screen.queryByText('Stale Job')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('article').length).toBeGreaterThan(0);
+  });
+
   it('does not show clear button when there are no filters applied', () => {
     const filters = createMockFilters({ hasAnyFilters: false });
     renderWithFilters({ ...defaultProps, totalJobsCount: 10 }, filters);

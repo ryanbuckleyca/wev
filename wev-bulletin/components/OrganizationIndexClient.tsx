@@ -69,7 +69,7 @@ export default function OrganizationIndexClient({
 
   const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
   const showSectorIndex = !controls.hasAnyFilters && sectorIndex.length > 0;
-  const showCountSkeleton = loading && orgs.length === 0;
+  const showCountSkeleton = loading;
 
   const handleSelectSector = (sectorId: string) => {
     const next = controls.selectedSectors.includes(sectorId)

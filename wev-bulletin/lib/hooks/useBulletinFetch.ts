@@ -68,9 +68,17 @@ export function useBulletinFetch(
     [locale, filters, sortBy, currentPage],
   );
 
-  // When we hydrate SSR jobs they already represent this fetchKey, so the first
-  // effect run won't refetch the identical set.
-  const lastFetchedKeyRef = useRef<string | null>(hydrateInitial ? fetchKey : null);
+  // Key of the data currently in state. Differs from fetchKey while a new
+  // filter/page request is in flight — drives the list skeleton on the same
+  // render as the URL change (before the fetch effect runs).
+  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(() => {
+    // Mirror hydrateInitial without reading mount refs (react-hooks/refs).
+    const hydrate =
+      !!initialData &&
+      !initialData.userId &&
+      !BULLETIN_URL_KEYS.some((key) => searchParams?.has(key));
+    return hydrate ? buildFetchKey(locale, filters, sortBy, currentPage) : null;
+  });
 
   const [jobsOnPage, setJobsOnPage] = useState<JobPosting[]>(() =>
     hydrateInitial ? (initialData?.jobs ?? []) : [],
@@ -100,19 +108,14 @@ export function useBulletinFetch(
   );
   const [loading, setLoading] = useState(() => !hydrateInitial);
   const [error, setError] = useState<string | null>(null);
-  const jobsOnPageRef = useRef(jobsOnPage);
-  jobsOnPageRef.current = jobsOnPage;
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
-    // Only show the skeleton when there's nothing on screen yet. When jobs are
-    // already displayed, refetch in the background (stale-while-revalidate) so
-    // the list never flashes to a skeleton.
-    if (jobsOnPageRef.current.length === 0) {
-      setLoading(true);
-    }
+    // Always show the list skeleton while fetching a new filter/page result so
+    // users don't briefly see the previous page's jobs and think nothing changed.
+    setLoading(true);
     setError(null);
 
     const controller = new AbortController();
@@ -163,7 +166,7 @@ export function useBulletinFetch(
       if (data.filterOptions) {
         setFilterOptions(data.filterOptions);
       }
-      lastFetchedKeyRef.current = fetchKey;
+      setCompletedFetchKey(fetchKey);
       setLoading(false);
     } catch (fetchError) {
       if (requestId !== requestIdRef.current) return;
@@ -177,6 +180,9 @@ export function useBulletinFetch(
       }
 
       setError(message);
+      // Settle this fetchKey even on failure so isStale clears and the UI is not
+      // stuck with a permanent loading indicator alongside the error.
+      setCompletedFetchKey(fetchKey);
       setLoading(false);
     } finally {
       window.clearTimeout(timeoutId);
@@ -191,13 +197,14 @@ export function useBulletinFetch(
   // fetchKey makes transient filter "settling" cheap and idempotent.
   useEffect(() => {
     if (!filtersReady) return;
-    if (lastFetchedKeyRef.current === fetchKey) return;
+    if (completedFetchKey === fetchKey) return;
     void refreshRef.current();
-  }, [filtersReady, fetchKey]);
+  }, [filtersReady, fetchKey, completedFetchKey]);
 
-  // Skeleton until the first result for the current view is on screen. Once jobs
-  // are displayed, background refetches keep the old list visible (no flash).
-  const effectiveLoading = jobsOnPage.length === 0 && (loading || !filtersReady);
+  // Skeleton whenever the on-screen jobs don't match the active filter/page key
+  // (including the gap between a URL change and the fetch effect starting).
+  const isStale = completedFetchKey !== fetchKey;
+  const effectiveLoading = loading || isStale || !filtersReady;
 
   return {
     jobsOnPage,

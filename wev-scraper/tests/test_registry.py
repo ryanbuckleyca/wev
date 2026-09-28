@@ -1,5 +1,8 @@
+from scrapers.chantier import ChantierScraper
+from scrapers.cooperationcanada import CooperationCanadaScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
+from scrapers.idealist import IdealistScraper
 from scrapers.macommunaute import MaCommunauteScraper
 from scrapers.registry import (
     canonical_slug,
@@ -51,6 +54,25 @@ def test_get_scraper_class_winp_boards():
     assert get_scraper_class({"name": "WorkInNonProfits Volunteer"}) is WinpScraper
     assert get_scraper_class({"slug": "winpjobs"}) is WinpScraper
     assert get_scraper_class({"name": "WorkInNonProfits Jobs"}) is WinpScraper
+
+
+def test_get_scraper_class_idealist_boards():
+    assert get_scraper_class({"slug": "idealist"}) is IdealistScraper
+    assert get_scraper_class({"name": "Idealist Jobs"}) is IdealistScraper
+    assert get_scraper_class({"slug": "idealistintern"}) is IdealistScraper
+    assert get_scraper_class({"name": "Idealist Internships"}) is IdealistScraper
+
+
+def test_get_scraper_class_cooperation_canada():
+    assert get_scraper_class({"slug": "coopcan"}) is CooperationCanadaScraper
+    assert get_scraper_class({"name": "Cooperation Canada"}) is CooperationCanadaScraper
+
+
+def test_get_scraper_class_chantier():
+    assert get_scraper_class({"slug": "chantier"}) is ChantierScraper
+    assert (
+        get_scraper_class({"name": "Chantier de l'économie sociale"}) is ChantierScraper
+    )
 
 
 def test_source_matches_slug_by_legacy_slug():

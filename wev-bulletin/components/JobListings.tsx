@@ -80,11 +80,11 @@ export default function JobListings({
     );
   }
 
-  if (loading && jobs.length === 0) {
+  if (loading) {
     return <CardListSkeleton />;
   }
 
-  if (!loading && jobs.length === 0) {
+  if (jobs.length === 0) {
     return (
       <ListEmptyState
         emptyMessage={t('jobListings.noJobs')}

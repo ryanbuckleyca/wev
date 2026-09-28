@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/middleware';
 import createMiddleware from 'next-intl/middleware';
 import { routing } from './i18n/routing';
@@ -6,6 +6,11 @@ import { routing } from './i18n/routing';
 const i18nMiddleware = createMiddleware(routing);
 
 export async function middleware(request: NextRequest) {
+  // Liveness probe: no i18n, no Supabase session refresh.
+  if (request.nextUrl.pathname === '/api/ping') {
+    return NextResponse.next();
+  }
+
   // Skip i18n for API routes – they live at /api/... without a locale prefix.
   // Still run Supabase session refresh so auth cookies stay valid.
   if (request.nextUrl.pathname.startsWith('/api')) {

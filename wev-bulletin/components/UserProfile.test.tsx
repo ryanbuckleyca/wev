@@ -16,6 +16,7 @@ vi.mock('@/i18n/navigation', () => ({
       </a>
     );
   },
+  usePathname: () => '/',
 }));
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -71,5 +72,26 @@ describe('UserProfile', () => {
     expect(screen.getByText('test@example.com')).toBeInTheDocument();
     expect(screen.getByText(/my profile/i)).toBeInTheDocument();
     expect(screen.getByText(/log out/i)).toBeInTheDocument();
+  });
+
+  it('closes the mobile nav menu when a child link is clicked', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: null,
+      role: null,
+      loading: false,
+      refresh: vi.fn(),
+    } as any);
+
+    render(
+      <UserProfile>
+        <a href="/organizations">Organizations</a>
+      </UserProfile>,
+    );
+
+    fireEvent.click(screen.getByLabelText(/open menu/i));
+    expect(screen.getByText('Organizations')).toBeVisible();
+
+    fireEvent.click(screen.getByText('Organizations'));
+    expect(screen.queryByText('Organizations')).not.toBeInTheDocument();
   });
 });

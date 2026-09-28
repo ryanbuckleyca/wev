@@ -8,4 +8,6 @@ export interface JobFiltersProps {
   totalJobsCount?: number;
   /** True while the first results for the current filters are still loading. */
   loading?: boolean;
+  /** Admin-only filters (e.g. show non-SSE jobs) are hidden when false. */
+  isAdmin?: boolean;
 }
