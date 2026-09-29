@@ -11,6 +11,12 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Same-origin proxy to local Kong (see next.config.mjs). Must not run i18n
+  // or session logic — those return HTML and break auth JSON clients.
+  if (request.nextUrl.pathname.startsWith('/__supabase')) {
+    return NextResponse.next();
+  }
+
   // Skip i18n for API routes – they live at /api/... without a locale prefix.
   // Still run Supabase session refresh so auth cookies stay valid.
   if (request.nextUrl.pathname.startsWith('/api')) {
@@ -36,6 +42,7 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - auth (auth callback / sign-out routes handled separately)
+     * - __supabase (same-origin proxy to local Kong)
      * - _next/static (static files)
      * - _next/image (image optimisation files)
      * - favicon.ico
@@ -44,6 +51,6 @@ export const config = {
      * /api IS intentionally included so Supabase session cookies are
      * refreshed for API routes (avoids 401s after token expiry).
      */
-    '/((?!auth|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!auth|__supabase|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
