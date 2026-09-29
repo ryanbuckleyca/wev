@@ -50,7 +50,7 @@ vi.mock('@/lib/auth/require-admin', () => ({
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
-  revalidateTag: vi.fn(),
+  updateTag: vi.fn(),
 }));
 
 vi.mock('@/lib/supabase-server', () => ({
