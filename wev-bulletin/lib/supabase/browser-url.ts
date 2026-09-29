@@ -19,10 +19,7 @@ function isLoopbackHostname(hostname: string): boolean {
  * Server-side callers should keep using `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_URL`
  * directly — Node can reach loopback without that restriction.
  */
-export function resolveBrowserSupabaseUrl(
-  configuredUrl: string,
-  pageHref?: string | null,
-): string {
+export function resolveBrowserSupabaseUrl(configuredUrl: string, pageHref?: string | null): string {
   if (!pageHref) return configuredUrl;
 
   try {

@@ -20,10 +20,7 @@ describe('resolveBrowserSupabaseUrl', () => {
 
   it('proxies loopback Supabase when the page is a public tunnel hostname', () => {
     expect(
-      resolveBrowserSupabaseUrl(
-        'http://localhost:54321',
-        'https://local.wevchange.org/en/login',
-      ),
+      resolveBrowserSupabaseUrl('http://localhost:54321', 'https://local.wevchange.org/en/login'),
     ).toBe(`https://local.wevchange.org${LOCAL_SUPABASE_PROXY_PREFIX}`);
   });
 
