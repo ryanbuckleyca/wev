@@ -1,13 +1,18 @@
 import 'server-only';
 
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
-import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE } from './constants';
+import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE, ORG_CACHE_TAG } from './constants';
 import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
 import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
+
+export { ORG_CACHE_TAG };
+
+const ORG_CACHE_REVALIDATE_SECONDS = 60;
 
 // ---------------------------------------------------------------------------
 // Activity-window helpers
@@ -44,7 +49,23 @@ export interface FetchOrganizationIndexOptions {
   activityDays?: number | null;
 }
 
-export async function fetchOrganizationIndex(
+/** Stable cache key payload for anonymous org-index queries (no userId). */
+function serializeAnonymousOrgIndexOptions(options: FetchOrganizationIndexOptions): string {
+  return JSON.stringify({
+    page: Math.max(1, options.page ?? 1),
+    searchQuery: options.searchQuery ?? '',
+    sseOnly: options.sseOnly ?? true,
+    provinces: options.provinces ?? [],
+    municipalities: options.municipalities ?? [],
+    orgTypes: options.orgTypes ?? [],
+    languages: options.languages ?? [],
+    sectors: options.sectors ?? [],
+    sortBy: options.sortBy ?? null,
+    activityDays: options.activityDays ?? null,
+  });
+}
+
+async function fetchOrganizationIndexUncached(
   options: FetchOrganizationIndexOptions = {},
   /** User-scoped client so get_active_organizations can read auth.uid() for value scores. */
   authSupabase?: SupabaseClient,
@@ -157,25 +178,59 @@ export async function fetchOrganizationIndex(
   };
 }
 
+const fetchAnonymousOrganizationIndexCached = unstable_cache(
+  async (serializedOptions: string) => {
+    const options = JSON.parse(serializedOptions) as FetchOrganizationIndexOptions;
+    return fetchOrganizationIndexUncached(options);
+  },
+  ['org-index-anonymous'],
+  { revalidate: ORG_CACHE_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+);
+
+/**
+ * Org index rows for the bulletin/orgs UI.
+ * Anonymous queries (no userId / auth client) share a 60s Data Cache across
+ * requests — `export const revalidate` alone does not cache dynamic searchParams pages.
+ * Personalized match-score fetches bypass the shared cache.
+ */
+export async function fetchOrganizationIndex(
+  options: FetchOrganizationIndexOptions = {},
+  authSupabase?: SupabaseClient,
+): Promise<{ orgs: OrgIndexEntry[]; total: number; totalAvailable: number }> {
+  if (options.userId || authSupabase) {
+    return fetchOrganizationIndexUncached(options, authSupabase);
+  }
+  return fetchAnonymousOrganizationIndexCached(serializeAnonymousOrgIndexOptions(options));
+}
+
 // ---------------------------------------------------------------------------
 // getOrganizationBySlug
 // ---------------------------------------------------------------------------
 
-export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgRecord | null> => {
-  const { data: org, error } = await supabaseServer
-    .from('organizations')
-    .select('*')
-    .eq('slug', slug)
-    .single();
+const getOrganizationBySlugCached = unstable_cache(
+  async (slug: string): Promise<OrgRecord | null> => {
+    const { data: org, error } = await supabaseServer
+      .from('organizations')
+      .select('*')
+      .eq('slug', slug)
+      .single();
 
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null;
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      console.error('getOrganizationBySlug error:', error);
+      throw new Error(`getOrganizationBySlug query error: ${error.message}`);
     }
-    console.error('getOrganizationBySlug error:', error);
-    throw new Error(`getOrganizationBySlug query error: ${error.message}`);
-  }
-  return org;
+    return org;
+  },
+  ['org-by-slug'],
+  { revalidate: ORG_CACHE_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+);
+
+/** Org profile by slug; request-deduped and cross-request cached for 60s. */
+export const getOrganizationBySlug = cache(async (slug: string): Promise<OrgRecord | null> => {
+  return getOrganizationBySlugCached(slug);
 });
 
 // ---------------------------------------------------------------------------
@@ -193,6 +248,57 @@ export interface GetOrganizationJobsOptions {
   activityDays?: number | null;
 }
 
+const getOrganizationJobsCached = unstable_cache(
+  async (
+    orgId: number,
+    page: number,
+    locale: string,
+    activityDaysKey: string,
+  ): Promise<{ jobs: OrgJobPosting[]; total: number }> => {
+    const activityDays = activityDaysKey === 'null' ? null : Number(activityDaysKey);
+    const minDate = activityDaysToMinDate(activityDays);
+    const limit = ORG_JOBS_PER_PAGE;
+    const offset = (page - 1) * limit;
+
+    let query = supabaseServer
+      .from('jobs')
+      .select(
+        'id, job_title, listing_url, date_posted, employment_type, location, municipality, province, work_type, skills, values, summary, wage, unit_text, min_value, max_value, hours_per_week, language',
+        {
+          count: 'exact',
+        },
+      )
+      .eq('organization_id', orgId);
+
+    if (minDate) {
+      query = query.gte('date_posted', minDate);
+    }
+
+    const {
+      data: jobs,
+      error,
+      count,
+    } = await query
+      .order('date_posted', { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw new Error(`getOrganizationJobs query error: ${error.message}`);
+    }
+
+    const rows = jobs || [];
+    const labelMap = await resolveSkillLabels(supabaseServer, rows, parseLocale(locale));
+
+    return {
+      jobs: attachSkillLabels(rows, labelMap) as OrgJobPosting[],
+      total: count ?? 0,
+    };
+  },
+  ['org-jobs'],
+  { revalidate: ORG_CACHE_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+);
+
+/** Paginated org jobs; cached per orgId/page/locale/activity window for 60s. */
 export async function getOrganizationJobs({
   orgId,
   page: rawPage,
@@ -200,43 +306,8 @@ export async function getOrganizationJobs({
   activityDays = 28,
 }: GetOrganizationJobsOptions): Promise<{ jobs: OrgJobPosting[]; total: number }> {
   const page = Math.max(1, rawPage);
-  const minDate = activityDaysToMinDate(activityDays);
-  const limit = ORG_JOBS_PER_PAGE;
-  const offset = (page - 1) * limit;
-
-  let query = supabaseServer
-    .from('jobs')
-    .select(
-      'id, job_title, listing_url, date_posted, employment_type, location, municipality, province, work_type, skills, values, summary, wage, unit_text, min_value, max_value, hours_per_week, language',
-      {
-        count: 'exact',
-      },
-    )
-    .eq('organization_id', orgId);
-
-  if (minDate) {
-    query = query.gte('date_posted', minDate);
-  }
-
-  const {
-    data: jobs,
-    error,
-    count,
-  } = await query
-    .order('date_posted', { ascending: false, nullsFirst: false })
-    .range(offset, offset + limit - 1);
-
-  if (error) {
-    throw new Error(`getOrganizationJobs query error: ${error.message}`);
-  }
-
-  const rows = jobs || [];
-  const labelMap = await resolveSkillLabels(supabaseServer, rows, parseLocale(locale));
-
-  return {
-    jobs: attachSkillLabels(rows, labelMap) as OrgJobPosting[],
-    total: count ?? 0,
-  };
+  const activityDaysKey = activityDays == null ? 'null' : String(activityDays);
+  return getOrganizationJobsCached(orgId, page, locale, activityDaysKey);
 }
 
 // ---------------------------------------------------------------------------
@@ -256,22 +327,17 @@ export interface OrganizationFilterOptions {
   availableSectors: string[];
 }
 
-/**
- * Returns the filter options (types, provinces, municipalities, languages)
- * for the org index. When activityDays is null (full directory / "All
- * organisations"), options are derived from all orgs. When activityDays is
- * set, options are scoped to orgs with jobs in that window.
- */
-export const fetchOrganizationFilterOptions = cache(
-  async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
+const fetchOrganizationFilterOptionsCached = unstable_cache(
+  async (activityDaysKey: string): Promise<OrganizationFilterOptions> => {
+    const activityDays = activityDaysKey === 'null' ? null : Number(activityDaysKey);
     if (Number.isNaN(activityDays)) {
       throw new Error(
-        `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
+        `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDaysKey})`,
       );
     }
 
     const { data, error } = await supabaseServer.rpc('get_organization_filter_options', {
-      p_activity_days: activityDays ?? null,
+      p_activity_days: activityDays,
     });
 
     if (error) {
@@ -325,20 +391,35 @@ export const fetchOrganizationFilterOptions = cache(
       availableSectors: availableOptions.sectors,
     };
   },
+  ['org-filter-options'],
+  { revalidate: ORG_CACHE_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+);
+
+/**
+ * Returns the filter options (types, provinces, municipalities, languages)
+ * for the org index. When activityDays is null (full directory / "All
+ * organisations"), options are derived from all orgs. When activityDays is
+ * set, options are scoped to orgs with jobs in that window.
+ */
+export const fetchOrganizationFilterOptions = cache(
+  async (activityDays?: number | null): Promise<OrganizationFilterOptions> => {
+    if (Number.isNaN(activityDays)) {
+      throw new Error(
+        `fetchOrganizationFilterOptions: invalid activityDays provided (got ${activityDays})`,
+      );
+    }
+    const activityDaysKey = activityDays == null ? 'null' : String(activityDays);
+    return fetchOrganizationFilterOptionsCached(activityDaysKey);
+  },
 );
 
 // ---------------------------------------------------------------------------
 // fetchSectorIndexStats
 // ---------------------------------------------------------------------------
 
-/**
- * Sector-card front door for the org index.
- * Counts match the product default universe (SSE-only unless `sseOnly` is false).
- * Pages past PostgREST `max_rows` so counts stay complete as the catalog grows.
- */
-export const fetchSectorIndexStats = cache(
-  async (opts: { sseOnly?: boolean } = {}): Promise<SectorIndexCard[]> => {
-    const sseOnly = opts.sseOnly ?? true;
+const fetchSectorIndexStatsCached = unstable_cache(
+  async (sseOnlyKey: string): Promise<SectorIndexCard[]> => {
+    const sseOnly = sseOnlyKey !== 'false';
 
     let rows: Array<{ name: string | null; type: string | null; sector_id: string | null }>;
     try {
@@ -361,5 +442,19 @@ export const fetchSectorIndexStats = cache(
     }
 
     return buildSectorIndexCards(rows);
+  },
+  ['org-sector-index'],
+  { revalidate: ORG_CACHE_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+);
+
+/**
+ * Sector-card front door for the org index.
+ * Counts match the product default universe (SSE-only unless `sseOnly` is false).
+ * Pages past PostgREST `max_rows` so counts stay complete as the catalog grows.
+ */
+export const fetchSectorIndexStats = cache(
+  async (opts: { sseOnly?: boolean } = {}): Promise<SectorIndexCard[]> => {
+    const sseOnly = opts.sseOnly ?? true;
+    return fetchSectorIndexStatsCached(sseOnly ? 'true' : 'false');
   },
 );

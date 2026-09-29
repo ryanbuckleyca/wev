@@ -12,7 +12,8 @@ export type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
 /** Headroom for 12–18 skills with evidence + values; 1200 often truncates and Groq returns json_validate_failed. */
 const CV_EXTRACT_MAX_TOKENS = 4096;
-const CV_EXTRACT_TIMEOUT_MS = 60_000;
+/** Per-completion timeout. Keep low so initial + json_validate_failed fallback fit a ~60s route. */
+const CV_EXTRACT_TIMEOUT_MS = 25_000;
 
 /** Collapses whitespace in a skill phrase for stable comparison and storage. */
 function normalizeSkillText(text: string): string {
@@ -149,7 +150,9 @@ export async function extractWithLlm({
   try {
     const groq = new Groq({
       apiKey: groqKey,
-      maxRetries: 2,
+      // No SDK retries: we already retry once on json_validate_failed without
+      // response_format. SDK retries × long timeouts could blow the route budget.
+      maxRetries: 0,
       timeout: CV_EXTRACT_TIMEOUT_MS,
     });
 

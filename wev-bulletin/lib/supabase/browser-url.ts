@@ -10,6 +10,23 @@ function isLoopbackHostname(hostname: string): boolean {
 }
 
 /**
+ * Auth cookie / storage key name matching `@supabase/supabase-js` default:
+ * `sb-${hostname.split('.')[0]}-auth-token` from the *configured* project URL.
+ *
+ * When browser requests go through `LOCAL_SUPABASE_PROXY_PREFIX`, the request URL
+ * hostname is the tunnel host — we must still name cookies from the configured
+ * Supabase URL so they match server/middleware clients.
+ */
+export function authCookieNameFromSupabaseUrl(configuredUrl: string): string {
+  try {
+    const hostname = new URL(configuredUrl).hostname;
+    return `sb-${hostname.split('.')[0] || 'localhost'}-auth-token`;
+  } catch {
+    return 'sb-localhost-auth-token';
+  }
+}
+
+/**
  * Browser Supabase base URL.
  *
  * When the page is served from a public hostname (e.g. `https://local.wevchange.org`
