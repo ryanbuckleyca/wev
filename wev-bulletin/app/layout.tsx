@@ -34,8 +34,9 @@ export const viewport: Viewport = {
 };
 
 /**
- * Root shell is static: theme/lang are applied client-side (ThemeScript,
- * HtmlLangSync) so public pages are not forced DYNAMIC via cookies()/headers().
+ * Root shell is static: theme/lang are applied client-side (ThemeScript in
+ * <head>, HtmlLangSync) so public pages are not forced DYNAMIC via cookies()/
+ * headers(). ThemeScript still reads the theme cookie before first paint.
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -45,8 +46,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={lexend.variable}
       suppressHydrationWarning
     >
-      <body className="font-sans antialiased" suppressHydrationWarning>
+      <head>
         <ThemeScript />
+      </head>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         {enableAnalytics && (
           <>
