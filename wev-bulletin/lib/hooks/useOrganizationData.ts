@@ -148,11 +148,7 @@ export function useOrganizationData(
         // list is not stuck loading forever.
         if ((err as Error).name === 'AbortError' && !timedOut) return;
         setError(
-          timedOut
-            ? 'Request timed out'
-            : err instanceof Error
-              ? err.message
-              : 'Unknown error',
+          timedOut ? 'Request timed out' : err instanceof Error ? err.message : 'Unknown error',
         );
         setCompletedFetchKey(fetchKey);
       } finally {
