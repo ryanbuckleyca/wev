@@ -118,7 +118,11 @@ export function useOrganizationData(
     if (fetchKey === completedFetchKey) return;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 10_000);
 
     async function fetchData() {
       setError(null);
@@ -139,13 +143,21 @@ export function useOrganizationData(
         if (data.filterOptions) setFilterOptions(data.filterOptions);
         setCompletedFetchKey(fetchKey);
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        // Settle this fetchKey even on failure so isStale clears (same as bulletin).
+        // Cleanup aborts are expected on filter changes / unmount — ignore them.
+        // Timeout aborts must surface an error and settle the fetch key so the
+        // list is not stuck loading forever.
+        if ((err as Error).name === 'AbortError' && !timedOut) return;
+        setError(
+          timedOut
+            ? 'Request timed out'
+            : err instanceof Error
+              ? err.message
+              : 'Unknown error',
+        );
         setCompletedFetchKey(fetchKey);
       } finally {
         clearTimeout(timeoutId);
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted || timedOut) setLoading(false);
       }
     }
 
