@@ -215,9 +215,12 @@ export function useBulletinFetch(
 
   // Skeleton whenever the on-screen jobs don't match the active filter/page key
   // (including the gap between a URL change and the fetch effect starting).
+  // Do not gate on `!filtersReady` alone: anonymous SSR/CDN HTML must emit the
+  // hydrated jobs shell while `sessionCookie` is still null (cookie unread) or
+  // false. Signed-in users wait via `awaitingSessionPersonalization` instead.
   const isStale = completedFetchKey !== fetchKey;
   const awaitingSessionPersonalization = sessionCookie === true && !filtersReady;
-  const effectiveLoading = loading || isStale || !filtersReady || awaitingSessionPersonalization;
+  const effectiveLoading = loading || isStale || awaitingSessionPersonalization;
 
   return {
     jobsOnPage,
