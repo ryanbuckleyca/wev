@@ -37,7 +37,11 @@ export default function SimplePagination({
   return (
     <nav aria-label={t('paginationLabel')} className="flex items-center justify-center gap-4 py-6">
       {hasPrev ? (
-        <Link href={pageHref(baseUrl, currentPage - 1, extraParams)} className={linkClass}>
+        <Link
+          href={pageHref(baseUrl, currentPage - 1, extraParams)}
+          prefetch={false}
+          className={linkClass}
+        >
           {t('previous')}
         </Link>
       ) : (
@@ -51,7 +55,11 @@ export default function SimplePagination({
       </span>
 
       {hasNext ? (
-        <Link href={pageHref(baseUrl, currentPage + 1, extraParams)} className={linkClass}>
+        <Link
+          href={pageHref(baseUrl, currentPage + 1, extraParams)}
+          prefetch={false}
+          className={linkClass}
+        >
           {t('next')}
         </Link>
       ) : (

@@ -18,6 +18,7 @@ import CardListSkeleton from './CardListSkeleton';
 import CountPhraseSkeleton from './CountPhraseSkeleton';
 import OrgListToolbar from './OrgListToolbar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLikelySession } from '@/lib/hooks/useLikelySession';
 
 interface OrganizationIndexClientProps {
   initialData: { orgs: OrgIndexEntry[]; total: number; totalAvailable?: number };
@@ -37,10 +38,16 @@ export default function OrganizationIndexClient({
   const t = useTranslations('organizations');
   const tCommon = useTranslations('common');
   const { user, loading: authLoading } = useAuth();
+  const { checked, likely } = useLikelySession();
+  const sessionCookie: boolean | null = checked ? likely : null;
 
   const [filtersExpanded, setFiltersExpanded] = useState(false);
   const controls = useOrganizationFilters();
-  const hasMatchScores = authLoading ? initialHasMatchScores : Boolean(user);
+  // While auth is resolving, assume match scores if a session cookie is present
+  // so we fetch the personalized sort instead of painting anonymous rankings.
+  const hasMatchScores = authLoading
+    ? sessionCookie === true || initialHasMatchScores
+    : Boolean(user);
   const effectiveSortBy = resolveOrgSortBy(controls.sortBy, hasMatchScores);
 
   const {
@@ -56,6 +63,7 @@ export default function OrganizationIndexClient({
       filters: controls.filters,
       currentPage: controls.currentPage,
       sortBy: effectiveSortBy,
+      sessionCookie,
     },
     initialData,
   );

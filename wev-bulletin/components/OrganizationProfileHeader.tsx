@@ -1,39 +1,50 @@
+'use client';
+
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
+import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import type { OrgRecord } from '@/lib/organizations/types';
-import type { OrgValueMatch } from '@/lib/organizations/value-match';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { useProfile } from '@/contexts/ProfileContext';
 
 interface Props {
   org: OrgRecord;
   locale: string;
-  /**
-   * next-intl translation function scoped to the **'organizations'** namespace.
-   * Must be created with `getTranslations({ locale, namespace: 'organizations' })`.
-   */
-  t: ReturnType<typeof useTranslations<'organizations'>>;
+  /** Admin edit URL; shown only when the signed-in user is an admin. */
   editHref?: string | null;
   editLabel?: string;
-  valueMatch?: OrgValueMatch | null;
   sectorLabel?: string | null;
-  isLoggedIn?: boolean;
 }
 
+/**
+ * Org profile header. Auth, admin edit link, and value-match are resolved
+ * client-side so the surrounding page HTML stays anonymously cacheable.
+ */
 export default function OrganizationProfileHeader({
   org,
   locale,
-  t,
-  editHref,
+  editHref: editHrefForAdmin,
   editLabel,
-  valueMatch = null,
   sectorLabel = null,
-  isLoggedIn = false,
 }: Props) {
+  const t = useTranslations('organizations');
+  const { user, role } = useAuth();
+  const { profile } = useProfile();
+
+  const isLoggedIn = Boolean(user);
+  const isAdmin = role === 'admin';
+  const editHref = isAdmin && editHrefForAdmin ? editHrefForAdmin : null;
+  const valueMatch =
+    profile != null
+      ? computeOrgValueMatch(profile.values_rated, org.values_list, org.values_rated)
+      : null;
+
   const websiteUrl = safeUrl(org.website);
   const values = org.values_list ?? [];
   const locationLabel = formatOrgLocationLabel(org);

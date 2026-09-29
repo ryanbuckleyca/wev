@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
@@ -8,7 +7,7 @@ import HtmlLangSync from '@/components/HtmlLangSync';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
-import { resolveThemeFromCookie } from '@/lib/theme';
+import { DEFAULT_THEME } from '@/lib/theme';
 
 export default async function LocaleLayout({
   children,
@@ -27,8 +26,6 @@ export default async function LocaleLayout({
     ...defaultMessages,
     ...localeMessages,
   };
-  const cookieStore = await cookies();
-  const theme = resolveThemeFromCookie(cookieStore.get('theme')?.value);
 
   return (
     <NuqsAdapter>
@@ -36,7 +33,8 @@ export default async function LocaleLayout({
         <HtmlLangSync lang={locale} />
         <AuthProvider>
           <ProfileProvider>
-            <Header initialTheme={theme} />
+            {/* ThemeToggle syncs from data-theme after ThemeScript; avoid cookies() here. */}
+            <Header initialTheme={DEFAULT_THEME} />
             {children}
             <Toaster />
           </ProfileProvider>

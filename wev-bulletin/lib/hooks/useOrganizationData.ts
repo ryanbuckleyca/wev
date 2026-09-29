@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { OrganizationFilters } from './useOrganizationFilters';
@@ -9,6 +9,13 @@ interface UseOrganizationDataOptions {
   filters: OrganizationFilters;
   currentPage: number;
   sortBy: string;
+  /**
+   * Browser session cookie hint from `useLikelySession`.
+   * - `null`: hydration frame (cookie not read yet)
+   * - `true`: session cookie present — discard anonymous SSR before paint
+   * - `false`: no session cookie — keep anonymous SSR
+   */
+  sessionCookie?: boolean | null;
 }
 
 /**
@@ -70,7 +77,7 @@ export function useOrganizationData(
     filterOptions?: OrganizationFilterOptions;
   },
 ) {
-  const { filters, currentPage, sortBy } = options;
+  const { filters, currentPage, sortBy, sessionCookie = false } = options;
 
   const [orgs, setOrgs] = useState<OrgIndexEntry[]>(() => initialData?.orgs ?? []);
   const [total, setTotal] = useState<number>(() => initialData?.total ?? 0);
@@ -94,6 +101,18 @@ export function useOrganizationData(
   const [completedFetchKey, setCompletedFetchKey] = useState(() =>
     initialData ? buildFetchKey(locale, currentPage, sortBy, filters) : '',
   );
+  const discardedSsrForSessionRef = useRef(false);
+
+  // Before paint: signed-in users must not see the anonymous SSR ranking.
+  useLayoutEffect(() => {
+    if (sessionCookie !== true || discardedSsrForSessionRef.current) return;
+    discardedSsrForSessionRef.current = true;
+    setOrgs([]);
+    setTotal(0);
+    setCompletedFetchKey('');
+    setLoading(true);
+    setError(null);
+  }, [sessionCookie]);
 
   useEffect(() => {
     if (fetchKey === completedFetchKey) return;
@@ -138,12 +157,13 @@ export function useOrganizationData(
   }, [fetchKey, completedFetchKey, locale, currentPage, sortBy, filters]);
 
   const isStale = completedFetchKey !== fetchKey;
+  const awaitingSessionPersonalization = sessionCookie === true && completedFetchKey === '';
   return {
     orgs,
     total,
     totalAvailable,
     filterOptions,
-    loading: loading || isStale,
+    loading: loading || isStale || awaitingSessionPersonalization,
     error,
   };
 }

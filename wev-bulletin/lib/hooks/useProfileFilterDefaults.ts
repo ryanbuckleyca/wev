@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 /**
@@ -36,6 +36,12 @@ export interface UseProfileFilterDefaultsArgs {
   enabled: boolean;
   /** True once auth + profile have finished loading (seed values are final). */
   resolved: boolean;
+  /**
+   * When true, a browser session cookie was found after hydration. If we had
+   * already latched "anonymous ready" on the SSR frame, reopen the gate so
+   * profile defaults can seed before the first personalized fetch.
+   */
+  sessionDetected?: boolean;
   seed: ProfileFilterSeed;
   current: ProfileFilterCurrent;
   setters: ProfileFilterSetters;
@@ -62,6 +68,15 @@ function sameSet(left: string[], right: string[]): boolean {
   return sortedLeft.every((value, index) => value === sortedRight[index]);
 }
 
+function seedLanded(expected: ExpectedSeed, current: ProfileFilterCurrent): boolean {
+  return (
+    (!expected.workTypes || sameSet(current.workTypes, expected.workTypes)) &&
+    (!expected.provinces || sameSet(current.provinces, expected.provinces)) &&
+    (!expected.municipalities || sameSet(current.municipalities, expected.municipalities)) &&
+    (!expected.languages || sameSet(current.languages, expected.languages))
+  );
+}
+
 function readPresence(searchParams: URLSearchParams | null): UrlPresence {
   return {
     workType: searchParams?.has('workType') ?? false,
@@ -84,6 +99,7 @@ function readPresence(searchParams: URLSearchParams | null): UrlPresence {
 export function useProfileFilterDefaults({
   enabled,
   resolved,
+  sessionDetected = false,
   seed,
   current,
   setters,
@@ -97,12 +113,33 @@ export function useProfileFilterDefaults({
 
   const phaseRef = useRef<'init' | 'seeding' | 'done'>('init');
   const expectedRef = useRef<ExpectedSeed | null>(null);
+  const reopenedForSessionRef = useRef(false);
 
   // When every seedable dimension is already in the URL there is nothing to
   // seed, so the initial state is final immediately (no need to await profile).
   const [ready, setReady] = useState<boolean>(
     () => presence.workType && presence.province && presence.municipality && presence.lang,
   );
+
+  // Anonymous-cached SSR hydrates with ready=true on a bare URL frame; if a
+  // session cookie appears before paint, drop back to not-ready so we never
+  // fetch/show the unpersonalized set for a signed-in user.
+  useLayoutEffect(() => {
+    if (!sessionDetected || reopenedForSessionRef.current) return;
+    reopenedForSessionRef.current = true;
+    phaseRef.current = 'init';
+    expectedRef.current = null;
+    setReady(false);
+  }, [sessionDetected]);
+
+  // Latch anonymous-ready before paint once the cookie check says "no session".
+  useLayoutEffect(() => {
+    if (ready || phaseRef.current === 'done') return;
+    if (!enabled && resolved) {
+      phaseRef.current = 'done';
+      setReady(true);
+    }
+  }, [enabled, resolved, ready]);
 
   useEffect(() => {
     if (phaseRef.current === 'done') return;
@@ -147,19 +184,14 @@ export function useProfileFilterDefaults({
 
       expectedRef.current = expected;
       phaseRef.current = 'seeding';
-      return;
+      // Fall through: if current already matches (nuqs no-op on soft nav),
+      // latch ready in this same pass instead of waiting for a re-render.
     }
 
     // Phase 'seeding': mark ready only once the URL reflects the seed, so the
     // first fetch uses the seeded filters (avoids a flash of the unseeded set).
     const expected = expectedRef.current ?? {};
-    const landed =
-      (!expected.workTypes || sameSet(current.workTypes, expected.workTypes)) &&
-      (!expected.provinces || sameSet(current.provinces, expected.provinces)) &&
-      (!expected.municipalities || sameSet(current.municipalities, expected.municipalities)) &&
-      (!expected.languages || sameSet(current.languages, expected.languages));
-
-    if (landed) {
+    if (seedLanded(expected, current)) {
       phaseRef.current = 'done';
       setReady(true);
     }

@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 interface HtmlLangSyncProps {
   lang: string;
 }
 
 export default function HtmlLangSync({ lang }: HtmlLangSyncProps) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('lang', lang);
   }, [lang]);
 

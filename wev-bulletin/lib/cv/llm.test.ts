@@ -25,6 +25,7 @@ vi.mock('@/lib/logger', () => ({
   logger: {
     info: vi.fn(),
     error: vi.fn(),
+    warn: vi.fn(),
   },
 }));
 
@@ -154,6 +155,27 @@ describe('llm-extractor', () => {
     it('throws extraction_failed on generic error', async () => {
       mockCreate.mockRejectedValue(new Error('API Error'));
       await expect(extractWithLlm(options)).rejects.toThrow('extraction_failed');
+    });
+
+    it('retries without response_format after Groq json_validate_failed', async () => {
+      const mockResult = {
+        skills: [{ phrase: 'Team leadership', evidence: 'Led six staff', prominence: 8 }],
+        values: ['Independence'],
+      };
+      const validateError = Object.assign(new Error('400 json_validate_failed'), {
+        status: 400,
+        error: { error: { code: 'json_validate_failed', failed_generation: '' } },
+      });
+      mockCreate.mockRejectedValueOnce(validateError).mockResolvedValueOnce({
+        choices: [{ message: { content: JSON.stringify(mockResult) } }],
+      });
+
+      const result = await extractWithLlm(options);
+      expect(result.skills).toHaveLength(1);
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(mockCreate.mock.calls[0][0].response_format).toEqual({ type: 'json_object' });
+      expect(mockCreate.mock.calls[1][0].response_format).toBeUndefined();
+      expect(mockCreate.mock.calls[0][0].max_tokens).toBeGreaterThanOrEqual(4096);
     });
 
     it('rethrows CvImportError', async () => {

@@ -10,6 +10,10 @@ import { VALUES_LIST } from '@/lib/values';
 export type SkillPhrase = { phrase: string; evidence: string; prominence: number };
 export type LlmResult = { skills: SkillPhrase[]; values: string[] };
 
+/** Headroom for 12–18 skills with evidence + values; 1200 often truncates and Groq returns json_validate_failed. */
+const CV_EXTRACT_MAX_TOKENS = 4096;
+const CV_EXTRACT_TIMEOUT_MS = 60_000;
+
 function normalizeSkillText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
@@ -100,6 +104,37 @@ export type ExtractWithLlmOptions = {
   locale: CvLocale;
 };
 
+/** Groq structured-output validator rejected the model completion. */
+export function isGroqJsonValidateFailed(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const err = error as {
+    status?: number;
+    error?: { code?: string; error?: { code?: string } };
+  };
+  if (err.status !== 400) return false;
+  const code = err.error?.error?.code ?? err.error?.code;
+  return code === 'json_validate_failed';
+}
+
+async function createCvCompletion(
+  groq: Groq,
+  groqModel: string,
+  locale: CvLocale,
+  cvText: string,
+  options: { enforceJsonObject: boolean },
+) {
+  return groq.chat.completions.create({
+    model: groqModel,
+    temperature: 0.1,
+    max_tokens: CV_EXTRACT_MAX_TOKENS,
+    ...(options.enforceJsonObject ? { response_format: { type: 'json_object' as const } } : {}),
+    messages: [
+      { role: 'system', content: 'You output only valid JSON.' },
+      { role: 'user', content: buildPrompt(cvText, locale) },
+    ],
+  });
+}
+
 export async function extractWithLlm({
   cvText,
   groqKey,
@@ -110,19 +145,29 @@ export async function extractWithLlm({
   try {
     const groq = new Groq({
       apiKey: groqKey,
-      maxRetries: 3,
-      timeout: 30000,
+      maxRetries: 2,
+      timeout: CV_EXTRACT_TIMEOUT_MS,
     });
-    const completion = await groq.chat.completions.create({
-      model: groqModel,
-      temperature: 0.1,
-      max_tokens: 1200,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: 'You output only valid JSON.' },
-        { role: 'user', content: buildPrompt(cvText, locale) },
-      ],
-    });
+
+    let completion;
+    try {
+      completion = await createCvCompletion(groq, groqModel, locale, cvText, {
+        enforceJsonObject: true,
+      });
+    } catch (error) {
+      // Groq's server-side JSON validator occasionally returns empty
+      // failed_generation (truncation / model glitch). Retry once without
+      // response_format and parse with our own Zod schema.
+      if (!isGroqJsonValidateFailed(error)) throw error;
+      logger.warn(
+        { userId, groqModel, promptVersion: PROMPT_VERSION },
+        'CV LLM json_validate_failed; retrying without response_format',
+      );
+      completion = await createCvCompletion(groq, groqModel, locale, cvText, {
+        enforceJsonObject: false,
+      });
+    }
+
     const content = completion.choices?.[0]?.message?.content ?? '';
     const llmResult = parseLlmResponse(content);
     logger.info(

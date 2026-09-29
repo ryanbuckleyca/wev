@@ -82,12 +82,14 @@ export default function Header({
           <nav className="hidden sm:flex items-center gap-6">
             <Link
               href="/"
+              prefetch={false}
               className="text-sm font-normal text-muted-foreground hover:text-foreground transition-colors py-[0.4rem]"
             >
               {tnav('jobs')}
             </Link>
             <Link
               href="/organizations"
+              prefetch={false}
               className="text-sm font-normal text-muted-foreground hover:text-foreground transition-colors py-[0.4rem]"
             >
               {tnav('organizations')}
@@ -107,12 +109,14 @@ export default function Header({
               <div className="sm:hidden">
                 <Link
                   href="/"
+                  prefetch={false}
                   className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
                 >
                   {tnav('jobs')}
                 </Link>
                 <Link
                   href="/organizations"
+                  prefetch={false}
                   className="block px-4 py-2 text-sm text-foreground hover:bg-wev-primary-tint/20 hover:text-wev-primary-text transition-all duration-700 ease-in-out rounded"
                 >
                   {tnav('organizations')}

@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from './constants';
@@ -291,10 +292,16 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
  * Fetches the initial page of bulletin jobs for SSR.
  * Uses the same query builder as `/api/bulletin` (service-role client, no user)
  * so SSR and client fetches can never drift.
+ *
+ * Cached + tagged so scrape revalidation and ISR share one data path.
  */
-export async function fetchServerBulletinJobs(locale: 'en' | 'fr') {
-  return fetchBulletinQueryPayload(productBaselineInput(locale), supabaseServer);
-}
+export const fetchServerBulletinJobs = unstable_cache(
+  async (locale: 'en' | 'fr') => {
+    return fetchBulletinQueryPayload(productBaselineInput(locale), supabaseServer);
+  },
+  ['bulletin-jobs-ssr'],
+  { revalidate: 60, tags: [BULLETIN_CACHE_TAG] },
+);
 
 /**
  * Serializable match data shape for Server → Client Component prop transfer.

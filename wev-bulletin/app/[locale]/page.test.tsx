@@ -19,6 +19,10 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
 }));
 
+vi.mock('@/lib/hooks/useLikelySession', () => ({
+  useLikelySession: () => ({ checked: true, likely: true }),
+}));
+
 vi.mock('@/i18n/navigation', () => ({
   Link: ({
     href,

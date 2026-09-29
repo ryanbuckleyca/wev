@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { formatLastScrapeTime } from '@/lib/bulletin/client-data';
@@ -48,20 +48,19 @@ export function useBulletinFetch(
   const t = useTranslations('home.errors');
   const searchParams = useSearchParams();
   const requestIdRef = useRef(0);
-  const { filters, sortBy, currentPage, filtersReady } = options;
+  const { filters, sortBy, currentPage, filtersReady, sessionCookie = false } = options;
 
   const hasInitialData = !!initialData;
 
   // Captured once at mount: these decide whether the SSR payload matches the
   // first view we will render.
-  const isLoggedInAtMount = useRef(!!initialData?.userId).current;
+  const ssrHadUser = useRef(!!initialData?.userId).current;
   const urlBareAtMount = useRef(!BULLETIN_URL_KEYS.some((key) => searchParams?.has(key))).current;
 
-  // Hydrate SSR jobs only for an anonymous, unfiltered load — the one case where
-  // the server payload equals the first client view. Logged-in users may have
-  // profile defaults seeded into the URL, and a filtered URL needs its own fetch;
-  // in both cases showing the SSR (unfiltered) set first would flash/strip.
-  const hydrateInitial = hasInitialData && urlBareAtMount && !isLoggedInAtMount;
+  // Hydrate anonymous SSR jobs on the first render so we match cached HTML.
+  // If a session cookie is found before paint, the layout effect below discards
+  // them and shows a skeleton until the personalized fetch completes.
+  const hydrateInitial = hasInitialData && urlBareAtMount && !ssrHadUser;
 
   const fetchKey = useMemo(
     () => buildFetchKey(locale, filters, sortBy, currentPage),
@@ -72,7 +71,6 @@ export function useBulletinFetch(
   // filter/page request is in flight — drives the list skeleton on the same
   // render as the URL change (before the fetch effect runs).
   const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(() => {
-    // Mirror hydrateInitial without reading mount refs (react-hooks/refs).
     const hydrate =
       !!initialData &&
       !initialData.userId &&
@@ -108,6 +106,18 @@ export function useBulletinFetch(
   );
   const [loading, setLoading] = useState(() => !hydrateInitial);
   const [error, setError] = useState<string | null>(null);
+  const discardedSsrForSessionRef = useRef(false);
+
+  // Before paint: signed-in users must not see the anonymous SSR list.
+  useLayoutEffect(() => {
+    if (sessionCookie !== true || discardedSsrForSessionRef.current) return;
+    discardedSsrForSessionRef.current = true;
+    setJobsOnPage([]);
+    setTotalMatchingJobs(0);
+    setCompletedFetchKey(null);
+    setLoading(true);
+    setError(null);
+  }, [sessionCookie]);
 
   const refresh = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
@@ -204,7 +214,8 @@ export function useBulletinFetch(
   // Skeleton whenever the on-screen jobs don't match the active filter/page key
   // (including the gap between a URL change and the fetch effect starting).
   const isStale = completedFetchKey !== fetchKey;
-  const effectiveLoading = loading || isStale || !filtersReady;
+  const awaitingSessionPersonalization = sessionCookie === true && !filtersReady;
+  const effectiveLoading = loading || isStale || !filtersReady || awaitingSessionPersonalization;
 
   return {
     jobsOnPage,
