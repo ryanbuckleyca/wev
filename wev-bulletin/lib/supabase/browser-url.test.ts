@@ -40,9 +40,7 @@ describe('resolveBrowserSupabaseUrl', () => {
 
 describe('authCookieNameFromSupabaseUrl', () => {
   it('derives the storage key from the configured hostname, not a proxy host', () => {
-    expect(authCookieNameFromSupabaseUrl('http://localhost:54321')).toBe(
-      'sb-localhost-auth-token',
-    );
+    expect(authCookieNameFromSupabaseUrl('http://localhost:54321')).toBe('sb-localhost-auth-token');
     expect(authCookieNameFromSupabaseUrl('https://teuvfoftdjfsnkkbnzps.supabase.co')).toBe(
       'sb-teuvfoftdjfsnkkbnzps-auth-token',
     );
