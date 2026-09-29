@@ -9,6 +9,7 @@ import { ProfileProvider } from '@/contexts/ProfileContext';
 import { routing } from '@/i18n/routing';
 import { DEFAULT_THEME } from '@/lib/theme';
 
+/** Locale layout: intl, auth/profile providers, and client-side theme/lang sync. */
 export default async function LocaleLayout({
   children,
   params,

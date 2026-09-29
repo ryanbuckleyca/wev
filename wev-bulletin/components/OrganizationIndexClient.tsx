@@ -28,6 +28,7 @@ interface OrganizationIndexClientProps {
   initialHasMatchScores?: boolean;
 }
 
+/** Client org index: filters, sector grid, and session-gated SSR discard for rankings. */
 export default function OrganizationIndexClient({
   initialData,
   filterOptions,

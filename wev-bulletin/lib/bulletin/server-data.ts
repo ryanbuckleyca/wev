@@ -296,6 +296,7 @@ export async function fetchLastScrapeTime(): Promise<string | null> {
  * Cached + tagged so scrape revalidation and ISR share one data path.
  */
 export const fetchServerBulletinJobs = unstable_cache(
+  /** Loads the anonymous product-baseline jobs payload for SSR/ISR. */
   async (locale: 'en' | 'fr') => {
     return fetchBulletinQueryPayload(productBaselineInput(locale), supabaseServer);
   },

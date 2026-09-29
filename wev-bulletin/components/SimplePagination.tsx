@@ -10,12 +10,14 @@ interface SimplePaginationProps {
   extraParams?: Record<string, string>;
 }
 
+/** Builds a pagination URL with page and optional extra query params. */
 function pageHref(baseUrl: string, page: number, extraParams?: Record<string, string>): string {
   const params = new URLSearchParams(extraParams);
   params.set('page', String(page));
   return `${baseUrl}?${params}`;
 }
 
+/** Minimal prev/next pagination links without client-side routing state. */
 export default function SimplePagination({
   currentPage,
   totalPages,

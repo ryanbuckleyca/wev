@@ -5,6 +5,7 @@ import { routing } from './i18n/routing';
 
 const i18nMiddleware = createMiddleware(routing);
 
+/** Composes i18n routing with Supabase session refresh, skipping CDN-cacheable public paths. */
 export async function middleware(request: NextRequest) {
   // Liveness probe: no i18n, no Supabase session refresh.
   if (request.nextUrl.pathname === '/api/ping') {

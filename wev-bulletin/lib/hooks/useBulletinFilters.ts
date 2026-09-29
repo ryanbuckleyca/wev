@@ -85,6 +85,7 @@ export interface BulletinFilterControls {
   filtersReady: boolean;
 }
 
+/** True when two string arrays contain the same multiset of values. */
 function hasSameSelections(left: string[], right: string[]) {
   if (left.length !== right.length) return false;
 
@@ -106,6 +107,7 @@ interface UseBulletinFiltersOptions {
   sessionCookie?: boolean | null;
 }
 
+/** URL-backed bulletin filter state, including profile default seeding and readiness gating. */
 export function useBulletinFilters(
   options: UseBulletinFiltersOptions = {},
 ): BulletinFilterControls {

@@ -1,7 +1,4 @@
-/**
- * Shared Supabase auth-cookie name check (chunked or single token cookie).
- * Used by middleware and the browser so session detection stays consistent.
- */
+/** True for Supabase auth token cookie names (single or chunked). */
 export function isSupabaseAuthCookieName(name: string): boolean {
   return name.startsWith('sb-') && name.includes('auth-token');
 }

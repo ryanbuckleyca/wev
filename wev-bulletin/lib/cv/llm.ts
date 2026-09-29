@@ -14,6 +14,7 @@ export type LlmResult = { skills: SkillPhrase[]; values: string[] };
 const CV_EXTRACT_MAX_TOKENS = 4096;
 const CV_EXTRACT_TIMEOUT_MS = 60_000;
 
+/** Collapses whitespace in a skill phrase for stable comparison and storage. */
 function normalizeSkillText(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
@@ -82,6 +83,7 @@ const LlmResponseSchema = z.object({
   }),
 });
 
+/** Parses and validates raw LLM JSON into normalized skills and values. */
 export function parseLlmResponse(content: string): LlmResult {
   try {
     const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -116,6 +118,7 @@ export function isGroqJsonValidateFailed(error: unknown): boolean {
   return code === 'json_validate_failed';
 }
 
+/** Calls Groq chat completions for CV extraction, optionally enforcing JSON object mode. */
 async function createCvCompletion(
   groq: Groq,
   groqModel: string,
@@ -135,6 +138,7 @@ async function createCvCompletion(
   });
 }
 
+/** Extracts profile skills and values from CV text via Groq, with json_validate retry. */
 export async function extractWithLlm({
   cvText,
   groqKey,

@@ -17,12 +17,14 @@ interface PageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+/** Page title for the organizations index. */
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'organizations' });
   return { title: t('indexTitle') };
 }
 
+/** Anonymous ISR org index; personalized sort and admin links hydrate client-side. */
 export default async function OrganizationsIndexPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const rawSearchParams = await searchParams;

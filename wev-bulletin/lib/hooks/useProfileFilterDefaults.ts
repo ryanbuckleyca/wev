@@ -61,6 +61,7 @@ interface ExpectedSeed {
   languages?: string[];
 }
 
+/** Compares two string arrays as sorted sets (order-independent). */
 function sameSet(left: string[], right: string[]): boolean {
   if (left.length !== right.length) return false;
   const sortedLeft = [...left].sort();
@@ -68,6 +69,7 @@ function sameSet(left: string[], right: string[]): boolean {
   return sortedLeft.every((value, index) => value === sortedRight[index]);
 }
 
+/** True when URL filter state matches every dimension we attempted to seed. */
 function seedLanded(expected: ExpectedSeed, current: ProfileFilterCurrent): boolean {
   return (
     (!expected.workTypes || sameSet(current.workTypes, expected.workTypes)) &&
@@ -77,6 +79,7 @@ function seedLanded(expected: ExpectedSeed, current: ProfileFilterCurrent): bool
   );
 }
 
+/** Snapshot of which profile-seedable filter params exist in the URL at mount. */
 function readPresence(searchParams: URLSearchParams | null): UrlPresence {
   return {
     workType: searchParams?.has('workType') ?? false,

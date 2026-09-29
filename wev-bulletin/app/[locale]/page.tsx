@@ -8,7 +8,7 @@ import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
 /** ISR so Cloudflare/CDN can cache the anonymous jobs shell. */
 export const revalidate = 60;
 
-// Renders the data fetch independently inside a Suspense boundary
+/** Renders the cached anonymous jobs shell inside the home page Suspense boundary. */
 export async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
   // Anonymous SSR shell for CDN caching. BulletinPageClient discards it before
   // paint when a session cookie is present and shows a skeleton until the
@@ -30,6 +30,7 @@ export async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'e
   );
 }
 
+/** Locale home page: instant shell plus Suspense-wrapped anonymous jobs data. */
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: rawLocale } = await params;
   const validLocales = routing.locales as readonly string[];

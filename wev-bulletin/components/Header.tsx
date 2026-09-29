@@ -10,6 +10,7 @@ import LocaleSwitcher from './LocaleSwitcher';
 import { zIndex } from '@/lib/design-tokens';
 import { SITE_CONFIG } from '@/lib/site-config';
 
+/** Site header with nav, locale switcher, theme toggle, and user menu. */
 export default function Header({
   hasBanner,
   initialTheme = 'light',

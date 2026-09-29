@@ -12,6 +12,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
 }));
 
+/** Mocks `useSearchParams` presence for profile filter seed tests. */
 function mockUrlParams(present: string[]) {
   const set = new Set(present);
   vi.mocked(useSearchParams).mockReturnValue({
@@ -33,6 +34,7 @@ const emptyCurrent: ProfileFilterCurrent = {
   languages: [],
 };
 
+/** Returns vi.fn setters for profile filter default seeding tests. */
 function makeSetters(): ProfileFilterSetters {
   return {
     setWorkTypes: vi.fn(),

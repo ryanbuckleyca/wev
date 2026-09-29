@@ -67,6 +67,7 @@ function buildSearchParams(
   return params;
 }
 
+/** Org index list fetch with SSR discard and timeout-aware loading for signed-in users. */
 export function useOrganizationData(
   locale: string,
   options: UseOrganizationDataOptions,
@@ -124,6 +125,7 @@ export function useOrganizationData(
       controller.abort();
     }, 10_000);
 
+    /** Fetches org index rows for the active filter key, honoring abort vs timeout. */
     async function fetchData() {
       setError(null);
       setLoading(true);

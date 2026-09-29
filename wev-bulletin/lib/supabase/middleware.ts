@@ -34,6 +34,7 @@ export function isPublicCacheablePath(pathname: string): boolean {
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
+/** Refreshes the Supabase session via JWT claims when a session cookie is present on protected routes. */
 export async function updateSession(request: NextRequest, initialResponse?: NextResponse) {
   // Start from the provided base response (e.g. from next-intl middleware) so
   // any rewrites or locale headers it set are preserved on the final response.

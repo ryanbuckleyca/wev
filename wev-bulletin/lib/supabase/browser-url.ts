@@ -4,6 +4,7 @@
  */
 export const LOCAL_SUPABASE_PROXY_PREFIX = '/__supabase';
 
+/** True for localhost and IPv4/IPv6 loopback hostnames. */
 function isLoopbackHostname(hostname: string): boolean {
   return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
 }

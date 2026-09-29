@@ -23,6 +23,7 @@ interface PageProps {
 
 const JOB_ACTIVITY_OPTIONS: ActivityWindow[] = ['28d', '90d', 'all'];
 
+/** SEO metadata for a single organization profile page. */
 export async function generateMetadata({ params }: PageProps) {
   const { locale, slug } = await params;
   const org = await getOrganizationBySlug(slug);
@@ -37,6 +38,7 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
+/** Anonymous ISR organization profile; auth-gated match UI hydrates client-side. */
 export default async function OrganizationDetailPage({ params, searchParams }: PageProps) {
   const { locale, slug } = await params;
   const resolvedSearchParams = await searchParams;

@@ -38,6 +38,7 @@ export const viewport: Viewport = {
  * <head>, HtmlLangSync) so public pages are not forced DYNAMIC via cookies()/
  * headers(). ThemeScript still reads the theme cookie before first paint.
  */
+/** Static root HTML shell (CDN-cacheable); theme and analytics bootstrap client-side. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html

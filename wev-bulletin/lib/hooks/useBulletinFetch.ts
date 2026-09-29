@@ -31,6 +31,7 @@ const BULLETIN_URL_KEYS = [
   'page',
 ] as const;
 
+/** Stable key for the active bulletin fetch (locale, filters, sort, page). */
 function buildFetchKey(
   locale: string,
   filters: UseBulletinDataOptions['filters'],
@@ -40,6 +41,7 @@ function buildFetchKey(
   return JSON.stringify({ locale, filters, sortBy, currentPage });
 }
 
+/** Client bulletin list fetch with SSR hydration discard for signed-in session cookies. */
 export function useBulletinFetch(
   locale: string,
   options: UseBulletinDataOptions,
