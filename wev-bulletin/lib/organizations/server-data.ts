@@ -8,7 +8,6 @@ import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolv
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE, ORG_CACHE_TAG } from './constants';
 import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
 import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
-import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
 export { ORG_CACHE_TAG };
@@ -183,7 +182,7 @@ const fetchAnonymousOrganizationIndexCached = unstable_cache(
     return fetchOrganizationIndexUncached(options);
   },
   ['org-index-anonymous'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
 );
 
 /**
@@ -224,7 +223,7 @@ const getOrganizationBySlugCached = unstable_cache(
     return org;
   },
   ['org-by-slug'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
 );
 
 /** Org profile by slug; request-deduped and cross-request cached for 60s. */
@@ -294,7 +293,7 @@ const getOrganizationJobsCached = unstable_cache(
     };
   },
   ['org-jobs'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
 );
 
 /** Paginated org jobs; cached per orgId/page/locale/activity window for 60s. */
@@ -391,7 +390,7 @@ const fetchOrganizationFilterOptionsCached = unstable_cache(
     };
   },
   ['org-filter-options'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
 );
 
 /**
@@ -443,7 +442,7 @@ const fetchSectorIndexStatsCached = unstable_cache(
     return buildSectorIndexCards(rows);
   },
   ['org-sector-index'],
-  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [ORG_CACHE_TAG] },
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
 );
 
 /**

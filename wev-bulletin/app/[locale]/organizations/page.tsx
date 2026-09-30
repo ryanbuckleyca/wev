@@ -9,8 +9,7 @@ import OrganizationIndexClient from '@/components/OrganizationIndexClient';
 import OrganizationIndexAdminLinks from '@/components/OrganizationIndexAdminLinks';
 import PageLayout from '@/components/PageLayout';
 
-/** Prefer ISR for the default anonymous org index HTML.
- * Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+/** Prefer ISR for the default anonymous org index HTML. */
 export const revalidate = 60;
 
 interface PageProps {
