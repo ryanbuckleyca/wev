@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { createClient } from '@/lib/supabase/server';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from './constants';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 import { applyBulletinAgeFilter, applyBulletinAvailabilityFilters } from './age-filter';
 import { resolveSkillLabels, type SkillLabel } from '@/lib/resolve-skill-labels';
 import type { JobMatchData, JobPosting } from '@/lib/supabase';
@@ -301,7 +302,7 @@ export const fetchServerBulletinJobs = unstable_cache(
     return fetchBulletinQueryPayload(productBaselineInput(locale), supabaseServer);
   },
   ['bulletin-jobs-ssr'],
-  { revalidate: 60, tags: [BULLETIN_CACHE_TAG] },
+  { revalidate: PUBLIC_REVALIDATE_SECONDS, tags: [BULLETIN_CACHE_TAG] },
 );
 
 /**

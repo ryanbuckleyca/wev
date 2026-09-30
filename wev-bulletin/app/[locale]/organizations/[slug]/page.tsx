@@ -12,9 +12,10 @@ import { OrganizationJobsList } from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
 import PageLayout from '@/components/PageLayout';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 
 /** Prefer ISR for anonymous org profile HTML. */
-export const revalidate = 60;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;

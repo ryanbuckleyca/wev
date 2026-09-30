@@ -8,9 +8,10 @@ import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
 import OrganizationIndexClient from '@/components/OrganizationIndexClient';
 import OrganizationIndexAdminLinks from '@/components/OrganizationIndexAdminLinks';
 import PageLayout from '@/components/PageLayout';
+import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 
 /** Prefer ISR for the default anonymous org index HTML. */
-export const revalidate = 60;
+export const revalidate = PUBLIC_REVALIDATE_SECONDS;
 
 interface PageProps {
   params: Promise<{ locale: string }>;
