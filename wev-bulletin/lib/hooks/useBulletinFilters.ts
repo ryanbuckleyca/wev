@@ -85,6 +85,7 @@ export interface BulletinFilterControls {
   filtersReady: boolean;
 }
 
+/** True when two string arrays contain the same multiset of values. */
 function hasSameSelections(left: string[], right: string[]) {
   if (left.length !== right.length) return false;
 
@@ -97,18 +98,41 @@ interface UseBulletinFiltersOptions {
   initialUserId?: string | null;
   /** When false, non-SSE inclusion is ignored (URL + hasAnyFilters + fetch). */
   isAdmin?: boolean;
+  /**
+   * Browser session cookie hint from `useLikelySession`.
+   * - `null`: hydration frame (cookie not read yet)
+   * - `true`: session cookie present — wait for auth/profile before ready
+   * - `false`: no session cookie — anonymous path can ready immediately
+   */
+  sessionCookie?: boolean | null;
 }
 
+/** URL-backed bulletin filter state, including profile default seeding and readiness gating. */
 export function useBulletinFilters(
   options: UseBulletinFiltersOptions = {},
 ): BulletinFilterControls {
-  const { initialProfile = null, initialUserId = null, isAdmin = false } = options;
+  const {
+    initialProfile = null,
+    initialUserId = null,
+    isAdmin = false,
+    sessionCookie = false,
+  } = options;
   const { user, loading: authLoading } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
   const userId = authLoading ? initialUserId : (user?.id ?? null);
   const effectiveProfile = userId ? (profile ?? initialProfile ?? null) : null;
   const effectiveProfileLoading = userId ? profileLoading && !initialProfile : false;
   const searchParams = useSearchParams();
+
+  // Wait until the browser cookie has been read. Soft-nav keeps AuthContext
+  // warm, so seeding before that check can write URL params, then the
+  // sessionDetected reopen leaves us stuck in "seeding" when nuqs no-ops.
+  const cookieChecked = sessionCookie !== null;
+  const filterAuthResolved = !cookieChecked
+    ? false
+    : sessionCookie === true
+      ? !authLoading && !effectiveProfileLoading
+      : true;
 
   const [searchQuery, setSearchQuery] = useQueryState('q', parseAsString.withDefault(''));
   const [selectedOrganizations, setSelectedOrganizations] = useQueryState(
@@ -253,8 +277,11 @@ export function useBulletinFilters(
   );
 
   const filtersReady = useProfileFilterDefaults({
-    enabled: !!userId,
-    resolved: !effectiveProfileLoading,
+    // Only seed after the cookie check confirms a session — soft-nav keeps
+    // AuthContext warm, so !!userId alone would seed too early.
+    enabled: cookieChecked && sessionCookie === true && !!userId,
+    resolved: filterAuthResolved,
+    sessionDetected: sessionCookie === true,
     seed: profileSeed,
     current: currentSeedState,
     setters: seedSetters,

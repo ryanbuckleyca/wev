@@ -12,6 +12,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
 }));
 
+/** Mocks `useSearchParams` presence for profile filter seed tests. */
 function mockUrlParams(present: string[]) {
   const set = new Set(present);
   vi.mocked(useSearchParams).mockReturnValue({
@@ -33,6 +34,7 @@ const emptyCurrent: ProfileFilterCurrent = {
   languages: [],
 };
 
+/** Returns vi.fn setters for profile filter default seeding tests. */
 function makeSetters(): ProfileFilterSetters {
   return {
     setWorkTypes: vi.fn(),
@@ -71,6 +73,27 @@ describe('useProfileFilterDefaults', () => {
     expect(setters.setLanguages).not.toHaveBeenCalled();
   });
 
+  it('drops ready when a session cookie is detected after the anonymous latch', () => {
+    const setters = makeSetters();
+    const { result, rerender } = renderHook(
+      ({ sessionDetected, resolved }) =>
+        useProfileFilterDefaults({
+          enabled: false,
+          resolved,
+          sessionDetected,
+          seed: emptySeed,
+          current: emptyCurrent,
+          setters,
+        }),
+      { initialProps: { sessionDetected: false, resolved: true } },
+    );
+
+    expect(result.current).toBe(true);
+
+    rerender({ sessionDetected: true, resolved: false });
+    expect(result.current).toBe(false);
+  });
+
   it('waits (not ready) while a logged-in user profile is still loading', () => {
     const setters = makeSetters();
     const { result } = renderHook(() =>
@@ -85,6 +108,43 @@ describe('useProfileFilterDefaults', () => {
 
     expect(result.current).toBe(false);
     expect(setters.setWorkTypes).not.toHaveBeenCalled();
+  });
+
+  it('still seeds after a slow profile resolve (does not abort waiting)', async () => {
+    vi.useFakeTimers();
+    const setters = makeSetters();
+    const seed: ProfileFilterSeed = {
+      workTypes: ['remote'],
+      province: null,
+      municipality: null,
+      languages: [],
+    };
+
+    const { result, rerender } = renderHook(
+      ({ resolved, current }: { resolved: boolean; current: ProfileFilterCurrent }) =>
+        useProfileFilterDefaults({
+          enabled: true,
+          resolved,
+          seed,
+          current,
+          setters,
+        }),
+      { initialProps: { resolved: false, current: emptyCurrent } },
+    );
+
+    // Simulate a profile fetch slower than any former escape-hatch timeout.
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(result.current).toBe(false);
+    expect(setters.setWorkTypes).not.toHaveBeenCalled();
+
+    rerender({ resolved: true, current: emptyCurrent });
+    expect(setters.setWorkTypes).toHaveBeenCalledWith(['remote']);
+    expect(result.current).toBe(false);
+
+    rerender({ resolved: true, current: { ...emptyCurrent, workTypes: ['remote'] } });
+    expect(result.current).toBe(true);
+
+    vi.useRealTimers();
   });
 
   it('seeds profile defaults once, then becomes ready when the seed lands', () => {
@@ -119,6 +179,32 @@ describe('useProfileFilterDefaults', () => {
       },
     });
 
+    expect(result.current).toBe(true);
+  });
+
+  it('becomes ready in the same pass when current already matches the seed', () => {
+    // Soft-nav: Auth is warm, URL may already reflect profile filters, and
+    // nuqs setters no-op — we must not wait for a re-render that never comes.
+    const setters = makeSetters();
+    const seed: ProfileFilterSeed = {
+      workTypes: ['remote'],
+      province: 'QC',
+      municipality: null,
+      languages: [],
+    };
+    const current: ProfileFilterCurrent = {
+      workTypes: ['remote'],
+      provinces: ['QC'],
+      municipalities: [],
+      languages: [],
+    };
+
+    const { result } = renderHook(() =>
+      useProfileFilterDefaults({ enabled: true, resolved: true, seed, current, setters }),
+    );
+
+    expect(setters.setWorkTypes).toHaveBeenCalledWith(['remote']);
+    expect(setters.setProvinces).toHaveBeenCalledWith(['QC']);
     expect(result.current).toBe(true);
   });
 
