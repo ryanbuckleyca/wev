@@ -1,26 +1,18 @@
 import createNextIntlPlugin from 'next-intl/plugin';
 import path from 'path';
+import {
+  localSupabaseRewriteDestination,
+  shouldProxyLocalSupabase,
+} from './lib/supabase/local-proxy.mjs';
 
-/** Local Kong/API — browser traffic from public tunnel hostnames is rewritten here. */
-const localSupabaseOrigin = (
-  process.env.SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  'http://127.0.0.1:54321'
-).replace(/\/$/, '');
+/** Server-reachable Kong/API origin used as the `/__supabase` rewrite target. */
+const localSupabaseOrigin = localSupabaseRewriteDestination({
+  supabaseUrl: process.env.SUPABASE_URL,
+  publicSupabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+});
 
-/** True for localhost and IPv4/IPv6 loopback hostnames. */
-function isLoopbackHostname(hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
-}
-
-/** Whether the configured Supabase origin needs the local same-origin proxy rewrite. */
-function shouldProxyLocalSupabase(origin) {
-  try {
-    return isLoopbackHostname(new URL(origin).hostname);
-  } catch {
-    return false;
-  }
-}
+/** Browser-facing Supabase URL — eligibility must match resolveBrowserSupabaseUrl. */
+const publicSupabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').replace(/\/$/, '');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -48,9 +40,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
-    // Only expose /__supabase when targeting loopback Supabase (local + tunnel).
-    // Hosted deploys talk to supabase.co directly — no same-origin proxy needed.
-    if (!shouldProxyLocalSupabase(localSupabaseOrigin)) {
+    // Gate on the public URL (what the browser client uses). Destination may
+    // still be SUPABASE_URL when that differs from loopback for the Node process.
+    if (!shouldProxyLocalSupabase(publicSupabaseUrl)) {
       return [];
     }
     return [
