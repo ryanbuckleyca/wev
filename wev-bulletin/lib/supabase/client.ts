@@ -1,8 +1,19 @@
-import { createBrowserClient } from '@supabase/ssr';
+'use client';
 
+import { createBrowserClient } from '@supabase/ssr';
+import {
+  authCookieNameFromSupabaseUrl,
+  resolveBrowserSupabaseUrl,
+} from '@/lib/supabase/browser-url';
+
+/** Browser Supabase client; uses the same-origin proxy on tunnel hostnames when configured for loopback. */
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-  );
+  const configured = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const pageHref = typeof window !== 'undefined' ? window.location.href : null;
+  const url = resolveBrowserSupabaseUrl(configured, pageHref);
+
+  return createBrowserClient(url, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+    // Cookie name must follow the configured project URL, not the proxy hostname.
+    cookieOptions: { name: authCookieNameFromSupabaseUrl(configured) },
+  });
 }
