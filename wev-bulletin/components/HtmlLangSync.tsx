@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 
 interface HtmlLangSyncProps {
   lang: string;
 }
 
+/** Sets `<html lang>` from the active locale before paint (static root defaults to en). */
 export default function HtmlLangSync({ lang }: HtmlLangSyncProps) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.setAttribute('lang', lang);
   }, [lang]);
 

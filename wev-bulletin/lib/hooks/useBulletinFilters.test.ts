@@ -227,7 +227,7 @@ describe('useBulletinFilters', () => {
       } as any);
       vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, loading: false } as any);
 
-      const { result } = renderHook(() => useBulletinFilters());
+      const { result } = renderHook(() => useBulletinFilters({ sessionCookie: true }));
 
       expect(result.current.selectedLanguages).toEqual(['en', 'fr']);
     });
@@ -239,7 +239,7 @@ describe('useBulletinFilters', () => {
       } as any);
       vi.mocked(useAuth).mockReturnValue({ user: { id: 'u1' }, loading: false } as any);
 
-      const { result } = renderHook(() => useBulletinFilters());
+      const { result } = renderHook(() => useBulletinFilters({ sessionCookie: true }));
 
       // Seeded from profile on first load.
       expect(result.current.selectedLanguages).toEqual(['en', 'fr']);

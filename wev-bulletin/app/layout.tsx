@@ -1,9 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-import { cookies, headers } from 'next/headers';
 import Script from 'next/script';
 import ThemeScript from '@/components/ThemeScript';
 import { getSiteBaseUrl } from '@/lib/site-url';
-import { resolveThemeFromCookie } from '@/lib/theme';
+import { DEFAULT_THEME } from '@/lib/theme';
 import { routing } from '@/i18n/routing';
 import { Lexend_Deca } from 'next/font/google';
 import './globals.css';
@@ -34,19 +33,24 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const headerStore = await headers();
-  const cookieStore = await cookies();
-
-  const rawLocale = headerStore.get('x-next-intl-locale');
-  const validLocales = routing.locales as readonly string[];
-  const locale = rawLocale && validLocales.includes(rawLocale) ? rawLocale : routing.defaultLocale;
-  const theme = resolveThemeFromCookie(cookieStore.get('theme')?.value);
-
+/**
+ * Root shell is static: theme/lang are applied client-side (ThemeScript in
+ * <head>, HtmlLangSync) so public pages are not forced DYNAMIC via cookies()/
+ * headers(). ThemeScript still reads the theme cookie before first paint.
+ */
+/** Static root HTML shell (CDN-cacheable); theme and analytics bootstrap client-side. */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={locale} data-theme={theme} className={lexend.variable} suppressHydrationWarning>
-      <body className="font-sans antialiased" suppressHydrationWarning>
+    <html
+      lang={routing.defaultLocale}
+      data-theme={DEFAULT_THEME}
+      className={lexend.variable}
+      suppressHydrationWarning
+    >
+      <head>
         <ThemeScript />
+      </head>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {children}
         {enableAnalytics && (
           <>

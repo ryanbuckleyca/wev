@@ -1,15 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@/test-utils';
 
-const {
-  mockBulletinPageClient,
-  mockGetRequestUser,
-  mockFetchUserRoles,
-  mockFetchServerBulletinJobs,
-} = vi.hoisted(() => ({
+const { mockBulletinPageClient, mockFetchServerBulletinJobs } = vi.hoisted(() => ({
   mockBulletinPageClient: vi.fn(),
-  mockGetRequestUser: vi.fn(),
-  mockFetchUserRoles: vi.fn(),
   mockFetchServerBulletinJobs: vi.fn(),
 }));
 
@@ -18,18 +11,6 @@ vi.mock('@/components/BulletinPageClient', () => ({
     mockBulletinPageClient(props);
     return null;
   },
-}));
-
-vi.mock('@/lib/auth/request-user', () => ({
-  getRequestUser: mockGetRequestUser,
-}));
-
-vi.mock('@/lib/auth/server-user-roles', () => ({
-  fetchUserRolesFromService: mockFetchUserRoles,
-}));
-
-vi.mock('@/lib/auth', () => ({
-  rolesIncludeAdmin: (roles: string[]) => roles.includes('admin'),
 }));
 
 vi.mock('@/lib/bulletin/server-data', () => ({
@@ -55,38 +36,32 @@ describe('BulletinDataContainer', () => {
       total: 0,
       lastScrapeTime: null,
       skillLabels: {},
+      filterOptions: {},
     });
   });
 
-  it('defers user meta hydration and renders with server jobs payload', async () => {
-    mockGetRequestUser.mockResolvedValue({ ok: true, user: { id: 'user-1' } });
-    mockFetchUserRoles.mockResolvedValue({ ok: true, roles: ['admin'] });
-
+  it('renders anonymous SSR shell with server jobs payload', async () => {
     const { BulletinDataContainer } = await import('./page');
     const output = await BulletinDataContainer({ parsedLocale: 'en' });
     render(output);
 
     expect(mockFetchServerBulletinJobs).toHaveBeenCalledWith('en');
-    expect(mockFetchUserRoles).toHaveBeenCalledWith('user-1');
 
     const props = mockBulletinPageClient.mock.calls[0][0] as Record<string, unknown>;
-    expect(props.initialUserId).toBe('user-1');
-    expect(props.isLoggedIn).toBe(true);
-    expect(props.isAdmin).toBe(true);
+    expect(props.initialUserId).toBeNull();
+    expect(props.isLoggedIn).toBe(false);
+    expect(props.isAdmin).toBe(false);
     expect(props.initialMatchData).toBeUndefined();
     expect(props.initialBookmarkedJobIds).toBeUndefined();
     expect(props.initialProfile).toBeUndefined();
   });
 
-  it('skips role lookup when request is anonymous', async () => {
-    mockGetRequestUser.mockResolvedValue({ ok: false, authError: null });
-
+  it('loads French locale jobs for fr shell', async () => {
     const { BulletinDataContainer } = await import('./page');
     const output = await BulletinDataContainer({ parsedLocale: 'fr' });
     render(output);
 
     expect(mockFetchServerBulletinJobs).toHaveBeenCalledWith('fr');
-    expect(mockFetchUserRoles).not.toHaveBeenCalled();
 
     const props = mockBulletinPageClient.mock.calls[0][0] as Record<string, unknown>;
     expect(props.initialUserId).toBeNull();
