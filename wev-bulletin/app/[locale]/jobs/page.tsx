@@ -1,5 +1,4 @@
-import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
-
 export { default } from '../page';
 
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+/** Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+export const revalidate = 60;

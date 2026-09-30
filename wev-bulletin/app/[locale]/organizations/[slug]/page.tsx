@@ -12,10 +12,10 @@ import { OrganizationJobsList } from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
 import PageLayout from '@/components/PageLayout';
-import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 
-/** Prefer ISR for anonymous org profile HTML. */
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+/** Prefer ISR for anonymous org profile HTML.
+ * Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;

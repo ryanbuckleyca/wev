@@ -4,10 +4,10 @@ import { parseLocale } from '@/lib/resolve-skill-labels';
 import { fetchServerBulletinJobs } from '@/lib/bulletin/server-data';
 import BulletinPageClient from '@/components/BulletinPageClient';
 import BulletinPageSkeleton from '@/components/BulletinPageSkeleton';
-import { PUBLIC_REVALIDATE_SECONDS } from '@/lib/cache';
 
-/** ISR so Cloudflare/CDN can cache the anonymous jobs shell. */
-export const revalidate = PUBLIC_REVALIDATE_SECONDS;
+/** ISR so Cloudflare/CDN can cache the anonymous jobs shell.
+ * Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+export const revalidate = 60;
 
 /** Renders the cached anonymous jobs shell inside the home page Suspense boundary. */
 export async function BulletinDataContainer({ parsedLocale }: { parsedLocale: 'en' | 'fr' }) {
