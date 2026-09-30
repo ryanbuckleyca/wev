@@ -10,12 +10,14 @@ interface SimplePaginationProps {
   extraParams?: Record<string, string>;
 }
 
+/** Builds a pagination URL with page and optional extra query params. */
 function pageHref(baseUrl: string, page: number, extraParams?: Record<string, string>): string {
   const params = new URLSearchParams(extraParams);
   params.set('page', String(page));
   return `${baseUrl}?${params}`;
 }
 
+/** Minimal prev/next pagination links without client-side routing state. */
 export default function SimplePagination({
   currentPage,
   totalPages,
@@ -37,7 +39,11 @@ export default function SimplePagination({
   return (
     <nav aria-label={t('paginationLabel')} className="flex items-center justify-center gap-4 py-6">
       {hasPrev ? (
-        <Link href={pageHref(baseUrl, currentPage - 1, extraParams)} className={linkClass}>
+        <Link
+          href={pageHref(baseUrl, currentPage - 1, extraParams)}
+          prefetch={false}
+          className={linkClass}
+        >
           {t('previous')}
         </Link>
       ) : (
@@ -51,7 +57,11 @@ export default function SimplePagination({
       </span>
 
       {hasNext ? (
-        <Link href={pageHref(baseUrl, currentPage + 1, extraParams)} className={linkClass}>
+        <Link
+          href={pageHref(baseUrl, currentPage + 1, extraParams)}
+          prefetch={false}
+          className={linkClass}
+        >
           {t('next')}
         </Link>
       ) : (

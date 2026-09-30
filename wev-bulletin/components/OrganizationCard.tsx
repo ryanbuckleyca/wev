@@ -84,6 +84,7 @@ function OrganizationCardHeader({
           <div className="flex items-center gap-2 max-w-full">
             <Link
               href={`/${locale}/organizations/${org.slug}`}
+              prefetch={false}
               className="text-primary-text font-semibold text-base hover:underline truncate"
             >
               {org.name}
@@ -153,6 +154,7 @@ function OrganizationCardDetails({
       <div className="text-sm">
         <Link
           href={`/${locale}/organizations/${org.slug}`}
+          prefetch={false}
           className="text-primary hover:underline"
         >
           {viewProfileLabel}
