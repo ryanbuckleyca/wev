@@ -30,7 +30,6 @@ vi.mock('@/lib/resolve-skill-labels', () => ({
 }));
 
 vi.mock('@/lib/bulletin/server-data', () => ({
-  BULLETIN_CACHE_TAG: 'bulletin-jobs',
   fetchBulletinQueryPayload: vi.fn(),
 }));
 

@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
-import {
-  BULLETIN_CACHE_TAG,
-  fetchBulletinQueryPayload,
-  type BulletinQueryInput,
-} from '@/lib/bulletin/server-data';
+import { fetchBulletinQueryPayload, type BulletinQueryInput } from '@/lib/bulletin/server-data';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import { isOrgType } from '@/lib/organizations/org-type';
 import { isValidSector } from '@/lib/sectors';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { createClient } from '@/lib/supabase/server';
 
-export { BULLETIN_CACHE_TAG };
 export const dynamic = 'force-dynamic';
 
 const ITEMS_PER_PAGE = 20;
