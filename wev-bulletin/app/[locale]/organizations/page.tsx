@@ -1,46 +1,35 @@
 import { getTranslations } from 'next-intl/server';
-import Link from 'next/link';
 import {
   fetchOrganizationIndex,
   fetchOrganizationFilterOptions,
   fetchSectorIndexStats,
 } from '@/lib/organizations/server-data';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
-import { rolesIncludeAdmin } from '@/lib/auth';
-import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
 import OrganizationIndexClient from '@/components/OrganizationIndexClient';
+import OrganizationIndexAdminLinks from '@/components/OrganizationIndexAdminLinks';
 import PageLayout from '@/components/PageLayout';
-import { buttonVariants } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
+
+/** Prefer ISR for the default anonymous org index HTML.
+ * Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+/** Page title for the organizations index. */
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'organizations' });
   return { title: t('indexTitle') };
 }
 
+/** Anonymous ISR org index; personalized sort and admin links hydrate client-side. */
 export default async function OrganizationsIndexPage({ params, searchParams }: PageProps) {
   const { locale } = await params;
   const rawSearchParams = await searchParams;
   const t = await getTranslations({ locale, namespace: 'organizations' });
-  const tAdmin = await getTranslations({ locale, namespace: 'admin.organizations' });
-
-  const supabaseAuth = await createServerClient();
-  const {
-    data: { user },
-  } = await supabaseAuth.auth.getUser();
-
-  let isAdmin = false;
-  if (user) {
-    const rolesResult = await fetchUserRolesFromService(user.id);
-    isAdmin = rolesResult.ok && rolesIncludeAdmin(rolesResult.roles);
-  }
 
   const urlSearchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(rawSearchParams)) {
@@ -51,6 +40,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     }
   }
 
+  // Anonymous baseline — match scores / admin UI hydrate client-side via AuthContext.
   const {
     page,
     searchQuery,
@@ -62,7 +52,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     sectors,
     sortBy,
     activityDays,
-  } = parseOrgIndexSearchParams(urlSearchParams, Boolean(user));
+  } = parseOrgIndexSearchParams(urlSearchParams, false);
 
   // Match OrganizationIndexClient: sector cards only when no user filters are active.
   const showSectorIndex =
@@ -76,22 +66,19 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     activityDays == null;
 
   const [initialData, filterOptions, sectorIndex] = await Promise.all([
-    fetchOrganizationIndex(
-      {
-        page,
-        searchQuery,
-        sseOnly,
-        provinces,
-        municipalities,
-        orgTypes,
-        languages,
-        sectors,
-        userId: user?.id ?? null,
-        sortBy,
-        activityDays,
-      },
-      user ? supabaseAuth : undefined,
-    ),
+    fetchOrganizationIndex({
+      page,
+      searchQuery,
+      sseOnly,
+      provinces,
+      municipalities,
+      orgTypes,
+      languages,
+      sectors,
+      userId: null,
+      sortBy,
+      activityDays,
+    }),
     fetchOrganizationFilterOptions(activityDays),
     showSectorIndex ? fetchSectorIndexStats({ sseOnly: true }) : Promise.resolve([]),
   ]);
@@ -100,22 +87,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     <PageLayout maxWidth="lg">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold text-foreground">{t('indexTitle')}</h1>
-        {isAdmin && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href={`/${locale}/admin/organizations`}
-              className={cn(buttonVariants({ variant: 'secondary' }))}
-            >
-              {tAdmin('actions.manage')}
-            </Link>
-            <Link
-              href={`/${locale}/admin/organizations/new`}
-              className={cn(buttonVariants({ variant: 'default' }))}
-            >
-              {tAdmin('actions.addNew')}
-            </Link>
-          </div>
-        )}
+        <OrganizationIndexAdminLinks locale={locale} />
       </header>
 
       <OrganizationIndexClient
@@ -123,7 +95,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
         filterOptions={filterOptions}
         sectorIndex={sectorIndex}
         locale={locale}
-        initialHasMatchScores={Boolean(user)}
+        initialHasMatchScores={false}
       />
     </PageLayout>
   );

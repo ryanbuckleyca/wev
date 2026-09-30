@@ -1,15 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@/test-utils';
 
-const { mockGetOrganizationBySlug, mockGetOrganizationJobs, mockNotFound, mockGetUser } =
-  vi.hoisted(() => ({
-    mockGetOrganizationBySlug: vi.fn(),
-    mockGetOrganizationJobs: vi.fn(),
-    mockNotFound: vi.fn(() => {
-      throw new Error('NEXT_NOT_FOUND');
-    }),
-    mockGetUser: vi.fn(async () => ({ data: { user: null } })),
-  }));
+const { mockGetOrganizationBySlug, mockGetOrganizationJobs, mockNotFound } = vi.hoisted(() => ({
+  mockGetOrganizationBySlug: vi.fn(),
+  mockGetOrganizationJobs: vi.fn(),
+  mockNotFound: vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+}));
 
 vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
@@ -43,16 +41,6 @@ vi.mock('@/lib/organizations/server-data', () => ({
   getOrganizationJobs: mockGetOrganizationJobs,
 }));
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(async () => ({
-    auth: { getUser: mockGetUser },
-  })),
-}));
-
-vi.mock('@/lib/auth/server-user-roles', () => ({
-  fetchUserRolesFromService: vi.fn(async () => ({ ok: true, roles: ['user'] })),
-}));
-
 vi.mock('@/components/OrganizationProfileHeader', () => ({
   default: ({
     org,
@@ -68,10 +56,6 @@ vi.mock('@/components/OrganizationProfileHeader', () => ({
       {editHref && editLabel ? <a href={editHref}>{editLabel}</a> : null}
     </div>
   ),
-}));
-
-vi.mock('@/lib/bulletin/server-data', () => ({
-  fetchServerProfile: vi.fn(async () => null),
 }));
 
 vi.mock('@/components/OrganizationJobRow', () => ({

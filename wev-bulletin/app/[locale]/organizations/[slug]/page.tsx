@@ -2,21 +2,20 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 import { getOrganizationBySlug, getOrganizationJobs } from '@/lib/organizations/server-data';
-import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import { ORG_JOBS_PER_PAGE } from '@/lib/organizations/constants';
 import {
   activityWindowToDays,
   parseOrgJobsActivityWindow,
   type ActivityWindow,
 } from '@/lib/organizations/params';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-import { rolesIncludeAdmin } from '@/lib/auth';
-import { fetchUserRolesFromService } from '@/lib/auth/server-user-roles';
-import { fetchServerProfile } from '@/lib/bulletin/server-data';
 import { OrganizationJobsList } from '@/components/OrganizationJobRow';
 import OrganizationProfileHeader from '@/components/OrganizationProfileHeader';
 import SimplePagination from '@/components/SimplePagination';
 import PageLayout from '@/components/PageLayout';
+
+/** Prefer ISR for anonymous org profile HTML.
+ * Literal required by Next.js segment config; keep equal to PUBLIC_REVALIDATE_SECONDS. */
+export const revalidate = 60;
 
 interface PageProps {
   params: Promise<{ locale: string; slug: string }>;
@@ -25,6 +24,7 @@ interface PageProps {
 
 const JOB_ACTIVITY_OPTIONS: ActivityWindow[] = ['28d', '90d', 'all'];
 
+/** SEO metadata for a single organization profile page. */
 export async function generateMetadata({ params }: PageProps) {
   const { locale, slug } = await params;
   const org = await getOrganizationBySlug(slug);
@@ -39,6 +39,7 @@ export async function generateMetadata({ params }: PageProps) {
   };
 }
 
+/** Anonymous ISR organization profile; auth-gated match UI hydrates client-side. */
 export default async function OrganizationDetailPage({ params, searchParams }: PageProps) {
   const { locale, slug } = await params;
   const resolvedSearchParams = await searchParams;
@@ -60,24 +61,6 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
 
   if (!org) {
     notFound();
-  }
-
-  const supabaseAuth = await createServerClient();
-  const {
-    data: { user },
-  } = await supabaseAuth.auth.getUser();
-
-  let isAdmin = false;
-  let valueMatch = null;
-  if (user) {
-    const [rolesResult, profile] = await Promise.all([
-      fetchUserRolesFromService(user.id),
-      fetchServerProfile(user.id),
-    ]);
-    isAdmin = rolesResult.ok && rolesIncludeAdmin(rolesResult.roles);
-    if (profile) {
-      valueMatch = computeOrgValueMatch(profile.values_rated, org.values_list, org.values_rated);
-    }
   }
 
   const { jobs, total } = await getOrganizationJobs({
@@ -106,16 +89,13 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
       <OrganizationProfileHeader
         org={org}
         locale={locale}
-        t={t}
-        editHref={isAdmin ? `/${locale}/admin/organizations/${org.id}/edit` : null}
-        editLabel={isAdmin ? tAdmin('edit') : undefined}
-        valueMatch={valueMatch}
+        editHref={`/${locale}/admin/organizations/${org.id}/edit`}
+        editLabel={tAdmin('edit')}
         sectorLabel={
           org.sector_id && tSectors.has(`${org.sector_id}.label`)
             ? tSectors(`${org.sector_id}.label`)
             : null
         }
-        isLoggedIn={Boolean(user)}
       />
 
       <div className="space-y-4">
@@ -134,6 +114,7 @@ export default async function OrganizationDetailPage({ params, searchParams }: P
                 <Link
                   key={window}
                   href={href}
+                  prefetch={false}
                   aria-current={selected ? 'page' : undefined}
                   className={
                     selected
