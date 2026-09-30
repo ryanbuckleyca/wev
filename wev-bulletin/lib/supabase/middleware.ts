@@ -8,42 +8,30 @@ export function hasSupabaseAuthCookie(request: NextRequest): boolean {
 }
 
 /**
- * Paths that serve the same anonymous HTML for everyone.
- * Skip session refresh here so Cloudflare/CDN can cache and we avoid an
- * Auth round-trip on every public hit. Protected routes and /api still refresh.
+ * Cache headers required when auth cookies are written, so CDNs never store a
+ * session-bearing response. Matches the values `@supabase/ssr` ≥0.10 passes into
+ * `setAll`; 0.8.0 does not supply them, so we set them explicitly.
  */
-export function isPublicCacheablePath(pathname: string): boolean {
-  if (pathname.startsWith('/api')) return false;
-
-  const stripped = pathname.replace(/^\/(en|fr)(?=\/|$)/, '') || '/';
-
-  if (stripped === '/' || stripped === '/jobs' || stripped === '/emplois') return true;
-  if (stripped.startsWith('/organizations')) return true;
-  if (
-    stripped === '/login' ||
-    stripped === '/signup' ||
-    stripped === '/forgot-password' ||
-    stripped === '/reset-password' ||
-    stripped === '/style-guide'
-  ) {
-    return true;
-  }
-
-  return false;
-}
+const AUTH_RESPONSE_CACHE_HEADERS: Record<string, string> = {
+  'Cache-Control': 'private, no-cache, no-store, must-revalidate, max-age=0',
+  Expires: '0',
+  Pragma: 'no-cache',
+};
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-/** Refreshes the Supabase session via JWT claims when a session cookie is present on protected routes. */
+/**
+ * Refreshes the Supabase session via JWT claims when a session cookie is present.
+ * Anonymous requests (no auth cookie) return immediately so public HTML can stay CDN-cacheable.
+ */
 export async function updateSession(request: NextRequest, initialResponse?: NextResponse) {
   // Start from the provided base response (e.g. from next-intl middleware) so
   // any rewrites or locale headers it set are preserved on the final response.
   let supabaseResponse = initialResponse ?? NextResponse.next({ request });
 
-  // Anonymous traffic, or public pages that should stay CDN-cacheable:
-  // skip Auth so we never attach Set-Cookie / private Cache-Control.
-  // Protected routes and /api still refresh via getClaims() when a session exists.
-  if (!hasSupabaseAuthCookie(request) || isPublicCacheablePath(request.nextUrl.pathname)) {
+  // No session cookie: skip Auth entirely (no Set-Cookie / private Cache-Control).
+  // Public paths with a session cookie still refresh so tokens stay valid.
+  if (!hasSupabaseAuthCookie(request)) {
     return supabaseResponse;
   }
 
@@ -55,8 +43,8 @@ export async function updateSession(request: NextRequest, initialResponse?: Next
         getAll() {
           return request.cookies.getAll();
         },
-        // Newer @supabase/ssr docs pass CDN-busting headers as a 2nd arg after refresh.
-        setAll(cookiesToSet: CookieToSet[], headers?: Record<string, string>) {
+        // @supabase/ssr 0.8.0 SetAllCookies is cookies-only (no headers arg).
+        setAll(cookiesToSet: CookieToSet[]) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           // Build a fresh response so cookies can be written, but carry over
           // any headers (including x-middleware-rewrite, x-next-intl-locale,
@@ -65,10 +53,8 @@ export async function updateSession(request: NextRequest, initialResponse?: Next
           initialResponse?.headers.forEach((value, key) => {
             newResponse.headers.set(key, value);
           });
-          if (headers) {
-            for (const [key, value] of Object.entries(headers)) {
-              if (typeof value === 'string') newResponse.headers.set(key, value);
-            }
+          for (const [key, value] of Object.entries(AUTH_RESPONSE_CACHE_HEADERS)) {
+            newResponse.headers.set(key, value);
           }
           supabaseResponse = newResponse;
           cookiesToSet.forEach(({ name, value, options }) =>

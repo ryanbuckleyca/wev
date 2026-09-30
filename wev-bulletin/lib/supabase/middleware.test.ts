@@ -1,29 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { hasSupabaseAuthCookie, isPublicCacheablePath } from './middleware';
-
-describe('isPublicCacheablePath', () => {
-  it('treats locale home and jobs aliases as public', () => {
-    expect(isPublicCacheablePath('/')).toBe(true);
-    expect(isPublicCacheablePath('/en')).toBe(true);
-    expect(isPublicCacheablePath('/fr')).toBe(true);
-    expect(isPublicCacheablePath('/en/jobs')).toBe(true);
-    expect(isPublicCacheablePath('/fr/emplois')).toBe(true);
-  });
-
-  it('treats organization routes as public', () => {
-    expect(isPublicCacheablePath('/en/organizations')).toBe(true);
-    expect(isPublicCacheablePath('/fr/organizations/acme')).toBe(true);
-  });
-
-  it('keeps authenticated surfaces private', () => {
-    expect(isPublicCacheablePath('/en/profile')).toBe(false);
-    expect(isPublicCacheablePath('/en/bookmarks')).toBe(false);
-    expect(isPublicCacheablePath('/en/admin/organizations')).toBe(false);
-    expect(isPublicCacheablePath('/api/bulletin')).toBe(false);
-    expect(isPublicCacheablePath('/api/ping')).toBe(false);
-  });
-});
+import { hasSupabaseAuthCookie } from './middleware';
 
 describe('hasSupabaseAuthCookie', () => {
   it('detects chunked and single auth cookies', () => {
