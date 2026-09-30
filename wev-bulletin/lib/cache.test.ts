@@ -3,13 +3,12 @@ import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { PUBLIC_REVALIDATE_SECONDS } from './cache';
 
-/** App Router pages that export ISR `revalidate` for anonymous CDN shells. */
+/** App Router pages in this PR that export ISR `revalidate` for anonymous CDN shells.
+ * Org pages are covered when the orgs CDN PR lands. */
 const PAGE_SEGMENT_FILES = [
   'app/[locale]/page.tsx',
   'app/[locale]/jobs/page.tsx',
   'app/[locale]/emplois/page.tsx',
-  'app/[locale]/organizations/page.tsx',
-  'app/[locale]/organizations/[slug]/page.tsx',
 ] as const;
 
 describe('PUBLIC_REVALIDATE_SECONDS', () => {
