@@ -38,11 +38,7 @@ export function shouldProxyLocalSupabase(publicSupabaseUrl) {
  * @returns {string}
  */
 export function localSupabaseRewriteDestination(args = {}) {
-  const {
-    supabaseUrl,
-    publicSupabaseUrl,
-    fallback = 'http://127.0.0.1:54321',
-  } = args;
+  const { supabaseUrl, publicSupabaseUrl, fallback = 'http://127.0.0.1:54321' } = args;
   const raw = supabaseUrl || publicSupabaseUrl || fallback;
   return String(raw).replace(/\/$/, '');
 }
