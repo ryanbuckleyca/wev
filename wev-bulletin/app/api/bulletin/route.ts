@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
-import {
-  fetchBulletinQueryPayload,
-  type BulletinQueryInput,
-} from '@/lib/bulletin/server-data';
+import { fetchBulletinQueryPayload, type BulletinQueryInput } from '@/lib/bulletin/server-data';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
 import { isOrgType } from '@/lib/organizations/org-type';
 import { isValidSector } from '@/lib/sectors';
