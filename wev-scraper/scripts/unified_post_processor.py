@@ -297,15 +297,6 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
             # All API backends burned for the day — abort remaining batches.
             raise
         except Exception as e:
-            # Imported lazily: cooldown helpers must not pull LLM stack at module load.
-            from llm.cooldown import DailyQuotaExhaustedError
-
-            if isinstance(e, DailyQuotaExhaustedError):
-                scraper_log(f"🛑 Aborting: {e}")
-                counts["errors"] += len(batch)
-                counts["aborted_quota"] = True
-                counts["processed"] = processed_count
-                return counts
             scraper_log(f"✗ Batch processing failed: {e}")
             counts["errors"] += len(batch)
             continue
