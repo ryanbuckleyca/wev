@@ -179,6 +179,7 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
     job_ids = [j["id"] for j, _ in unprocessed]
     _log(f"Processing {len(job_ids)} jobs in chunks...")
 
+    from llm.cooldown import DailyQuotaExhaustedError
     from scripts.tag_esco_skills_vector import tag_esco_skills_vector
     from scripts.unified_post_processor import (
         ProcessingOptions,
@@ -218,6 +219,9 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
                 unified_errors += result.get("errors", 0)
                 unified_processed += result.get("processed", 0)
 
+            except DailyQuotaExhaustedError as e:
+                _log(f"🛑 All LLM daily quotas exhausted — aborting remaining chunks: {e}")
+                raise
             except Exception as e:
                 _log(f"✗ Unified post-processor failed for chunk: {e}")
                 unified_errors += len(unified_chunk)
