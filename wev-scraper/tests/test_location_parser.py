@@ -17,12 +17,25 @@ def test_looks_like_us_location_detects_common_us_strings():
     assert looks_like_us_location("Horry County, South Carolina, United States") is True
     assert looks_like_us_location("Denver, CO, USA") is True
     assert looks_like_us_location("Seattle, WA") is True
+    assert looks_like_us_location("Seattle, WA.") is True
+    assert looks_like_us_location("Boston, U.S.") is True
+    assert looks_like_us_location("Boston, U.S. remote") is True
+    assert looks_like_us_location("Boston, U.S.A.") is True
     assert looks_like_us_location("Toronto, ON") is False
     assert looks_like_us_location("Ontario, Canada") is False
     assert looks_like_us_location("Remote — Canada") is False
     assert looks_like_us_location("Remote in Canada or USA | New Jersey or Illinois-based candidates strongly preferred") is False
     assert looks_like_us_location("Remote | Western USA or Western Canada strongly preferred") is False
     assert looks_like_us_location(None) is False
+
+
+def test_is_intentional_us_geocode_query_guards_non_string():
+    from utils.location_parser import _is_intentional_us_geocode_query
+
+    assert _is_intentional_us_geocode_query(None) is False
+    assert _is_intentional_us_geocode_query("") is False
+    assert _is_intentional_us_geocode_query(123) is False  # type: ignore[arg-type]
+    assert _is_intentional_us_geocode_query("Peoria, USA") is True
 
 
 def test_parse_address_skips_us_without_canada_bias():

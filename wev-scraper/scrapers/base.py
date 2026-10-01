@@ -522,8 +522,11 @@ class BaseScraper:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), failed to open job page")
                     continue
 
+                before = len(self.jobs)
                 self.extract_job_fields(job_page, listing_data, i)
-                jobs_this_page += 1
+                # US-only / other normalize drops must not consume the per-page budget
+                if len(self.jobs) > before:
+                    jobs_this_page += 1
             except Exception as e:
                 scraper_log(f"\tNotice: Error processing job {i + 1}: {e}")
             finally:

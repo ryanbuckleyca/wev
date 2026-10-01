@@ -274,8 +274,9 @@ def is_country_only_location(location: Optional[str]) -> bool:
 
 
 # Explicit US country markers. Bare "US"/"us" omitted (too many English false positives).
+# Trailing (?!\w) — not \b — so dotted "U.S." matches at EOS and before " remote".
 _US_COUNTRY_RE = re.compile(
-    r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)\b"
+    r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)(?!\w)"
 )
 
 # Full US state / DC names. Abbreviations alone are risky (CA ≠ California here).
@@ -306,7 +307,9 @@ _US_STATE_CODES = (
     "WV", "WY",
 )
 _US_STATE_CODE_RE = re.compile(
-    r"(?i)(?:,|\s)\s*(" + "|".join(_US_STATE_CODES) + r")\s*(?:,|$|\s+united|\s+usa|\s+u\.s)"
+    r"(?i)(?:,|\s)\s*("
+    + "|".join(_US_STATE_CODES)
+    + r")(?=\s*(?:[,.;:!?]|$|\s+united|\s+usa|\s+u\.s))"
 )
 
 
@@ -335,8 +338,10 @@ def looks_like_us_location(location: Optional[str]) -> bool:
     return True
 
 
-def _is_intentional_us_geocode_query(query: str) -> bool:
+def _is_intentional_us_geocode_query(query: Optional[str]) -> bool:
     """True for org-HQ style queries we *do* want to resolve in the US (…, USA)."""
+    if not query or not isinstance(query, str):
+        return False
     return bool(re.search(r",\s*USA\s*$", query, re.I)) or query.rstrip().upper().endswith("USA")
 
 
