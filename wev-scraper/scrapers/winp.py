@@ -224,6 +224,8 @@ class WinpScraper(BaseScraper):
 
     def create_job_dict(self, **kwargs):
         job = super().create_job_dict(**kwargs)
+        if job is None:
+            return None
         url = kwargs.get("listing_url") or job.get("listing_url") or ""
         match = _VIEW_LANG.search(url)
         if match:

@@ -47,3 +47,30 @@ def test_normalize_job_data_blank_location_stays_none(monkeypatch):
         }
     )
     assert result["location"] is None
+
+
+def test_normalize_job_data_returns_none_for_us_only_location(monkeypatch):
+    _no_geocode(monkeypatch)
+    result = normalize_job_data(
+        {
+            "job_title": "Installer",
+            "organization": "US Co",
+            "location": "Boston, Massachusetts, United States",
+            "listing_url": "https://example.com/us-job",
+        }
+    )
+    assert result is None
+
+
+def test_normalize_job_data_keeps_canada_us_hybrid_remote(monkeypatch):
+    _no_geocode(monkeypatch)
+    result = normalize_job_data(
+        {
+            "job_title": "Account Executive",
+            "organization": "Recycle Coach",
+            "location": "Remote | Western USA or Western Canada strongly preferred",
+            "listing_url": "https://example.com/hybrid",
+        }
+    )
+    assert result is not None
+    assert "Canada" in result["location"]
