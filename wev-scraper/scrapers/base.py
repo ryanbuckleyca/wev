@@ -382,7 +382,8 @@ class BaseScraper:
 
         job_dict = self.create_job_dict(language=getattr(self, "language", "en"), **fields)
         # SSE classification is handled in the unified post-processor after all jobs are saved.
-        self.jobs.append(job_dict)
+        if job_dict is not None:
+            self.jobs.append(job_dict)
 
     def _get_field(self, name, page, listing_data):
         """Resolve a single field: custom extract_<name>() method first, then SELECTORS."""
@@ -824,13 +825,15 @@ class BaseScraper:
         All data is normalized before being returned.
         Location parsing happens during normalization (with Geocodio rate limiting).
 
+        Returns None when ``normalize_job_data`` drops the listing (e.g. US-only
+        location). Callers must not append None into ``self.jobs``.
+
         Args:
             **kwargs: Job data fields (job_title, date_posted, description, etc.)
 
         Returns:
-            Dictionary with standardized and normalized job structure
+            Normalized job dict, or None when the listing should be skipped.
         """
-        # Create raw dict first
         raw_job = {
             "job_title": kwargs.get("job_title"),
             "date_posted": kwargs.get("date_posted"),
@@ -846,5 +849,4 @@ class BaseScraper:
             "language": kwargs.get("language", "en"),
         }
 
-        # Normalize all fields
         return normalize_job_data(raw_job)
