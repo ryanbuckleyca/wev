@@ -43,20 +43,20 @@ def is_quota_exhausted_error(exc: Exception) -> bool:
 def is_daily_quota_exhausted_error(exc: Exception) -> bool:
     """Return True for hard daily/free-tier quota (not soft RPM/TPM 429s).
 
-    Free-tier day caps look like:
-      429 RESOURCE_EXHAUSTED … free_tier_requests, limit: 20
+    Day caps look like:
       GenerateRequestsPerDayPerProjectPerModel-FreeTier
+      429 … requestsPerDay / per_day / daily quota
 
-    Soft rate limits also return 429 but say "retry in Ns" without free_tier /
-    per-day metrics — those should backoff, not abort the whole run.
+    Soft rate limits also return 429 (sometimes mentioning free-tier RPM) but
+    lack an explicit per-day marker — those should backoff, not burn the
+    backend for the rest of the run. A per-minute marker coexisting with a
+    per-day marker still counts as daily.
     """
     err = str(exc).lower()
     if "429" not in err and "resource_exhausted" not in err:
         return False
     return (
-        "free_tier" in err
-        or "free tier" in err
-        or "perday" in err
+        "perday" in err
         or "per_day" in err
         or "requestsperday" in err
         or "daily quota" in err

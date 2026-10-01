@@ -380,15 +380,14 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 last_error = e
                 error_msg = str(e).lower()
 
-                # Hard daily/free-tier 429: burn this backend for the run, try the next.
-                # Abort only once every API backend (primary Gemini → lite → Groq) is burned.
+                # Hard daily/free-tier 429: burn this backend for the run, try the next
+                # (including Ollama). Final exhaustion check runs after the loop.
                 if is_daily_quota_exhausted_error(e):
                     self._daily_quota_exhausted.add(provider_name)
                     print(
                         f"  ⚠️ Daily/free-tier quota hit on {provider_name} — trying next backend…",
                         flush=True,
                     )
-                    self._raise_if_all_daily_quotas_exhausted(e)
                     continue
 
                 # Soft RPM/TPM: mark cooldown and try the next provider
