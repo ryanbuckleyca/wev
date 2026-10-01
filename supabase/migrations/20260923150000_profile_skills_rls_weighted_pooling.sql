@@ -116,11 +116,7 @@ BEGIN
 END;
 $$;
 
--- 4. Backfill pooled fingerprints (idempotent).
--- Covers prod where 20260922134218 may already be recorded without a backfill,
--- leaving skill_embedding NULL and silently disabling matcher v2 skill scores.
-SELECT compute_profile_skill_embedding(user_id)
-FROM (SELECT DISTINCT user_id FROM profile_skills) t;
-
-SELECT compute_job_skill_embedding(job_id)
-FROM (SELECT DISTINCT job_id FROM job_skills) t;
+-- 4. Pooled fingerprints for historical rows.
+-- Intentionally no full-table backfill here (same lock risk as
+-- 20260922134218). Triggers keep new writes correct; backfill offline if
+-- matcher v2 skill scores are needed immediately on a large prod DB.

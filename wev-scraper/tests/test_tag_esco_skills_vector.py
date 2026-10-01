@@ -204,3 +204,37 @@ def test_retag_clears_jobs_without_skills_raw_phrases():
     assert result["processed"] == 1
     assert result["inserted"] == 0
     mock_supabase.rpc.assert_not_called()
+
+
+def test_filter_untagged_jobs_skips_durable_empty_skills():
+    """skills=[] (zero-match) must not be re-queued; skills=None still is."""
+    from scripts.tag_esco_skills_vector import _filter_untagged_jobs
+
+    jobs = [
+        {"id": "never", "skills": None, "skills_raw": ["CRM"]},
+        {"id": "zero", "skills": [], "skills_raw": ["CRM"]},
+        {"id": "hit", "skills": ["http://esco/x"], "skills_raw": ["CRM"]},
+    ]
+    mock_supabase = MagicMock()
+    # No jina-v3 junction rows for the pending (skills is None) job.
+    mock_supabase.table.return_value.select.return_value.in_.return_value.like.return_value.execute.return_value.data = []
+
+    with patch("scripts.tag_esco_skills_vector.supabase", mock_supabase):
+        pending = _filter_untagged_jobs(jobs)
+
+    assert [j["id"] for j in pending] == ["never"]
+
+
+def test_filter_untagged_jobs_skips_jina_junction_even_when_skills_null():
+    from scripts.tag_esco_skills_vector import _filter_untagged_jobs
+
+    jobs = [{"id": "tagged", "skills": None, "skills_raw": ["CRM"]}]
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.like.return_value.execute.return_value.data = [
+        {"job_id": "tagged"}
+    ]
+
+    with patch("scripts.tag_esco_skills_vector.supabase", mock_supabase):
+        pending = _filter_untagged_jobs(jobs)
+
+    assert pending == []

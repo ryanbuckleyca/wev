@@ -348,7 +348,9 @@ def tag_esco_skills_vector(
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
 
     # Fetch jobs
-    columns = "id, job_title, organization, summary, description, skills_raw"
+    # Include skills so we can treat skills=[] as a durable "tagged, zero hits"
+    # marker (skills is None = never tagged).
+    columns = "id, job_title, organization, summary, description, skills_raw, skills"
     try:
         if job_ids:
             jobs = []
@@ -545,7 +547,11 @@ def tag_esco_skills_vector(
 
 
 def _fetch_jobs_for_backfill(columns: str) -> list[dict]:
-    """Fetch jobs that have no job_skills rows with source LIKE 'jina-v3%'."""
+    """Fetch jobs that have never completed an ESCO tag attempt.
+
+    Excludes jobs with any ``jina-v3%`` ``job_skills`` row and jobs whose
+    ``skills`` column is already set (including ``[]`` for zero-match).
+    """
     # Get all job IDs that already have jina-v3 rows
     tagged_ids: set[str] = set()
     offset = 0
@@ -565,16 +571,34 @@ def _fetch_jobs_for_backfill(columns: str) -> list[dict]:
             break
         offset += page_size
 
-    # Fetch all jobs and exclude already-tagged ones
+    # Fetch all jobs and exclude already-tagged ones (junction or durable skills).
     all_jobs = fetch_all_rows("jobs", columns, order_by="id", desc=True)
-    return [j for j in all_jobs if j["id"] not in tagged_ids]
+    return [
+        j
+        for j in all_jobs
+        if j["id"] not in tagged_ids and j.get("skills") is None
+    ]
 
 
 def _filter_untagged_jobs(jobs: list[dict]) -> list[dict]:
-    """Remove jobs that already have jina-v3 job_skills rows."""
+    """Remove jobs that already have a durable ESCO tag attempt.
+
+    A job is considered tagged when:
+    - it has any ``jina-v3%`` row in ``job_skills``, or
+    - ``jobs.skills`` is not NULL (including ``[]`` for zero-match results).
+
+    ``skills is None`` means never tagged; ``skills == []`` means tagged with
+    no ESCO hits and must not be re-queued by backfill/default scans.
+    """
     if not jobs:
         return jobs
-    job_ids = [j["id"] for j in jobs]
+
+    # Durable empty / non-empty skills array = already attempted.
+    pending = [j for j in jobs if j.get("skills") is None]
+    if not pending:
+        return pending
+
+    job_ids = [j["id"] for j in pending]
     tagged_ids: set[str] = set()
     # Batch the IN query to avoid URL length limits
     batch_size = 200
@@ -589,7 +613,7 @@ def _filter_untagged_jobs(jobs: list[dict]) -> list[dict]:
         )
         for row in (resp.data or []):
             tagged_ids.add(row["job_id"])
-    return [j for j in jobs if j["id"] not in tagged_ids]
+    return [j for j in pending if j["id"] not in tagged_ids]
 
 
 # ---------------------------------------------------------------------------

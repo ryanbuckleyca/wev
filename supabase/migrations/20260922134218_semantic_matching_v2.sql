@@ -194,11 +194,8 @@ FROM profiles p
 WHERE p.skills IS NOT NULL AND array_length(p.skills, 1) > 0
 ON CONFLICT (user_id, skill_id) DO NOTHING;
 
--- 7. Backfill pooled fingerprints so matcher v2 can score skills immediately.
--- Needed because pre-existing job_skills rows never hit the new triggers, and
--- bulk profile_skills inserts can leave embeddings stale if triggers were absent.
-SELECT compute_profile_skill_embedding(user_id)
-FROM (SELECT DISTINCT user_id FROM profile_skills) t;
-
-SELECT compute_job_skill_embedding(job_id)
-FROM (SELECT DISTINCT job_id FROM job_skills) t;
+-- 7. Pooled fingerprints for pre-existing junction rows.
+-- Do NOT backfill here: SELECT compute_* over every job_skills/profile_skills
+-- row holds UPDATE locks on jobs/profiles until the migration commits, which
+-- blocks scraper writes on large DBs. Triggers above keep new writes correct;
+-- run a batched one-off (or rely on first matcher miss) for historical rows.

@@ -30,6 +30,7 @@ from utils.catch_up import (  # noqa: E402
     VALID_LANGUAGES,
     _park_org,
     find_missing_org_fields,
+    job_needs_skills,
     org_batch_limit,
     persist_org_assessment_outcome,
 )
@@ -85,15 +86,9 @@ def fetch_unprocessed_jobs():
             needs.append("language")
 
         # None = never extracted. [] = extracted empty (done). Non-empty phrases
-        # without jobs.skills still need ESCO tagging.
-        skills_raw = j.get("skills_raw")
-        if skills_raw is None:
-            needs.append("skills")
-        elif (
-            not j.get("skills")
-            and isinstance(skills_raw, list)
-            and any(str(s).strip() for s in skills_raw)
-        ):
+        # with skills is None still need ESCO tagging; skills == [] means
+        # tagged with zero ESCO hits (durable — do not re-queue).
+        if job_needs_skills(j):
             needs.append("skills")
 
         if j.get("organization_id") is None:
