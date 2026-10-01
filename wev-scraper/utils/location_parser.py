@@ -279,7 +279,8 @@ _US_COUNTRY_RE = re.compile(
     r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)(?!\w)"
 )
 
-# Full US state / DC names. Abbreviations alone are risky (CA ≠ California here).
+# Full US state / DC names. Require a preceding comma (City, State) so bare
+# tokens like "Washington" / "Georgia" are not treated as US-only.
 _US_STATE_NAMES = (
     "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
     "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
@@ -293,7 +294,7 @@ _US_STATE_NAMES = (
     "west virginia", "wisconsin", "wyoming", "district of columbia",
 )
 _US_STATE_NAME_RE = re.compile(
-    r"(?i)\b(?:" + "|".join(re.escape(n) for n in _US_STATE_NAMES) + r")\b"
+    r"(?i),\s*(?:" + "|".join(re.escape(n) for n in _US_STATE_NAMES) + r")\b"
 )
 
 # US state codes that do not collide with Canadian province codes.
