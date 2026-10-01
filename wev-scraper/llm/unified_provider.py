@@ -174,11 +174,11 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             f"\n\nWORK VALUES TAXONOMY:\n{_get_formatted_taxonomy()}\n",
         ]
 
-        job_chunks = format_job_chunks(jobs, max_desc_chars=4000)
+        job_chunks = format_job_chunks(jobs, max_desc_chars=8000)
         for chunk in job_chunks:
             prompt_parts.append(f"\n{chunk}")
 
-        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
+        fields = "index, summary, language, values, skills_raw, is_sse, sse_confidence" if include_sse else "index, summary, language, values, skills_raw"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
@@ -251,6 +251,17 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                                 "Unexpected language value from LLM: %r — omitting", lang
                             )
                             item.pop("language", None)
+                if isinstance(item, dict) and "skills_raw" in item:
+                    raw_skills = item.get("skills_raw")
+                    if isinstance(raw_skills, list):
+                        valid_skills = [str(s).strip() for s in raw_skills if str(s).strip()]
+                        item["skills_raw"] = valid_skills
+                    else:
+                        logger.warning(
+                            "Unexpected skills_raw value from LLM (not a list): %r — omitting",
+                            raw_skills,
+                        )
+                        item.pop("skills_raw", None)
             return items
 
         # 1. Try raw response first

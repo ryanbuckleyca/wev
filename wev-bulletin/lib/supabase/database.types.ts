@@ -295,7 +295,9 @@ export type Database = {
           scraped_at: string;
           search_municipality: string | null;
           search_province: string | null;
+          skill_embedding: string | null;
           skills: string[];
+          skills_raw: string[] | null;
           source_id: string;
           sse_details: Json | null;
           sse_rating: string | null;
@@ -338,7 +340,9 @@ export type Database = {
           scraped_at?: string;
           search_municipality?: string | null;
           search_province?: string | null;
+          skill_embedding?: string | null;
           skills?: string[];
+          skills_raw?: string[] | null;
           source_id: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
@@ -381,7 +385,9 @@ export type Database = {
           scraped_at?: string;
           search_municipality?: string | null;
           search_province?: string | null;
+          skill_embedding?: string | null;
           skills?: string[];
+          skills_raw?: string[] | null;
           source_id?: string;
           sse_details?: Json | null;
           sse_rating?: string | null;
@@ -511,6 +517,45 @@ export type Database = {
         };
         Relationships: [];
       };
+      profile_skills: {
+        Row: {
+          created_at: string;
+          score: number;
+          skill_id: string;
+          source: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          score: number;
+          skill_id: string;
+          source: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          score?: number;
+          skill_id?: string;
+          source?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profile_skills_skill_id_fkey';
+            columns: ['skill_id'];
+            isOneToOne: false;
+            referencedRelation: 'esco_skills';
+            referencedColumns: ['concept_uri'];
+          },
+          {
+            foreignKeyName: 'profile_skills_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           bio: string | null;
@@ -526,6 +571,7 @@ export type Database = {
           preferred_languages: string[] | null;
           profile_photo_url: string | null;
           province: string | null;
+          skill_embedding: string | null;
           skills: string[] | null;
           skills_rated: Json | null;
           updated_at: string | null;
@@ -547,6 +593,7 @@ export type Database = {
           preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
+          skill_embedding?: string | null;
           skills?: string[] | null;
           skills_rated?: Json | null;
           updated_at?: string | null;
@@ -568,6 +615,7 @@ export type Database = {
           preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
+          skill_embedding?: string | null;
           skills?: string[] | null;
           skills_rated?: Json | null;
           updated_at?: string | null;
@@ -724,10 +772,10 @@ export type Database = {
           max_value: number | null;
           min_value: number | null;
           municipality: string | null;
-          organization: string | null;
-          organization_id: number | null;
           org_sector_id: string | null;
           org_type: string | null;
+          organization: string | null;
+          organization_id: number | null;
           province: string | null;
           scraped_at: string | null;
           search_municipality: string | null;
@@ -771,6 +819,14 @@ export type Database = {
       };
       bulk_update_skill_embeddings: {
         Args: { updates: Json };
+        Returns: undefined;
+      };
+      compute_job_skill_embedding: {
+        Args: { p_job_id: string };
+        Returns: undefined;
+      };
+      compute_profile_skill_embedding: {
+        Args: { p_user_id: string };
         Returns: undefined;
       };
       earth: { Args: never; Returns: number };
