@@ -125,13 +125,16 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
     def _raise_if_all_daily_quotas_exhausted(self, cause: Exception | None = None) -> None:
         if self._all_api_daily_quotas_exhausted():
             exhausted = self._api_provider_names()
-            print(
-                "\n🛑 All LLM backends hit daily/free-tier quota — aborting run.\n"
-                f"   Exhausted: {', '.join(exhausted)}\n"
-                "   Swap GEMINI_API_KEY / GROQ_API_KEY (new projects) or enable billing, then resume.\n",
-                flush=True,
+            logger.error(
+                "All LLM backends hit daily/free-tier quota — aborting run. "
+                "Exhausted: %s. Swap GEMINI_API_KEY / GROQ_API_KEY (new projects) "
+                "or enable billing, then resume.",
+                ", ".join(exhausted),
             )
-            raise DailyQuotaExhaustedError(exhausted, cause)
+            err = DailyQuotaExhaustedError(exhausted, cause)
+            if cause is not None:
+                raise err from cause
+            raise err
 
 
 
