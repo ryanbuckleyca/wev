@@ -197,5 +197,7 @@ ON CONFLICT (user_id, skill_id) DO NOTHING;
 -- 7. Pooled fingerprints for pre-existing junction rows.
 -- Do NOT backfill here: SELECT compute_* over every job_skills/profile_skills
 -- row holds UPDATE locks on jobs/profiles until the migration commits, which
--- blocks scraper writes on large DBs. Triggers above keep new writes correct;
--- run a batched one-off (or rely on first matcher miss) for historical rows.
+-- blocks scraper writes on large DBs. Triggers above keep new writes correct.
+-- For historical jobs: run the local ESCO retag (tag_esco_skills_vector
+-- --publish/--retag or sync-local→retag→upload). Junction writes fire
+-- trg_job_skills_update_embedding and rebuild skill_embedding offline-cheaply.

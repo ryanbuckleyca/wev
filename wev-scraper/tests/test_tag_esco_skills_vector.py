@@ -206,6 +206,84 @@ def test_retag_clears_jobs_without_skills_raw_phrases():
     mock_supabase.rpc.assert_not_called()
 
 
+def test_empty_skills_raw_list_clears_mistags_without_retag():
+    """Durable skills_raw=[] must clear mistags on the normal (non-retag) path."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-empty-raw",
+            "job_title": "Teaser",
+            "organization": "Org",
+            "summary": None,
+            "description": "See website",
+            "skills_raw": [],
+            "skills": ["http://esco/old-mistag"],
+        }
+    ]
+    delete_chain = MagicMock()
+    delete_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.delete.return_value = delete_chain
+    update_chain = MagicMock()
+    update_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.update.return_value = update_chain
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+        patch(
+            "scripts.tag_esco_skills_vector._filter_untagged_jobs",
+            side_effect=lambda jobs: jobs,
+        ),
+    ):
+        mock_svc_cls.return_value = _make_fake_svc()
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(job_ids=["job-empty-raw"], retag=False, dry_run=False)
+
+    mock_supabase.table.return_value.delete.assert_called()
+    mock_supabase.table.return_value.update.assert_called()
+    assert mock_supabase.table.return_value.update.call_args[0][0] == {"skills": []}
+    assert result["processed"] == 1
+    assert result["inserted"] == 0
+    mock_supabase.rpc.assert_not_called()
+
+
+def test_null_skills_raw_does_not_clear_without_retag():
+    """skills_raw=None means not extracted yet — do not wipe existing tags."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-pending-extract",
+            "job_title": "Role",
+            "organization": "Org",
+            "summary": None,
+            "description": "Body",
+            "skills_raw": None,
+            "skills": ["http://esco/existing"],
+        }
+    ]
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+        patch(
+            "scripts.tag_esco_skills_vector._filter_untagged_jobs",
+            side_effect=lambda jobs: jobs,
+        ),
+    ):
+        mock_svc_cls.return_value = _make_fake_svc()
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(
+            job_ids=["job-pending-extract"], retag=False, dry_run=False
+        )
+
+    mock_supabase.table.return_value.delete.assert_not_called()
+    mock_supabase.table.return_value.update.assert_not_called()
+    assert result["processed"] == 0
+    assert result["inserted"] == 0
+
+
 def test_filter_untagged_jobs_skips_durable_empty_skills():
     """skills=[] (zero-match) must not be re-queued; skills=None still is."""
     from scripts.tag_esco_skills_vector import _filter_untagged_jobs

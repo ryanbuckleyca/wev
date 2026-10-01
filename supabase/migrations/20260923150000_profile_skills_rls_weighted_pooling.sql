@@ -118,5 +118,7 @@ $$;
 
 -- 4. Pooled fingerprints for historical rows.
 -- Intentionally no full-table backfill here (same lock risk as
--- 20260922134218). Triggers keep new writes correct; backfill offline if
--- matcher v2 skill scores are needed immediately on a large prod DB.
+-- 20260922134218). Triggers keep new writes correct. After migrate, rebuild
+-- historical jobs.skill_embedding by retagging (tag_esco_skills_vector
+-- --publish/--retag or local sync→retag→upload) so junction DML fires the
+-- pool trigger — required before matcher v2 skill scores are meaningful.

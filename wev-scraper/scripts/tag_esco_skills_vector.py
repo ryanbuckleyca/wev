@@ -401,9 +401,10 @@ def tag_esco_skills_vector(
             valid_phrases = [str(s).strip() for s in skills_raw if str(s).strip()]
 
         if not valid_phrases:
-            # On --retag, clear stale junction/tags for phrase-less jobs so old
-            # whole-job embedding mistags do not survive extract→tag gaps.
-            if retag and not dry_run:
+            # Durable empty extract (skills_raw=[]) must clear stale whole-job
+            # mistags even without --retag. Leave skills_raw=None alone (not
+            # extracted yet).
+            if isinstance(skills_raw, list) and not dry_run:
                 job_id = job["id"]
                 try:
                     _with_supabase_retries(
@@ -437,7 +438,7 @@ def tag_esco_skills_vector(
 
     print(f"Collected {len(all_phrases)} phrases across {len(jobs_with_phrases)} jobs.")
     if jobs_cleared_no_phrases:
-        print(f"Cleared stale tags on {jobs_cleared_no_phrases} retag jobs with no skills_raw phrases.")
+        print(f"Cleared stale tags on {jobs_cleared_no_phrases} jobs with empty skills_raw.")
 
     if not jobs_with_phrases:
         print("No jobs with skills_raw phrases — nothing to embed.")
