@@ -688,3 +688,91 @@ def test_park_logs_and_preserves_state_when_the_reason_changed():
         _park_org({"id": 4, "assessment_skip_reason": None}, SKIP_REASON_EXCEPTION)
 
     assert any("changed since read" in m for m in logged), logged
+
+
+# ---------------------------------------------------------------------------
+# Job skills needs: durable zero-match vs never-tagged
+# ---------------------------------------------------------------------------
+
+
+def test_job_needs_skills_none_raw_needs_extract():
+    from utils.catch_up import job_needs_skills
+
+    assert job_needs_skills({"skills_raw": None, "skills": None}) is True
+    assert job_needs_skills({"skills": None}) is True  # key missing
+
+
+def test_job_needs_skills_empty_raw_is_done():
+    from utils.catch_up import job_needs_skills
+
+    assert job_needs_skills({"skills_raw": [], "skills": None}) is False
+    assert job_needs_skills({"skills_raw": ["  ", ""], "skills": None}) is False
+
+
+def test_job_needs_skills_phrases_pending_tag():
+    from utils.catch_up import job_needs_skills
+
+    assert job_needs_skills({"skills_raw": ["CRM"], "skills": None}) is True
+
+
+def test_job_needs_skills_zero_match_array_is_durable():
+    """skills=[] after a failed ESCO floor must not re-queue forever."""
+    from utils.catch_up import job_needs_skills
+
+    assert job_needs_skills({"skills_raw": ["obscure FR label"], "skills": []}) is False
+
+
+def test_job_needs_skills_tagged_uris_are_done():
+    from utils.catch_up import job_needs_skills
+
+    assert (
+        job_needs_skills(
+            {"skills_raw": ["CRM"], "skills": ["http://data.europa.eu/esco/skill/x"]}
+        )
+        is False
+    )
+
+
+def test_find_unprocessed_jobs_respects_skills_raw_contract():
+    from utils.catch_up import find_unprocessed_jobs
+
+    rows = [
+        {
+            "id": "a",
+            "summary": "s",
+            "values": ["V"],
+            "is_sse": False,
+            "language": "en",
+            "organization_id": 1,
+            "skills_raw": [],
+            "skills": None,
+            "scraped_at": "2026-01-01",
+        },
+        {
+            "id": "b",
+            "summary": "s",
+            "values": ["V"],
+            "is_sse": False,
+            "language": "en",
+            "organization_id": 1,
+            "skills_raw": ["CRM"],
+            "skills": [],
+            "scraped_at": "2026-01-02",
+        },
+        {
+            "id": "c",
+            "summary": "s",
+            "values": ["V"],
+            "is_sse": False,
+            "language": "en",
+            "organization_id": 1,
+            "skills_raw": ["CRM"],
+            "skills": None,
+            "scraped_at": "2026-01-03",
+        },
+    ]
+    with patch("utils.catch_up.fetch_all_rows", return_value=rows):
+        unprocessed = find_unprocessed_jobs()
+
+    assert [j["id"] for j, _ in unprocessed] == ["c"]
+    assert unprocessed[0][1] == ["skills"]

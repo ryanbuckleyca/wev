@@ -2,6 +2,7 @@
 
 Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocessed.py.
 - An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills
+  (skills uses the skills_raw / jobs.skills contract — see job_needs_skills)
 - An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
   valid language, or values_list
 
@@ -59,6 +60,26 @@ def _is_org_field_missing(org: Dict[str, Any], field: str) -> bool:
     return False
 
 
+def job_needs_skills(job: Dict[str, Any]) -> bool:
+    """True when this job still needs skills extract and/or ESCO tagging.
+
+    Contract:
+    - ``skills_raw is None`` → never extracted (needs unified extract, then tag)
+    - ``skills_raw == []`` (or only blank strings) → extract finished empty; done
+    - phrases present + ``skills is None`` → phrases awaiting ESCO tag
+    - phrases present + ``skills == []`` → tagged, zero ESCO hits; done (durable)
+    - phrases present + non-empty ``skills`` → tagged; done
+    """
+    skills_raw = job.get("skills_raw")
+    if skills_raw is None:
+        return True
+    if not isinstance(skills_raw, list):
+        return True
+    if not any(str(s).strip() for s in skills_raw):
+        return False
+    return job.get("skills") is None
+
+
 # ---------------------------------------------------------------------------
 # Query helpers
 # ---------------------------------------------------------------------------
@@ -68,8 +89,8 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
     """Return (job, needs[]) tuples for every job that is missing post-processing fields."""
     jobs: List[dict] = fetch_all_rows(
         "jobs",
-        "id, listing_url, summary, values, is_sse, language, skills, organization_id, "
-        "job_title, organization, scraped_at",
+        "id, listing_url, summary, values, is_sse, language, skills, skills_raw, "
+        "organization_id, job_title, organization, scraped_at",
         order_by="scraped_at",
         desc=False,
     )
@@ -84,7 +105,7 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
             needs.append("sse")
         if j.get("language") not in VALID_LANGUAGES:
             needs.append("language")
-        if not j.get("skills"):
+        if job_needs_skills(j):
             needs.append("skills")
         if j.get("organization_id") is None:
             needs.append("organization_id")
@@ -377,10 +398,10 @@ def process_unprocessed_jobs(
     total_errors = 0
     total_processed = 0
 
-    # 1) Unified post-processor (summary / values / SSE / language)
+    # 1) Unified post-processor (summary / values / SSE / language / skills extract)
     unified_job_ids = [
         j["id"] for j, needs in unprocessed
-        if any(req in needs for req in ("summary", "values", "sse", "language"))
+        if any(req in needs for req in ("summary", "values", "sse", "language", "skills"))
     ]
     if unified_job_ids:
         try:
