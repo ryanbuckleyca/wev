@@ -6,7 +6,7 @@
     "node": ">=22.22.2"
   },
   "scripts": {
-    "build": "next build --webpack",
+    "build": "next build",
     "dev": "dotenv -e ../.env -- next dev",
     "dev:webpack": "next dev --webpack",
     "start": "next start",
