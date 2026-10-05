@@ -16,6 +16,35 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class Bookmarks(BaseModel):
+    created_at: str
+    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    notes: Optional[str] = None
+    tags: List[str]
+
+
+class ProfileSkills(BaseModel):
+    user_id: UUID = Field(
+        ...,
+        description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+    )
+    skill_id: str = Field(
+        ...,
+        description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `esco_skills.concept_uri`.<fk table='esco_skills' column='concept_uri'/>",
+    )
+    score: float
+    source: str
+    created_at: str
+
+
+class RequestLogs(BaseModel):
+    id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    user_id: UUID
+    event_name: str
+    created_at: str
+
+
 class ScrapeRuns(BaseModel):
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     started_at: str
@@ -33,13 +62,6 @@ class ScrapeRuns(BaseModel):
         None,
         description="Note:\nThis is a Foreign Key to `sources.id`.<fk table='sources' column='id'/>",
     )
-
-
-class UserRoles(BaseModel):
-    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    roles: Optional[List[str]] = None
-    created_at: Optional[str] = 'now()'
-    updated_at: Optional[str] = 'now()'
 
 
 class JobSkills(BaseModel):
@@ -105,6 +127,147 @@ class Jobs(BaseModel):
     )
     search_municipality: Optional[str] = None
     search_province: Optional[str] = None
+    skills_raw: Optional[List[str]] = None
+    skill_embedding: Optional[str] = None
+
+
+class Profiles(BaseModel):
+    id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    full_name: Optional[str] = None
+    bio: Optional[str] = None
+    values: Optional[List[str]] = None
+    profile_photo_url: Optional[str] = None
+    created_at: Optional[str] = 'now()'
+    updated_at: Optional[str] = 'now()'
+    skills: Optional[List[str]] = None
+    skills_rated: Optional[Any] = None
+    values_rated: Optional[Any] = None
+    work_types: Optional[List[str]] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    location_display_name: Optional[str] = None
+    municipality: Optional[str] = None
+    province: Optional[str] = None
+    cv_import: Optional[Any] = Field(
+        None,
+        description='CV import metadata only: { filename, imported_at, source, locale }',
+    )
+    preferred_languages: Optional[List[str]] = None
+    skill_embedding: Optional[str] = None
+
+
+class EscoSkills(BaseModel):
+    concept_uri: str = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    skill_type: Optional[str] = None
+    reuse_level: Optional[str] = None
+    preferred_label_en: Optional[str] = None
+    preferred_label_fr: Optional[str] = None
+    alternative_label_en: Optional[List[str]] = None
+    alternative_label_fr: Optional[List[str]] = None
+    description_en: Optional[str] = None
+    description_fr: Optional[str] = None
+    scope_note_en: Optional[str] = None
+    scope_note_fr: Optional[str] = None
+    updated_at: Optional[str] = None
+    embedding: Optional[str] = None
+
+
+class MatchedJobs(BaseModel):
+    id: Optional[UUID] = Field(None, description='Note:\nThis is a Primary Key.<pk/>')
+    source_id: Optional[UUID] = Field(
+        None,
+        description="Note:\nThis is a Foreign Key to `sources.id`.<fk table='sources' column='id'/>",
+    )
+    job_title: Optional[str] = None
+    organization: Optional[str] = None
+    location: Optional[str] = None
+    listing_url: Optional[str] = None
+    description: Optional[str] = None
+    date_posted: Optional[str] = None
+    employment_type: Optional[str] = None
+    external_job_id: Optional[str] = None
+    extra: Optional[Any] = None
+    scraped_at: Optional[str] = None
+    wage: Optional[str] = None
+    close_date: Optional[date] = None
+    municipality: Optional[str] = None
+    province: Optional[str] = None
+    is_remote: Optional[bool] = None
+    summary: Optional[str] = None
+    sse_rating: Optional[str] = None
+    sse_details: Optional[Any] = None
+    is_sse: Optional[bool] = None
+    work_type: Optional[str] = None
+    language: Optional[str] = None
+    skills: Optional[List[str]] = None
+    skills_rated: Optional[Any] = None
+    values: Optional[List[str]] = None
+    values_rated: Optional[Any] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    geocode_accuracy_type: Optional[str] = None
+    unit_text: Optional[str] = None
+    min_value: Optional[int] = None
+    max_value: Optional[int] = None
+    hours_per_week: Optional[int] = None
+    compensation_meta: Optional[Any] = None
+    fts: Optional[str] = None
+    fts_en: Optional[str] = None
+    fts_fr: Optional[str] = None
+    has_compensation: Optional[bool] = None
+    organization_id: Optional[int] = Field(
+        None,
+        description="Note:\nThis is a Foreign Key to `organizations.id`.<fk table='organizations' column='id'/>",
+    )
+    search_municipality: Optional[str] = None
+    search_province: Optional[str] = None
+    source: Optional[str] = None
+    org_type: Optional[str] = None
+    org_sector_id: Optional[str] = None
+    match_score: Optional[float] = None
+    value_score: Optional[float] = None
+    skill_score: Optional[float] = None
+
+
+class ProfileSkillPhrases(BaseModel):
+    user_id: UUID = Field(
+        ...,
+        description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+    )
+    phrase: str = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    esco_uri: Optional[str] = Field(
+        None,
+        description="Note:\nThis is a Foreign Key to `esco_skills.concept_uri`.<fk table='esco_skills' column='concept_uri'/>",
+    )
+    source: str
+    embedding: Optional[str] = None
+    created_at: str
+
+
+class UserRoles(BaseModel):
+    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    roles: Optional[List[str]] = None
+    created_at: Optional[str] = 'now()'
+    updated_at: Optional[str] = 'now()'
+
+
+class JobMatches(BaseModel):
+    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    score: float
+    shared_skills: Optional[List[str]] = None
+    shared_values: List[str]
+    skill_score: Optional[float] = None
+    value_score: Optional[float] = None
+    location_score: Optional[float] = Field(
+        None,
+        description='Match score based on ideal_work_environment overlap with job text (0-1). Null when profile did not opt into location or did not provide an ideal_work_environment.',
+    )
+    work_type_score: Optional[float] = Field(
+        None,
+        description='Match score based on work type preference (0-1). Defaults to 1.0 when the profile has no work_types set.',
+    )
+    updated_at: str
 
 
 class Cities(BaseModel):
@@ -177,119 +340,6 @@ class Organizations(BaseModel):
     )
 
 
-class Profiles(BaseModel):
-    id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    full_name: Optional[str] = None
-    bio: Optional[str] = None
-    values: Optional[List[str]] = None
-    profile_photo_url: Optional[str] = None
-    created_at: Optional[str] = 'now()'
-    updated_at: Optional[str] = 'now()'
-    skills: Optional[List[str]] = None
-    skills_rated: Optional[Any] = None
-    values_rated: Optional[Any] = None
-    work_types: Optional[List[str]] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    location_display_name: Optional[str] = None
-    municipality: Optional[str] = None
-    province: Optional[str] = None
-    cv_import: Optional[Any] = Field(
-        None,
-        description='CV import metadata only: { filename, imported_at, source, locale }',
-    )
-    preferred_languages: Optional[List[str]] = None
-
-
-class Bookmarks(BaseModel):
-    created_at: str
-    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    notes: Optional[str] = None
-    tags: List[str]
-
-
-class RequestLogs(BaseModel):
-    id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    user_id: UUID
-    event_name: str
-    created_at: str
-
-
-class JobMatches(BaseModel):
-    user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    score: float
-    shared_skills: Optional[List[str]] = None
-    shared_values: List[str]
-    skill_score: Optional[float] = None
-    value_score: Optional[float] = None
-    location_score: Optional[float] = Field(
-        None,
-        description='Match score based on ideal_work_environment overlap with job text (0-1). Null when profile did not opt into location or did not provide an ideal_work_environment.',
-    )
-    work_type_score: Optional[float] = Field(
-        None,
-        description='Match score based on work type preference (0-1). Defaults to 1.0 when the profile has no work_types set.',
-    )
-    updated_at: str
-
-
-class MatchedJobs(BaseModel):
-    id: Optional[UUID] = Field(None, description='Note:\nThis is a Primary Key.<pk/>')
-    source_id: Optional[UUID] = Field(
-        None,
-        description="Note:\nThis is a Foreign Key to `sources.id`.<fk table='sources' column='id'/>",
-    )
-    job_title: Optional[str] = None
-    organization: Optional[str] = None
-    location: Optional[str] = None
-    listing_url: Optional[str] = None
-    description: Optional[str] = None
-    date_posted: Optional[str] = None
-    employment_type: Optional[str] = None
-    external_job_id: Optional[str] = None
-    extra: Optional[Any] = None
-    scraped_at: Optional[str] = None
-    wage: Optional[str] = None
-    close_date: Optional[date] = None
-    municipality: Optional[str] = None
-    province: Optional[str] = None
-    is_remote: Optional[bool] = None
-    summary: Optional[str] = None
-    sse_rating: Optional[str] = None
-    sse_details: Optional[Any] = None
-    is_sse: Optional[bool] = None
-    work_type: Optional[str] = None
-    language: Optional[str] = None
-    skills: Optional[List[str]] = None
-    skills_rated: Optional[Any] = None
-    values: Optional[List[str]] = None
-    values_rated: Optional[Any] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    geocode_accuracy_type: Optional[str] = None
-    unit_text: Optional[str] = None
-    min_value: Optional[int] = None
-    max_value: Optional[int] = None
-    hours_per_week: Optional[int] = None
-    compensation_meta: Optional[Any] = None
-    fts: Optional[str] = None
-    fts_en: Optional[str] = None
-    fts_fr: Optional[str] = None
-    has_compensation: Optional[bool] = None
-    organization_id: Optional[int] = Field(
-        None,
-        description="Note:\nThis is a Foreign Key to `organizations.id`.<fk table='organizations' column='id'/>",
-    )
-    search_municipality: Optional[str] = None
-    search_province: Optional[str] = None
-    source: Optional[str] = None
-    match_score: Optional[float] = None
-    value_score: Optional[float] = None
-    skill_score: Optional[float] = None
-
-
 class JobMatchRecalcQueue(BaseModel):
     job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     enqueued_at: str
@@ -310,34 +360,20 @@ class Sources(BaseModel):
     slug: Optional[str] = None
 
 
-class EscoSkills(BaseModel):
-    concept_uri: str = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    skill_type: Optional[str] = None
-    reuse_level: Optional[str] = None
-    preferred_label_en: Optional[str] = None
-    preferred_label_fr: Optional[str] = None
-    alternative_label_en: Optional[List[str]] = None
-    alternative_label_fr: Optional[List[str]] = None
-    description_en: Optional[str] = None
-    description_fr: Optional[str] = None
-    scope_note_en: Optional[str] = None
-    scope_note_fr: Optional[str] = None
-    updated_at: Optional[str] = None
-    embedding: Optional[str] = None
-
-
 class Model(BaseModel):
+    bookmarks: Optional[Bookmarks] = None
+    profile_skills: Optional[ProfileSkills] = None
+    request_logs: Optional[RequestLogs] = None
     scrape_runs: Optional[ScrapeRuns] = None
-    user_roles: Optional[UserRoles] = None
     job_skills: Optional[JobSkills] = None
     jobs: Optional[Jobs] = None
+    profiles: Optional[Profiles] = None
+    esco_skills: Optional[EscoSkills] = None
+    matched_jobs: Optional[MatchedJobs] = None
+    profile_skill_phrases: Optional[ProfileSkillPhrases] = None
+    user_roles: Optional[UserRoles] = None
+    job_matches: Optional[JobMatches] = None
     cities: Optional[Cities] = None
     organizations: Optional[Organizations] = None
-    profiles: Optional[Profiles] = None
-    bookmarks: Optional[Bookmarks] = None
-    request_logs: Optional[RequestLogs] = None
-    job_matches: Optional[JobMatches] = None
-    matched_jobs: Optional[MatchedJobs] = None
     job_match_recalc_queue: Optional[JobMatchRecalcQueue] = None
     sources: Optional[Sources] = None
-    esco_skills: Optional[EscoSkills] = None

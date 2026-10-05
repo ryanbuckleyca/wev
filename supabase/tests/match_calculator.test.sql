@@ -1,5 +1,8 @@
 -- pgTAP tests for recalculate_matches_for_user RPC
 -- Run with: supabase test db
+--
+-- Matcher v2 scores skills via profile_skills / job_skills junctions and pooled
+-- skill_embedding fingerprints (not the legacy skills text[] alone).
 
 begin;
 
@@ -16,13 +19,15 @@ insert into public.sources (id, name, url)
 values (:test_source_id, 'pgTAP Test Source', 'https://pgtap-test.example.com')
 on conflict (id) do nothing;
 
--- ESCO skills (1024-dim vectors: exact, and two semantically similar ones)
+-- ESCO skills (1024-dim vectors: identical zeros → cosine similarity 1.0)
 insert into public.esco_skills (concept_uri, preferred_label_en, embedding)
 values
-  ('pgtap-skill-exact',      'Exact Skill',  null),
+  ('pgtap-skill-exact',      'Exact Skill',  (select array_fill(0::float, array[1024])::vector)),
   ('pgtap-skill-semantic-1', 'Management',   (select array_fill(0::float, array[1024])::vector)),
   ('pgtap-skill-semantic-2', 'Leadership',   (select array_fill(0::float, array[1024])::vector))
-on conflict (concept_uri) do nothing;
+on conflict (concept_uri) do update
+set embedding = excluded.embedding,
+    preferred_label_en = excluded.preferred_label_en;
 
 -- Job: remote, Ottawa, values=[community,care], skills=[exact, semantic-2]
 insert into public.jobs (
@@ -36,6 +41,13 @@ insert into public.jobs (
   'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
 ) on conflict (id) do nothing;
 
+-- Junction rows drive semantic skill scoring (triggers pool skill_embedding).
+insert into public.job_skills (job_id, skill_id, score, source)
+values
+  (:test_job_id, 'pgtap-skill-exact', 1.0, 'pgtap'),
+  (:test_job_id, 'pgtap-skill-semantic-2', 1.0, 'pgtap')
+on conflict (job_id, skill_id) do update set score = excluded.score;
+
 -- ─── Test 1: exact match produces a high score ───────────────────────────────
 
 insert into public.profiles (id, skills, values, work_types, lat, lng, municipality, province)
@@ -46,6 +58,10 @@ values (
   array['remote'],
   45.4247, -75.6950, 'Ottawa', 'ON'
 ) on conflict (id) do nothing;
+
+insert into public.profile_skills (user_id, skill_id, score, source)
+values (:test_user_id, 'pgtap-skill-exact', 1.0, 'pgtap')
+on conflict (user_id, skill_id) do update set score = excluded.score;
 
 select recalculate_matches_for_user(:test_user_id);
 
@@ -103,11 +119,15 @@ select ok(
 );
 
 -- ─── Test 4: semantic similarity produces a score ──────────────────────────────
--- User has Management, Job has Leadership. They share 1.0 similarity in fixtures.
+-- User has Management, Job has Leadership. Fixtures share identical embeddings.
 
+delete from public.profile_skills where user_id = :test_user_id;
 update public.profiles
 set skills = array['pgtap-skill-semantic-1']
 where id = :test_user_id;
+insert into public.profile_skills (user_id, skill_id, score, source)
+values (:test_user_id, 'pgtap-skill-semantic-1', 1.0, 'pgtap')
+on conflict (user_id, skill_id) do update set score = excluded.score;
 
 select recalculate_matches_for_user(:test_user_id);
 
@@ -118,7 +138,13 @@ select ok(
 );
 
 -- ─── Test 5: trigger automatically recalculates matches ──────────────────────
--- We update the profile and check matches WITHOUT calling the RPC manually.
+-- Junction first (pools skill_embedding), then profiles.skills UPDATE fires
+-- recalculate_matches_for_user without an explicit RPC call.
+
+delete from public.profile_skills where user_id = :test_user_id;
+insert into public.profile_skills (user_id, skill_id, score, source)
+values (:test_user_id, 'pgtap-skill-exact', 1.0, 'pgtap')
+on conflict (user_id, skill_id) do update set score = excluded.score;
 
 update public.profiles
 set skills = array['pgtap-skill-exact']
@@ -148,6 +174,10 @@ insert into public.jobs (
   array['community'],
   'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
 ) on conflict (id) do nothing;
+
+insert into public.job_skills (job_id, skill_id, score, source)
+values (:test_job_id_2, 'pgtap-skill-exact', 1.0, 'pgtap')
+on conflict (job_id, skill_id) do update set score = excluded.score;
 
 -- Confirm INSERT enqueues because the row has match-relevant data.
 select ok(
@@ -192,6 +222,8 @@ select ok(
 
 delete from public.job_match_recalc_queue where job_id in (:test_job_id, :test_job_id_2);
 delete from public.job_matches where user_id = :test_user_id;
+delete from public.profile_skills where user_id = :test_user_id;
+delete from public.job_skills where job_id in (:test_job_id, :test_job_id_2);
 delete from public.profiles    where id = :test_user_id;
 delete from public.jobs        where id in (:test_job_id, :test_job_id_2);
 delete from public.sources     where id = :test_source_id;
