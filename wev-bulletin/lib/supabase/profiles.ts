@@ -120,6 +120,8 @@ export async function getProfile(userId: string): Promise<Profile> {
  *
  * Upserts first, then deletes orphans — never delete-all-then-insert — so a
  * failed write cannot leave an empty junction after profiles.skills was updated.
+ * If the orphan delete fails, the junction has extra rows (stale skills stay
+ * embedded) but no data is lost; profiles.skills remains the UI source of truth.
  */
 async function syncProfileSkills(
   userId: string,
