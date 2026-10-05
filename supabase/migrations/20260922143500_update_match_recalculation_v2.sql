@@ -1,3 +1,7 @@
+-- NOTE: This version of recalculate_matches_for_user is superseded by
+-- 20260925160000_weight_transversal_skill_matches.sql, which adds the
+-- phrase-path (job_skill_phrases) and skill_details filter. On a fresh
+-- environment both migrations run in order; 20260925160000 overwrites this.
 CREATE OR REPLACE FUNCTION recalculate_matches_for_user(p_user_id UUID)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $func$
 DECLARE
