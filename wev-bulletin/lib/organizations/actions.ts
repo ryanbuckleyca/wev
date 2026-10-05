@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, updateTag } from 'next/cache';
 import { supabaseServer } from '@/lib/supabase-server';
 import { requireAdminSession } from '@/lib/auth/require-admin';
 import { bulletinAgeCutoffIso } from '@/lib/bulletin/constants';
@@ -17,12 +17,14 @@ import {
   resolveSkipReasonAfterSave,
 } from './assessment-review';
 import type { OrgRecord } from './types';
+import { ORG_CACHE_TAG } from './constants';
 
 /** Columns needed to decide whether a save unparks the org. */
 const ORG_REVIEW_CONTEXT_COLUMNS =
   'slug, is_sse, type, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list, name, website, municipality, province, location' as const;
 
 function revalidateOrganizationRoutes(slug?: string, previousSlug?: string) {
+  updateTag(ORG_CACHE_TAG);
   for (const locale of routing.locales) {
     revalidatePath(`/${locale}/organizations`);
     revalidatePath(`/${locale}/admin/organizations`);

@@ -24,6 +24,8 @@ class BaseFeedScraper:
        Return a dict with any of: job_title, date_posted, description,
        organization, location, wage, employment_type, close_date, listing_url.
        Return ``None`` to skip the entry entirely.
+       US-only locations are dropped in ``normalize_job_data`` (shared with
+       ``BaseScraper``); ``save_job`` is a storage backstop.
 
     3. Optionally override:
        - ``get_feed_url()`` — if the feed URL differs from ``source["url"]``

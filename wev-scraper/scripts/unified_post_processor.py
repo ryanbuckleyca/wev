@@ -68,6 +68,7 @@ _bootstrap_prod_mode(sys.argv)
 # that read `os.environ` (Supabase URL/keys, LLM provider config). Import them only after
 # the `--staging` bootstrap above so the right DB target and keys are set.
 # noqa: E402 — imports intentionally follow executable env setup; silences ruff/flake8.
+from llm.cooldown import DailyQuotaExhaustedError  # noqa: E402
 from llm.factory import get_unified_processor  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log  # noqa: E402
@@ -251,6 +252,9 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
         try:
             result = processor.process_jobs(batch)
+        except DailyQuotaExhaustedError:
+            # All API backends burned for the day — abort remaining batches.
+            raise
         except Exception as e:
             scraper_log(f"✗ Batch processing failed: {e}")
             counts["errors"] += len(batch)

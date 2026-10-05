@@ -116,4 +116,5 @@ class EcoCanadaScraper(BaseScraper):
         fields = self._parse_job_data(job_data, job_url)
 
         job_dict = self.create_job_dict(language=getattr(self, "language", "en"), **fields)
-        self.jobs.append(job_dict)
+        if job_dict is not None:
+            self.jobs.append(job_dict)

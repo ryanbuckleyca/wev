@@ -10,6 +10,7 @@ from dateutil import parser
 from utils.env import is_truthy_env
 from utils.location_parser import (
     determine_work_type,
+    looks_like_us_location,
     normalize_messy_location,
     parse_address_with_geocodio,
 )
@@ -86,10 +87,13 @@ def normalize_wage(wage: Optional[str]) -> Optional[str]:
     return wage or None
 
 
-def normalize_job_data(job_data: dict) -> dict:
+def normalize_job_data(job_data: dict) -> dict | None:
     """
     Normalize all fields in a job data dictionary.
     Location parsing happens here using Geocodio (with 1 second rate limiting).
+
+    Returns None for US-only locations (CA/US hybrids that also name Canada are kept)
+    so scrapers never enqueue those jobs. ``save_job`` remains a storage backstop.
     """
     normalized = {}
     normalized["job_title"] = normalize_text(job_data.get("job_title"))
@@ -101,7 +105,16 @@ def normalize_job_data(job_data: dict) -> dict:
         # value matches the parsed municipality.
         cleaned_location = normalize_messy_location(cleaned_location) or None
     normalized["location"] = cleaned_location
-    
+
+    # Drop US-only listings before geocoding / further processing.
+    if looks_like_us_location(cleaned_location) or looks_like_us_location(job_data.get("location")):
+        scraper_log(
+            f"Skipping US-only job during normalize: "
+            f"{job_data.get('listing_url') or 'no_url'} "
+            f"(location={cleaned_location or job_data.get('location')!r})"
+        )
+        return None
+
     # Parse location (Geocodio call with rate limiting)
     location = normalized["location"]
     existing_municipality = job_data.get("municipality")

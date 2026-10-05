@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/contexts/ProfileContext';
 import { useBulletinData } from '@/lib/hooks/useBulletinData';
 import { useBulletinFilters } from '@/lib/hooks/useBulletinFilters';
+import { useLikelySession } from '@/lib/hooks/useLikelySession';
 import type { SerializedMatchData } from '@/lib/bulletin/server-data';
 import type { JobPosting } from '@/lib/supabase';
 import type { Profile } from '@/lib/supabase/profiles';
@@ -31,9 +32,9 @@ interface BulletinPageClientProps {
 /**
  * Client entry point for the bulletin page.
  *
- * Receives all initial data from the Server Component parent so the page
- * renders immediately with no loading states. Handles client-side interactivity:
- * URL-synced filters, pagination, and reactive auth (login/logout after mount).
+ * Receives anonymous SSR jobs for CDN-cacheable HTML. Logged-out visitors keep
+ * that shell. Visitors with a session cookie discard it before paint and see a
+ * skeleton until their personalized fetch (profile filters + matches) is ready.
  */
 export default function BulletinPageClient({
   initialJobs,
@@ -50,15 +51,17 @@ export default function BulletinPageClient({
   initialProfile,
 }: BulletinPageClientProps) {
   const locale = useLocale();
+  const { checked, likely } = useLikelySession();
+  const sessionCookie: boolean | null = checked ? likely : null;
 
   // Client-side auth/profile — used for reactivity after login/logout.
-  // SSR values (isLoggedIn, isAdmin) are used until auth resolves so there's
-  // no flash of the unauthenticated state on the initial render.
+  // SSR values are used until auth resolves on the hydration frame; once a
+  // session cookie is known, treat auth as pending rather than logged-out.
   const { user, role, loading: authLoading } = useAuth();
   const { profile: clientProfile } = useProfile();
 
   const effectiveUserId = authLoading ? (initialUserId ?? null) : (user?.id ?? null);
-  const effectiveIsLoggedIn = authLoading ? isLoggedIn : !!user;
+  const effectiveIsLoggedIn = authLoading ? (sessionCookie === true ? true : isLoggedIn) : !!user;
   const effectiveIsAdmin = authLoading ? isAdmin : role === 'admin';
 
   // Live profile from ProfileContext once loaded, falling back to SSR snapshot.
@@ -68,6 +71,7 @@ export default function BulletinPageClient({
     initialProfile,
     initialUserId,
     isAdmin: effectiveIsAdmin,
+    sessionCookie,
   });
 
   const data = useBulletinData(
@@ -80,6 +84,7 @@ export default function BulletinPageClient({
       currentPage: filters.currentPage,
       setCurrentPage: filters.setCurrentPage,
       filtersReady: filters.filtersReady,
+      sessionCookie,
     },
     {
       jobs: initialJobs,

@@ -5,9 +5,16 @@ import { routing } from './i18n/routing';
 
 const i18nMiddleware = createMiddleware(routing);
 
+/** Composes i18n routing with Supabase session refresh, skipping CDN-cacheable public paths. */
 export async function middleware(request: NextRequest) {
   // Liveness probe: no i18n, no Supabase session refresh.
   if (request.nextUrl.pathname === '/api/ping') {
+    return NextResponse.next();
+  }
+
+  // Same-origin proxy to local Kong (see next.config.mjs). Must not run i18n
+  // or session logic — those return HTML and break auth JSON clients.
+  if (request.nextUrl.pathname.startsWith('/__supabase')) {
     return NextResponse.next();
   }
 
@@ -36,6 +43,7 @@ export const config = {
     /*
      * Match all request paths except for the ones starting with:
      * - auth (auth callback / sign-out routes handled separately)
+     * - __supabase (same-origin proxy to local Kong)
      * - _next/static (static files)
      * - _next/image (image optimisation files)
      * - favicon.ico
@@ -44,6 +52,6 @@ export const config = {
      * /api IS intentionally included so Supabase session cookies are
      * refreshed for API routes (avoids 401s after token expiry).
      */
-    '/((?!auth|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!auth|__supabase|_next/static|_next/image|favicon.ico|.*\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

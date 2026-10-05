@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { OrganizationFilters } from './useOrganizationFilters';
@@ -9,6 +9,13 @@ interface UseOrganizationDataOptions {
   filters: OrganizationFilters;
   currentPage: number;
   sortBy: string;
+  /**
+   * Browser session cookie hint from `useLikelySession`.
+   * - `null`: hydration frame (cookie not read yet)
+   * - `true`: session cookie present — discard anonymous SSR before paint
+   * - `false`: no session cookie — keep anonymous SSR
+   */
+  sessionCookie?: boolean | null;
 }
 
 /**
@@ -60,6 +67,7 @@ function buildSearchParams(
   return params;
 }
 
+/** Org index list fetch with SSR discard and timeout-aware loading for signed-in users. */
 export function useOrganizationData(
   locale: string,
   options: UseOrganizationDataOptions,
@@ -70,7 +78,7 @@ export function useOrganizationData(
     filterOptions?: OrganizationFilterOptions;
   },
 ) {
-  const { filters, currentPage, sortBy } = options;
+  const { filters, currentPage, sortBy, sessionCookie = false } = options;
 
   const [orgs, setOrgs] = useState<OrgIndexEntry[]>(() => initialData?.orgs ?? []);
   const [total, setTotal] = useState<number>(() => initialData?.total ?? 0);
@@ -94,13 +102,30 @@ export function useOrganizationData(
   const [completedFetchKey, setCompletedFetchKey] = useState(() =>
     initialData ? buildFetchKey(locale, currentPage, sortBy, filters) : '',
   );
+  const discardedSsrForSessionRef = useRef(false);
+
+  // Before paint: signed-in users must not see the anonymous SSR ranking.
+  useLayoutEffect(() => {
+    if (sessionCookie !== true || discardedSsrForSessionRef.current) return;
+    discardedSsrForSessionRef.current = true;
+    setOrgs([]);
+    setTotal(0);
+    setCompletedFetchKey('');
+    setLoading(true);
+    setError(null);
+  }, [sessionCookie]);
 
   useEffect(() => {
     if (fetchKey === completedFetchKey) return;
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 10_000);
 
+    /** Fetches org index rows for the active filter key, honoring abort vs timeout. */
     async function fetchData() {
       setError(null);
       setLoading(true);
@@ -120,13 +145,17 @@ export function useOrganizationData(
         if (data.filterOptions) setFilterOptions(data.filterOptions);
         setCompletedFetchKey(fetchKey);
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return;
-        setError(err instanceof Error ? err.message : 'Unknown error');
-        // Settle this fetchKey even on failure so isStale clears (same as bulletin).
+        // Cleanup aborts are expected on filter changes / unmount — ignore them.
+        // Timeout aborts must surface an error and settle the fetch key so the
+        // list is not stuck loading forever.
+        if ((err as Error).name === 'AbortError' && !timedOut) return;
+        setError(
+          timedOut ? 'Request timed out' : err instanceof Error ? err.message : 'Unknown error',
+        );
         setCompletedFetchKey(fetchKey);
       } finally {
         clearTimeout(timeoutId);
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted || timedOut) setLoading(false);
       }
     }
 
@@ -138,12 +167,13 @@ export function useOrganizationData(
   }, [fetchKey, completedFetchKey, locale, currentPage, sortBy, filters]);
 
   const isStale = completedFetchKey !== fetchKey;
+  const awaitingSessionPersonalization = sessionCookie === true && completedFetchKey === '';
   return {
     orgs,
     total,
     totalAvailable,
     filterOptions,
-    loading: loading || isStale,
+    loading: loading || isStale || awaitingSessionPersonalization,
     error,
   };
 }

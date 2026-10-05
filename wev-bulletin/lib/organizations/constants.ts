@@ -2,6 +2,9 @@ export const ORG_JOBS_PER_PAGE = 20;
 export const ORG_INDEX_PAGE_SIZE = 20;
 export const ADMIN_ORGS_PER_PAGE = 50;
 
+/** Cross-request Data Cache tag for anonymous org SSR/API payloads. */
+export const ORG_CACHE_TAG = 'organizations';
+
 /** Canonical org type values stored in the database (aligned with scraper).
  *
  * SSE-eligible stored types: nonprofit, cooperative, union.

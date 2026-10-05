@@ -418,6 +418,39 @@ def test_process_listing_items_reaches_max_jobs(page):
     assert len(scraper.jobs) == 1
 
 
+def test_process_listing_items_per_page_limit_ignores_skipped_extractions():
+    """US-only / normalize drops must not consume max_jobs_per_page budget."""
+
+    class SkipAllScraper(StubScraper):
+        def get_job_url(self, item):
+            return item
+
+        def safe_open_job_page(self, job_url, wait_selector=None, timeout=10000):
+            return (MagicMock(), True)
+
+        def extract_job_fields(self, page, listing_data, index):
+            # Simulate normalize_job_data returning None (no append)
+            return
+
+        def get_listing_data(self, item):
+            return {}
+
+    scraper = SkipAllScraper(make_source())
+    scraper._max_jobs_per_page = 1
+    scraper.listings_page = MagicMock()
+    scraper.page = MagicMock()
+
+    items = [
+        "https://example.com/job/1",
+        "https://example.com/job/2",
+    ]
+    scraper._process_listing_items(items)
+
+    # Both listings opened/extracted; neither counted toward the per-page cap
+    assert scraper.total_listings_found == 2
+    assert len(scraper.jobs) == 0
+
+
 # --- Utilities & Browser Lifecycle ---
 
 @pytest.fixture

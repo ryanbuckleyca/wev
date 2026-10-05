@@ -10,15 +10,79 @@ from utils.location_parser import (
 )
 
 
-def test_normalize_ca_province_code_french_and_abbrev():
-    from utils.location_parser import _normalize_ca_province_code
+def test_looks_like_us_location_detects_common_us_strings():
+    from utils.location_parser import looks_like_us_location
 
-    assert _normalize_ca_province_code("Nouveau-Brunswick") == "NB"
-    assert _normalize_ca_province_code("Colombie-Britannique") == "BC"
-    assert _normalize_ca_province_code("Terre-Neuve-et-Labrador") == "NL"
-    assert _normalize_ca_province_code("Nfld") == "NL"
-    assert _normalize_ca_province_code("P.E.I.") == "PE"
-    assert _normalize_ca_province_code("Nouvelle-Écosse") == "NS"
+    assert looks_like_us_location("Boston, Massachusetts, United States") is True
+    assert looks_like_us_location("Horry County, South Carolina, United States") is True
+    assert looks_like_us_location("Denver, CO, USA") is True
+    assert looks_like_us_location("Seattle, WA") is True
+    assert looks_like_us_location("Seattle, WA.") is True
+    assert looks_like_us_location("Seattle, Washington") is True
+    assert looks_like_us_location("Boston, U.S.") is True
+    assert looks_like_us_location("Boston, U.S. remote") is True
+    assert looks_like_us_location("Boston, U.S.A.") is True
+    assert looks_like_us_location("Toronto, ON") is False
+    assert looks_like_us_location("Ontario, Canada") is False
+    assert looks_like_us_location("Remote — Canada") is False
+    assert looks_like_us_location("Remote in Canada or USA | New Jersey or Illinois-based candidates strongly preferred") is False
+    assert looks_like_us_location("Remote | Western USA or Western Canada strongly preferred") is False
+    assert looks_like_us_location(None) is False
+
+
+def test_looks_like_us_location_avoids_ambiguous_tokens():
+    """Bare / Canada-colliding tokens must not drop Canada-eligible listings."""
+    from utils.location_parser import looks_like_us_location
+
+    # Bare "US" omitted (English false positives); dotted form is explicit.
+    assert looks_like_us_location("US") is False
+    assert looks_like_us_location("U.S.") is True
+    # CA is a Canadian country/province code — excluded from US state codes.
+    assert looks_like_us_location("Toronto, CA") is False
+    assert looks_like_us_location("Los Angeles, CA") is False
+    # Bare state names without "City, State" context are too ambiguous.
+    assert looks_like_us_location("Washington") is False
+    assert looks_like_us_location("Georgia") is False
+    assert looks_like_us_location("New York") is False
+
+
+def test_is_intentional_us_geocode_query_guards_non_string():
+    from utils.location_parser import _is_intentional_us_geocode_query
+
+    assert _is_intentional_us_geocode_query(None) is False
+    assert _is_intentional_us_geocode_query("") is False
+    assert _is_intentional_us_geocode_query(123) is False  # type: ignore[arg-type]
+    assert _is_intentional_us_geocode_query("Peoria, USA") is True
+
+
+def test_parse_address_skips_us_without_canada_bias():
+    """US strings must not be geocoded as Canadian lookalikes."""
+    from utils.location_parser import parse_address_with_geocodio
+
+    with patch("utils.location_parser._geocode_with_geocodio") as mock_geo:
+        result = parse_address_with_geocodio("Boston, Massachusetts, United States")
+        mock_geo.assert_not_called()
+        assert result["municipality"] is None
+        assert result["province"] is None
+
+
+def test_parse_address_still_geocodes_intentional_usa_alias():
+    """Org HQ aliases ending in USA keep allow_us geocoding."""
+    from utils.location_parser import parse_address_with_geocodio
+
+    fake = {
+        "municipality": "Peoria",
+        "province": None,
+        "lat": 40.7,
+        "lng": -89.6,
+        "geocode_accuracy_type": "place",
+    }
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=fake) as mock_geo:
+        result = parse_address_with_geocodio("Peoria")
+        mock_geo.assert_called_once()
+        assert mock_geo.call_args.kwargs.get("allow_us") is True
+        assert result["municipality"] == "Peoria"
+
 
 
 def test_is_remote_location():

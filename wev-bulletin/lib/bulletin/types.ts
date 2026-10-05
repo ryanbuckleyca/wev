@@ -51,4 +51,11 @@ export interface UseBulletinDataOptions {
    * seeded). The first fetch is gated on this so the unseeded set is never shown.
    */
   filtersReady: boolean;
+  /**
+   * Browser session cookie hint from `useLikelySession`.
+   * - `null`: hydration frame
+   * - `true`: discard anonymous SSR jobs and wait for personalized fetch
+   * - `false`: keep anonymous SSR hydrate
+   */
+  sessionCookie?: boolean | null;
 }
