@@ -309,5 +309,7 @@ describe('useProfileForm', () => {
     });
 
     expect(result.current.selectedSkills.map((s) => s.uri)).toEqual(['s2']);
+    // Hydration must complete so isDirty can detect the unsaved removal.
+    expect(result.current.isDirty).toBe(true);
   });
 });
