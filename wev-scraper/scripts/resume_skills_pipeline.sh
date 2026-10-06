@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Resume skills pipeline against prod:
-#   1) Re-extract skills_raw for jobs with <10 phrases (Gemini/Groq)
+#   1) Extract skills_raw only for jobs where it is NULL (Gemini/Groq)
 #   2) Retag all jobs that have skills_raw via local Jina (--publish)
 #
 # Usage (from wev-scraper):
