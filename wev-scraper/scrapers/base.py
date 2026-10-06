@@ -432,9 +432,16 @@ class BaseScraper:
                 if self.should_quit_list:
                     break
                 items = self.get_listing_items(self.listings_page)
+                scraped_before = len(self.scraped_urls)
                 self._process_listing_items(items)
                 if self.should_quit_list:
                     scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
+                    break
+                # If the entire page consisted of URLs already scraped this run,
+                # CharityVillage (and similar scrapers) are cycling the same content
+                # — stop before looping forever.
+                if len(self.scraped_urls) == scraped_before and self.skipped_duplicates > 0:
+                    scraper_log(f"\tStopping: entire page {self.current_page_number} was already scraped this run (page cycling detected).")
                     break
                 if not self.has_next_page(self.listings_page):
                     scraper_log(f"\tNo more pages after page {self.current_page_number}.")

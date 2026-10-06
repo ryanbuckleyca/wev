@@ -46,6 +46,14 @@ class CharityVillageScraper(BaseScraper):
 
     def go_next_page(self, page):
         self.current_page_number += 1
+        # Dismiss any login/paywall modal that may be blocking the Next button
+        try:
+            overlay = page.locator("[data-state='open'][aria-hidden='true'], .modal_modalOverlay__wmp_F")
+            if overlay.count() > 0:
+                page.keyboard.press("Escape")
+                page.wait_for_timeout(500)
+        except Exception:
+            pass
         next_el = self._find_next_element(page)
         if next_el:
             try:
