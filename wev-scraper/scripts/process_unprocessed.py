@@ -202,33 +202,62 @@ def process_unprocessed_jobs(unprocessed, skip_esco=False):
         _log(f"--- Job Chunk {i // chunk_size + 1} ({len(chunk)} jobs) ---")
 
         # 1) Unified post-processor
-        unified_chunk = [
+        # Split: jobs that need LLM work beyond skills go through task="all";
+        # jobs that only need skills_raw extraction go through task="skills" so
+        # _needs_processing's skills gate fires unconditionally (no force flag needed).
+        NON_SKILLS_NEEDS = {"summary", "values", "sse", "language"}
+        all_chunk = [
             j["id"]
             for j, needs in unprocessed[i : i + chunk_size]
-            if any(req in needs for req in ("summary", "values", "sse", "language", "skills"))
+            if any(req in needs for req in NON_SKILLS_NEEDS)
+        ]
+        skills_only_chunk = [
+            j["id"]
+            for j, needs in unprocessed[i : i + chunk_size]
+            if "skills" in needs and not any(req in needs for req in NON_SKILLS_NEEDS)
         ]
 
-        if unified_chunk:
+        unified_chunk = all_chunk  # kept for error accounting below
+
+        if all_chunk:
             try:
                 result = process_jobs_unified(
                     ProcessingOptions(
                         task="all",
                         page_limit=None,
-                        job_ids=unified_chunk,
+                        job_ids=all_chunk,
                         dry_run=False,
                         verbose=False,
                     )
                 )
-
                 unified_errors += result.get("errors", 0)
                 unified_processed += result.get("processed", 0)
-
             except DailyQuotaExhaustedError as e:
                 _log(f"🛑 All LLM daily quotas exhausted — aborting remaining chunks: {e}")
                 raise
             except Exception as e:
                 _log(f"✗ Unified post-processor failed for chunk: {e}")
-                unified_errors += len(unified_chunk)
+                unified_errors += len(all_chunk)
+
+        if skills_only_chunk:
+            try:
+                result = process_jobs_unified(
+                    ProcessingOptions(
+                        task="skills",
+                        page_limit=None,
+                        job_ids=skills_only_chunk,
+                        dry_run=False,
+                        verbose=False,
+                    )
+                )
+                unified_errors += result.get("errors", 0)
+                unified_processed += result.get("processed", 0)
+            except DailyQuotaExhaustedError as e:
+                _log(f"🛑 All LLM daily quotas exhausted — aborting remaining chunks: {e}")
+                raise
+            except Exception as e:
+                _log(f"✗ Unified post-processor (skills-only) failed for chunk: {e}")
+                unified_errors += len(skills_only_chunk)
 
         # 2) ESCO skills tagging
         if not skip_esco:

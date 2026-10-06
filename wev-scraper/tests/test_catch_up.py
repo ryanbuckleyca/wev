@@ -776,3 +776,53 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
 
     assert [j["id"] for j, _ in unprocessed] == ["c"]
     assert unprocessed[0][1] == ["skills"]
+
+
+# ---------------------------------------------------------------------------
+# process_unprocessed_jobs routing: skills-only jobs must use task="skills"
+# ---------------------------------------------------------------------------
+
+
+def test_process_unprocessed_jobs_routes_skills_only_to_skills_task():
+    """A job with skills_raw=None and all other fields done must be routed via
+    task='skills', not task='all'. With task='all' and no force flag the skills
+    gate is bypassed and the job loops forever in the catch-up queue."""
+    from scripts.process_unprocessed import process_unprocessed_jobs
+    from scripts.unified_post_processor import ProcessingOptions
+
+    skills_only_job = {
+        "id": "skills-only-1",
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": False,
+        "language": "en",
+        "organization_id": 1,
+        "skills": None,
+        "skills_raw": None,
+        "description": "Full posting with skill content.",
+        "job_title": "Coordinator",
+        "organization": "Org",
+        "scraped_at": "2026-01-01",
+        "listing_url": "https://example.com/job",
+    }
+    unprocessed = [(skills_only_job, ["skills"])]
+
+    calls_made = []
+
+    def fake_process_jobs_unified(opts):
+        calls_made.append(opts)
+        return {"processed": 1, "errors": 0, "skipped": 0, "provider_used": "groq",
+                "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0, "skills_raw": 1}}
+
+    with (
+        patch("scripts.unified_post_processor.process_jobs_unified", side_effect=fake_process_jobs_unified),
+    ):
+        process_unprocessed_jobs(unprocessed, skip_esco=True)
+
+    # Must have been called with task="skills", not task="all"
+    assert len(calls_made) == 1
+    assert calls_made[0].task == "skills", (
+        f"Expected task='skills' but got task='{calls_made[0].task}'. "
+        "Skills-only jobs routed through task='all' will be silently skipped."
+    )
+    assert calls_made[0].job_ids == ["skills-only-1"]
