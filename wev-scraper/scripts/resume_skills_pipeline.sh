@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
 source ../.venv/bin/activate
 export PYTHONUNBUFFERED=1
-export CONFIRM_PROD_RUN="${CONFIRM_PROD_RUN:-YES}"
+export CONFIRM_PROD_RUN="${CONFIRM_PROD_RUN:-NO}"
 # Prefer Gemini primary → flash-lite → Groq; abort only when all three hit daily 429.
 export UNIFIED_SKIP_GROQ="${UNIFIED_SKIP_GROQ:-0}"
 # Top Flash first, then lite fallback (override via env if needed).
