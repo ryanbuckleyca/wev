@@ -428,21 +428,34 @@ class BaseScraper:
             self.should_quit_list = False
             self.open_listings_page(self.listings_page)
             self.setup_pagination(self.listings_page)
+            all_duplicate_pages = 0
             while True:
                 if self.should_quit_list:
                     break
                 items = self.get_listing_items(self.listings_page)
                 scraped_before = len(self.scraped_urls)
+                skipped_before = self.skipped_duplicates
                 self._process_listing_items(items)
                 if self.should_quit_list:
                     scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
                     break
-                # If the entire page consisted of URLs already scraped this run,
-                # CharityVillage (and similar scrapers) are cycling the same content
-                # — stop before looping forever.
-                if len(self.scraped_urls) == scraped_before and self.skipped_duplicates > 0:
-                    scraper_log(f"\tStopping: entire page {self.current_page_number} was already scraped this run (page cycling detected).")
-                    break
+                # Detect page cycling: the site is serving the same content on
+                # every page (seen after login modal blocks pagination).
+                # Only trigger after we've already scraped some new URLs this run
+                # so we don't stop prematurely on pages where everything already
+                # exists in the DB from a previous run.
+                page_was_all_run_dupes = (
+                    len(self.scraped_urls) == scraped_before
+                    and self.skipped_duplicates == skipped_before
+                    and self.skipped_duplicates > 0
+                )
+                if page_was_all_run_dupes:
+                    all_duplicate_pages += 1
+                    if all_duplicate_pages >= 2:
+                        scraper_log(f"\tStopping: {all_duplicate_pages} consecutive pages were already scraped this run (page cycling detected).")
+                        break
+                else:
+                    all_duplicate_pages = 0
                 if not self.has_next_page(self.listings_page):
                     scraper_log(f"\tNo more pages after page {self.current_page_number}.")
                     break
