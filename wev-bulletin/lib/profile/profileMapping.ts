@@ -1,7 +1,9 @@
 import { type EscoSkill } from '@/lib/types/skills';
 import { type RatedSkill } from '@/lib/value-ratings';
 
-export const MAX_PROFILE_SKILLS = 10;
+export const MAX_PROFILE_SKILLS = 50;
+/** Soft UI nudge — warn above this; hard save limit remains MAX_PROFILE_SKILLS. */
+export const SOFT_PROFILE_SKILLS = 25;
 export const MAX_PROFILE_VALUES = 5;
 
 /**
