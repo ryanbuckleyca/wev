@@ -198,6 +198,27 @@ def test_needs_processing_all_requires_language():
     }
     assert _needs_processing(job, ProcessingOptions(task="all")) is True
 
+
+def test_needs_processing_all_does_not_trigger_skills_without_explicit_opt_in():
+    """Default 'all' run must not queue historical jobs (skills_raw IS NULL)."""
+    job = {
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": False,
+        "language": "en",
+        "description": "A full posting with skills content.",
+        "skills_raw": None,  # column just added — never extracted
+    }
+    # Without explicit opt-in, a NULL skills_raw must not trigger re-processing.
+    assert _needs_processing(job, ProcessingOptions(task="all")) is False
+
+    # With explicit opt-in, it should trigger.
+    opts_force = ProcessingOptions(task="all", force_reextract_skills=True)
+    assert _needs_processing(job, opts_force) is True
+
+    opts_below = ProcessingOptions(task="all", reextract_skills_below=5)
+    assert _needs_processing(job, opts_below) is True
+
 @patch("scripts.unified_post_processor.supabase")
 def test_try_db_write_success(mock_supabase):
     mock_table = mock_supabase.table.return_value

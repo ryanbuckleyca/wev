@@ -131,7 +131,14 @@ def _needs_processing(job: Dict[str, Any], opts: ProcessingOptions) -> bool:
         return (
             not (job.get("summary") or "").strip()
             or not job.get("values")
-            or _needs_skills_reextract(job, opts)
+            # Only include skills_raw extraction in "all" when explicitly requested
+            # via --reextract-skills-below or --force-reextract-skills. Without this
+            # gate the first "all" run after deploy would silently queue every
+            # historical job (skills_raw IS NULL) and blow the daily LLM quota.
+            or (
+                (opts.reextract_skills_below is not None or opts.force_reextract_skills)
+                and _needs_skills_reextract(job, opts)
+            )
             or job.get("is_sse") is None
             or job.get("language") not in VALID_LANGUAGES
         )
