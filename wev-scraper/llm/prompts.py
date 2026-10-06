@@ -143,9 +143,10 @@ def get_json_system_prompt(include_sse: bool = False) -> str:
 
 # ---------------------------------------------------------------------------
 # skills_raw extraction prompt variants
-# Active variant: SKILLS_RAW_PROMPT_VARIANT=v3|v4|…|v11 (default v5).
-# V3/V5 remain known-good fallbacks if a newer variant regresses in dry-evals.
-# V11 ports the llm-extract Phase 1 idea (verbatim-quote grounding) into skills_raw.
+# Active variant: SKILLS_RAW_PROMPT_VARIANT=v3|v5|v11 (default v5).
+# V3: known-good fallback (simpler, more permissive).
+# V5: current default — two-pass tools/domains with eligibility/screening exclusions.
+# V11: experimental — verbatim-quote grounding, strictest precision.
 # ---------------------------------------------------------------------------
 
 SKILLS_RAW_RULES_V3 = (
@@ -179,26 +180,6 @@ SKILLS_RAW_RULES_V3 = (
     "Match the language of the posting (French posting → French phrases)."
 )
 
-SKILLS_RAW_RULES_V4 = (
-    "array of short CV-style skill labels (2–4 words) for capabilities EXPLICITLY "
-    "stated in the posting. "
-    "Include: (a) named tools/software/licenses/certs, and (b) concrete domain "
-    "skills from requirements OR duties when the text names a transferable "
-    "capability (e.g. 'Sort donations' → 'donation sorting'; 'animer des ateliers "
-    "en agriculture urbaine' → 'agriculture urbaine' + 'animation d'ateliers'). "
-    "EXCLUDE task crumbs and soft process filler that are not standalone skills: "
-    "priority management, multitasking, shelf stocking, 'work independently', "
-    "'positive attitude', 'gestion des priorités', 'suivi des récoltes' as a "
-    "standalone if it is just a duty bullet without a skill framing — fold into "
-    "a broader domain skill instead when possible. "
-    "THIN TEASERS (points to website / almost no skill content): return [] only. "
-    "Do NOT invent from personality vibes or the job title alone. "
-    "Do NOT list degrees, years of experience, immunization, salary, org names, "
-    "or job titles as skills. "
-    "Calibration: most full ads → about 8–12 skills; short coaching/arts ads → 2–5; "
-    "dense admin/finance with many named tools may go a bit higher. Not a hard cap. "
-    "Deduplicate. Match posting language."
-)
 
 SKILLS_RAW_RULES_V5 = (
     "array of short skill-label phrases. Mentally extract in two passes, then merge: "
@@ -228,66 +209,6 @@ SKILLS_RAW_RULES_V5 = (
     "Match posting language."
 )
 
-SKILLS_RAW_RULES_V6 = (
-    "array of short skill-label phrases (2–4 words). "
-    "INCLUDE a phrase ONLY if you can point to a supporting span in the posting "
-    "(requirements, qualifications, tools, or duty text). No support span → omit. "
-    "Named tools/software/licenses/certs always count when present. "
-    "Domain skills count when duties/requirements name a transferable capability "
-    "(normalize lightly: 'Sort donations' → 'donation sorting'). "
-    "Hard rules: thin teasers / 'see website for full posting' with almost no skill "
-    "content → []; never invent from personality adjectives or the title alone; "
-    "never list degrees, years of experience, immunization, org names, or job titles. "
-    "Merge near-duplicates. Typical full ad ≈ 8–12 skills. Match posting language."
-)
-
-SKILLS_RAW_RULES_V7 = (
-    "Two-pass extraction into short skill labels, then merge: "
-    "(1) every named tool/system/license/cert; "
-    "(2) distinct domain skills from requirements AND duties. "
-    "Also apply these exclusions: no personality vibes; no degrees/years/"
-    "immunization/org names/job titles; no soft process filler "
-    "(gestion des priorités, multitasking, work independently, shelf stocking, "
-    "positive attitude) — fold duty crumbs into a broader domain skill instead. "
-    "Thin teasers → []. Do not atomize every bullet. Aim ~8–12 on full ads. "
-    "Match posting language."
-)
-
-SKILLS_RAW_RULES_V8 = (
-    "array of short ESCO-style competency labels (noun phrases, 2–4 words) that a "
-    "skills taxonomy would recognize — e.g. 'grant writing', 'accounts payable', "
-    "'workshop facilitation', 'Microsoft Excel', 'valid driver's license'. "
-    "Source only from explicit posting text (requirements + duties). "
-    "Prefer taxonomy-like wording over duty verbs ('manage cellar' → skip unless "
-    "it is a real transferable skill; 'donor stewardship' OK). "
-    "Include named tools/licenses. Omit vibes, degrees, years, immunization, "
-    "org names, job titles. Thin teasers → []. Merge duplicates. "
-    "Typical full ad ≈ 8–12. Match posting language."
-)
-
-SKILLS_RAW_RULES_V9 = (
-    "Return short skill labels explicitly grounded in the job text. "
-    "Must-have when named: software, systems, licenses, professional certs. "
-    "Also include clear domain competencies from duties/qualifications "
-    "(fundraising, horticulture, payroll, retail merchandising, etc.). "
-    "Skip: soft vibes, degrees, YoE lines, immunization, org/job-title strings, "
-    "and one-off chore bullets that are not transferable skills. "
-    "If the posting is a thin teaser, return []. "
-    "Target about 8–12 skills for a normal full posting. Match language."
-)
-
-SKILLS_RAW_RULES_V10 = (
-    "Extract reusable skill labels from this job posting. "
-    "Rules: (1) only what the text explicitly supports; "
-    "(2) always keep named tools/licenses/certs; "
-    "(3) keep distinct domains from duties/requirements after merging related bullets; "
-    "(4) drop personality fluff, degrees, years-of-experience, immunization, "
-    "employer names, and job titles-as-skills; "
-    "(5) empty list for thin 'see website' teasers; "
-    "(6) prefer precision — a good list is usually 6–12 items, not 20+. "
-    "Output skill phrases only (2–4 words). Match posting language."
-)
-
 # Inspired by the llm-extract tagger Phase 1: explicit asks only, each phrase
 # must be supportable by a verbatim quote (quote is mental check — do not emit it).
 SKILLS_RAW_RULES_V11 = (
@@ -310,13 +231,7 @@ SKILLS_RAW_RULES_V11 = (
 
 _SKILLS_RAW_RULES_BY_VARIANT = {
     "v3": SKILLS_RAW_RULES_V3,
-    "v4": SKILLS_RAW_RULES_V4,
     "v5": SKILLS_RAW_RULES_V5,
-    "v6": SKILLS_RAW_RULES_V6,
-    "v7": SKILLS_RAW_RULES_V7,
-    "v8": SKILLS_RAW_RULES_V8,
-    "v9": SKILLS_RAW_RULES_V9,
-    "v10": SKILLS_RAW_RULES_V10,
     "v11": SKILLS_RAW_RULES_V11,
 }
 
@@ -327,35 +242,10 @@ _SKILLS_BIT_BY_VARIANT = {
         "thin teasers; include named software/licenses and core domain skills stated "
         "in the posting; omit degrees and years-of-experience lines)"
     ),
-    "v4": (
-        "3) Skills (CV-style labels only — named tools/licenses plus concrete domain "
-        "skills from requirements/duties; no soft process filler or thin-teaser padding; "
-        "omit degrees)"
-    ),
     "v5": (
         "3) Skills (two-pass tools/occupational-certs then domain skills; classify and "
         "omit eligibility/screening, legal-instrument titles, and formal education "
         "credentials — matcher is ESCO skills not qualifications; thin → [])"
-    ),
-    "v6": (
-        "3) Skills (only phrases with a supporting span in the posting; tools/licenses "
-        "plus grounded domain skills; thin teasers → []; no vibes/degrees)"
-    ),
-    "v7": (
-        "3) Skills (two-pass tools then domains; ban soft process filler; merge duty "
-        "crumbs; thin → [])"
-    ),
-    "v8": (
-        "3) Skills (ESCO-style taxonomy labels from explicit text only; tools/licenses "
-        "included; thin → []; no vibes/degrees)"
-    ),
-    "v9": (
-        "3) Skills (named tools/certs + clear domain competencies; skip chores/vibes/"
-        "degrees; thin → []; ~8–12 on full ads)"
-    ),
-    "v10": (
-        "3) Skills (explicit only; keep tools/licenses; merge domains; usually 6–12 "
-        "items; thin teasers → [])"
     ),
     "v11": (
         "3) Skills (explicit asks only — each phrase must be supportable by a verbatim "
@@ -378,8 +268,9 @@ def get_skills_raw_extraction_rules() -> str:
     real competencies, so prefer sparse, distinct skill labels over exhaustive
     dump of job-ad wording.
 
-    Select variant via SKILLS_RAW_PROMPT_VARIANT (v3|v4|…|v11). Default: v5.
-    Set SKILLS_RAW_PROMPT_VARIANT=v3 to use the earlier fallback rules.
+    Select variant via SKILLS_RAW_PROMPT_VARIANT (v3|v5|v11). Default: v5.
+    Set SKILLS_RAW_PROMPT_VARIANT=v3 to use the simpler fallback rules.
+    Set SKILLS_RAW_PROMPT_VARIANT=v11 for experimental verbatim-quote grounding.
     """
     return _SKILLS_RAW_RULES_BY_VARIANT[get_skills_raw_prompt_variant()]
 
