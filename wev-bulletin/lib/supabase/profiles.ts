@@ -162,14 +162,15 @@ async function syncProfileSkills(
     throw new Error(upsertError.message || 'Failed to write profile_skills');
   }
 
-  // Delete any rows not in the intended skills set. Using a server-side NOT IN
-  // filter avoids the read-back race where a concurrent save could insert rows
-  // between our SELECT and DELETE.
+  // Delete any rows not in the intended skills set. The bare CSV form
+  // `(uri1,uri2)` is the correct PostgREST NOT IN syntax — no quoting needed
+  // since ESCO concept URIs never contain commas. Avoids the read-back race
+  // where a concurrent save could insert rows between a SELECT and DELETE.
   const { error: orphanError } = await supabase
     .from('profile_skills')
     .delete()
     .eq('user_id', userId)
-    .not('skill_id', 'in', `(${skills.map((s) => `"${s}"`).join(',')})`);
+    .not('skill_id', 'in', `(${skills.join(',')})`);
   if (orphanError) {
     throw new Error(orphanError.message || 'Failed to prune profile_skills');
   }
