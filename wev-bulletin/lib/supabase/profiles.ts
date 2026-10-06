@@ -118,8 +118,10 @@ export async function getProfile(userId: string): Promise<Profile> {
  * Replace profile_skills junction rows to match the skills array / ratings.
  * Triggers recompute profiles.skill_embedding.
  *
- * Upserts first, then deletes orphans — never delete-all-then-insert — so a
- * failed write cannot leave an empty junction after profiles.skills was updated.
+ * Upserts first, then deletes orphans via a server-side NOT IN filter —
+ * never delete-all-then-insert, and no read-back SELECT — so a failed write
+ * cannot leave an empty junction after profiles.skills was updated, and a
+ * concurrent save cannot have its rows deleted between a SELECT and DELETE.
  * If the orphan delete fails, the junction has extra rows (stale skills stay
  * embedded) but no data is lost; profiles.skills remains the UI source of truth.
  */
@@ -160,25 +162,14 @@ async function syncProfileSkills(
     throw new Error(upsertError.message || 'Failed to write profile_skills');
   }
 
-  const { data: existing, error: listError } = await supabase
-    .from('profile_skills')
-    .select('skill_id')
-    .eq('user_id', userId);
-  if (listError) {
-    throw new Error(listError.message || 'Failed to list profile_skills');
-  }
-
-  const keep = new Set(skills);
-  const orphans = (existing ?? [])
-    .map((row) => row.skill_id)
-    .filter((skillId) => !keep.has(skillId));
-  if (orphans.length === 0) return;
-
+  // Delete any rows not in the intended skills set. Using a server-side NOT IN
+  // filter avoids the read-back race where a concurrent save could insert rows
+  // between our SELECT and DELETE.
   const { error: orphanError } = await supabase
     .from('profile_skills')
     .delete()
     .eq('user_id', userId)
-    .in('skill_id', orphans);
+    .not('skill_id', 'in', `(${skills.map((s) => `"${s}"`).join(',')})`);
   if (orphanError) {
     throw new Error(orphanError.message || 'Failed to prune profile_skills');
   }

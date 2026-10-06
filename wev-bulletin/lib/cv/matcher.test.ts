@@ -120,8 +120,23 @@ describe('skill-matcher', () => {
       expect(result).toHaveLength(0); // dropped due to relevance < 0.4
     });
 
+    it('returns empty when all candidates for a phrase fail relevance floor', () => {
+      // All 5 matches have labels with no CV word overlap — phrase produces no result.
+      const rows: BatchMatchRow[] = [
+        { query_index: 0, concept_uri: 'a', preferred_label_en: 'maritime vessel navigation', preferred_label_fr: '', similarity: 0.92 },
+        { query_index: 0, concept_uri: 'b', preferred_label_en: 'deep sea diving equipment', preferred_label_fr: '', similarity: 0.88 },
+        { query_index: 0, concept_uri: 'c', preferred_label_en: 'underwater welding operations', preferred_label_fr: '', similarity: 0.85 },
+        { query_index: 0, concept_uri: 'd', preferred_label_en: 'offshore drilling procedures', preferred_label_fr: '', similarity: 0.82 },
+        { query_index: 0, concept_uri: 'e', preferred_label_en: 'submarine cable maintenance', preferred_label_fr: '', similarity: 0.80 },
+      ];
+      const phrases = [{ phrase: 'team leadership', evidence: 'Led cross-functional teams', prominence: 8 }];
+      const cvWords = new Set(['led', 'cross', 'functional', 'teams', 'leadership', 'team']);
+
+      const result = rankAndFilterCandidates(rows, phrases, cvWords, 'en', 0.25);
+      expect(result).toHaveLength(0);
+    });
+
     it('keeps a lower-ranked candidate when top-1 fails relevance', () => {
-      // With match_count>1, a poor top-1 label must not wipe the phrase.
       const rows: BatchMatchRow[] = [
         {
           query_index: 0,
