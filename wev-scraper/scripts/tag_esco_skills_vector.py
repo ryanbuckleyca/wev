@@ -389,9 +389,8 @@ def tag_esco_skills_vector(
 
     start_time = time.time()
 
-    # 1. Collect all phrases across all jobs
+    # 1. Collect all jobs with their phrases (empty-skills_raw jobs are cleared inline).
     jobs_with_phrases = []
-    all_phrases = []
     jobs_cleared_no_phrases = 0
 
     for job in jobs:
@@ -425,18 +424,12 @@ def tag_esco_skills_vector(
                     )
             continue
 
-        start_idx = len(all_phrases)
-        all_phrases.extend(valid_phrases)
-        end_idx = len(all_phrases)
-
         jobs_with_phrases.append({
             "job": job,
             "phrases": valid_phrases,
-            "start_idx": start_idx,
-            "end_idx": end_idx
         })
 
-    print(f"Collected {len(all_phrases)} phrases across {len(jobs_with_phrases)} jobs.")
+    print(f"Collected phrases across {len(jobs_with_phrases)} jobs.")
     if jobs_cleared_no_phrases:
         print(f"Cleared stale tags on {jobs_cleared_no_phrases} jobs with empty skills_raw.")
 
@@ -450,32 +443,12 @@ def tag_esco_skills_vector(
             "errors": 0,
         }
 
-    # 2. Embed all phrases in batches
-    # We can batch the embeddings into chunks to avoid passing too many to the API or model at once.
-    CHUNK_SIZE = 500
-    all_embeddings = []
-    
-    for i in range(0, len(all_phrases), CHUNK_SIZE):
-        chunk = all_phrases[i:i + CHUNK_SIZE]
-        max_retries = 3
-        backoff = 2.0
-        for attempt in range(max_retries + 1):
-            try:
-                print(f"Embedding chunk {i} to {i + len(chunk)}...")
-                chunk_embeddings = svc.embed(chunk, task="retrieval.query")
-                all_embeddings.extend(chunk_embeddings)
-                break
-            except Exception as e:
-                if attempt < max_retries:
-                    logger.warning(f"Embed attempt {attempt + 1} failed ({e}), retrying in {backoff}s")
-                    time.sleep(backoff)
-                    backoff *= 2
-                else:
-                    logger.error(f"Embedding failed after {max_retries} retries — {e}")
-                    return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
-
-    # 3. Match + write per job (I/O-bound — parallelize across workers).
-    # Local Jina/MPS embedding above stays serial; concurrency is for Supabase RPC/writes.
+    # 2. Embed phrases and dispatch writes in bounded job groups.
+    # Processing all jobs at once would accumulate embeddings for the entire run in
+    # memory; a failure after embedding but before completing writes loses all work.
+    # Instead: embed one group's phrases → dispatch those jobs → wait → release
+    # embeddings → continue. Completed writes survive if a later group fails.
+    JOB_GROUP_SIZE = 50
     processed = 0
     total_inserted = 0
     zero_match_jobs = 0
@@ -485,38 +458,78 @@ def tag_esco_skills_vector(
     done = 0
     total_jobs = len(jobs_with_phrases)
 
-    def _run_one(item: dict) -> dict:
+    def _run_one(item: dict, group_embeddings: list) -> dict:
         return _match_and_write_job(
             job=item["job"],
             valid_phrases=item["phrases"],
-            embeddings=all_embeddings[item["start_idx"] : item["end_idx"]],
+            embeddings=group_embeddings[item["group_start"] : item["group_end"]],
             dry_run=dry_run,
             print_lock=print_lock,
         )
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_run_one, item): item for item in jobs_with_phrases}
-        for fut in as_completed(futures):
-            try:
-                stats = fut.result()
-            except Exception as e:
-                item = futures[fut]
-                jid = item["job"]["id"]
-                logger.error(f"[vector-tagger] job {jid}: unexpected worker failure — {e}")
-                errors += 1
-                done += 1
-                continue
+    for group_start in range(0, total_jobs, JOB_GROUP_SIZE):
+        group = jobs_with_phrases[group_start : group_start + JOB_GROUP_SIZE]
 
-            processed += stats["processed"]
-            total_inserted += stats["inserted"]
-            zero_match_jobs += stats["zero_match"]
-            errors += stats["error"]
-            if stats["top1_score"] is not None:
-                top1_scores.append(stats["top1_score"])
-            done += 1
-            if done % 50 == 0 or done == total_jobs:
-                with print_lock:
-                    print(f"  … progress {done}/{total_jobs} jobs")
+        # Collect phrases for this group with group-local offsets
+        group_phrases: list[str] = []
+        for item in group:
+            item["group_start"] = len(group_phrases)
+            group_phrases.extend(item["phrases"])
+            item["group_end"] = len(group_phrases)
+
+        # Embed this group's phrases with retry
+        EMBED_CHUNK_SIZE = 500
+        group_embeddings: list = []
+        embed_failed = False
+        for i in range(0, len(group_phrases), EMBED_CHUNK_SIZE):
+            chunk = group_phrases[i : i + EMBED_CHUNK_SIZE]
+            max_retries = 3
+            backoff = 2.0
+            for attempt in range(max_retries + 1):
+                try:
+                    print(f"Embedding group {group_start // JOB_GROUP_SIZE + 1} phrases {i}–{i + len(chunk)}...")
+                    group_embeddings.extend(svc.embed(chunk, task="retrieval.query"))
+                    break
+                except Exception as e:
+                    if attempt < max_retries:
+                        logger.warning(f"Embed attempt {attempt + 1} failed ({e}), retrying in {backoff}s")
+                        time.sleep(backoff)
+                        backoff *= 2
+                    else:
+                        logger.error(f"Embedding failed after {max_retries} retries — {e}")
+                        errors += len(group)
+                        embed_failed = True
+                        break
+            if embed_failed:
+                break
+        if embed_failed:
+            done += len(group)
+            continue
+
+        # Dispatch this group to the thread pool and wait for completion
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_run_one, item, group_embeddings): item for item in group}
+            for fut in as_completed(futures):
+                try:
+                    stats = fut.result()
+                except Exception as e:
+                    item = futures[fut]
+                    jid = item["job"]["id"]
+                    logger.error(f"[vector-tagger] job {jid}: unexpected worker failure — {e}")
+                    errors += 1
+                    done += 1
+                    continue
+
+                processed += stats["processed"]
+                total_inserted += stats["inserted"]
+                zero_match_jobs += stats["zero_match"]
+                errors += stats["error"]
+                if stats["top1_score"] is not None:
+                    top1_scores.append(stats["top1_score"])
+                done += 1
+                if done % 50 == 0 or done == total_jobs:
+                    with print_lock:
+                        print(f"  … progress {done}/{total_jobs} jobs")
 
     elapsed = time.time() - start_time
     avg_top1 = sum(top1_scores) / len(top1_scores) if top1_scores else 0.0

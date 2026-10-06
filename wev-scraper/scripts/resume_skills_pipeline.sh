@@ -22,14 +22,14 @@ LOG_DIR="${LOG_DIR:-/tmp/wev-skills}"
 mkdir -p "${LOG_DIR}"
 
 echo "=============================================="
-echo "Step 1/2: LLM skills_raw extraction (re-extract jobs with <10 phrases)"
+echo "Step 1/2: LLM skills_raw extraction (NULL-only — new/never-extracted jobs)"
+echo "  To re-extract jobs with fewer than N phrases, add: --reextract-skills-below N"
 echo "  UNIFIED_SKIP_GROQ=${UNIFIED_SKIP_GROQ}"
 echo "  PRIMARY=${GEMINI_SSE_PRIMARY_MODEL} LITE=${GEMINI_SSE_LITE_MODEL}"
 echo "=============================================="
 python -m scripts.unified_post_processor \
 	--task skills \
 	--prod \
-	--reextract-skills-below 10 \
 	--page-limit 200 \
 	2>&1 | tee "${LOG_DIR}/extract_bulk.log"
 

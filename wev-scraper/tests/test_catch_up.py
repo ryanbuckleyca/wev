@@ -698,28 +698,37 @@ def test_park_logs_and_preserves_state_when_the_reason_changed():
 def test_job_needs_skills_none_raw_needs_extract():
     from utils.catch_up import job_needs_skills
 
-    assert job_needs_skills({"skills_raw": None, "skills": None}) is True
-    assert job_needs_skills({"skills": None}) is True  # key missing
+    assert job_needs_skills({"skills_raw": None, "skills": None, "description": "Full posting."}) is True
+    assert job_needs_skills({"skills": None, "description": "Full posting."}) is True  # key missing
+
+
+def test_job_needs_skills_no_description_is_done():
+    from utils.catch_up import job_needs_skills
+
+    # No description → nothing to extract regardless of skills_raw
+    assert job_needs_skills({"skills_raw": None, "skills": None}) is False
+    assert job_needs_skills({"skills_raw": None, "skills": None, "description": ""}) is False
+    assert job_needs_skills({"skills_raw": None, "skills": None, "description": "   "}) is False
 
 
 def test_job_needs_skills_empty_raw_is_done():
     from utils.catch_up import job_needs_skills
 
-    assert job_needs_skills({"skills_raw": [], "skills": None}) is False
-    assert job_needs_skills({"skills_raw": ["  ", ""], "skills": None}) is False
+    assert job_needs_skills({"skills_raw": [], "skills": None, "description": "Full posting."}) is False
+    assert job_needs_skills({"skills_raw": ["  ", ""], "skills": None, "description": "Full posting."}) is False
 
 
 def test_job_needs_skills_phrases_pending_tag():
     from utils.catch_up import job_needs_skills
 
-    assert job_needs_skills({"skills_raw": ["CRM"], "skills": None}) is True
+    assert job_needs_skills({"skills_raw": ["CRM"], "skills": None, "description": "Full posting."}) is True
 
 
 def test_job_needs_skills_zero_match_array_is_durable():
     """skills=[] after a failed ESCO floor must not re-queue forever."""
     from utils.catch_up import job_needs_skills
 
-    assert job_needs_skills({"skills_raw": ["obscure FR label"], "skills": []}) is False
+    assert job_needs_skills({"skills_raw": ["obscure FR label"], "skills": [], "description": "Full posting."}) is False
 
 
 def test_job_needs_skills_tagged_uris_are_done():
@@ -727,7 +736,7 @@ def test_job_needs_skills_tagged_uris_are_done():
 
     assert (
         job_needs_skills(
-            {"skills_raw": ["CRM"], "skills": ["http://data.europa.eu/esco/skill/x"]}
+            {"skills_raw": ["CRM"], "skills": ["http://data.europa.eu/esco/skill/x"], "description": "Full posting."}
         )
         is False
     )
@@ -744,6 +753,7 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
             "is_sse": False,
             "language": "en",
             "organization_id": 1,
+            "description": "Full posting with content.",
             "skills_raw": [],
             "skills": None,
             "scraped_at": "2026-01-01",
@@ -755,6 +765,7 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
             "is_sse": False,
             "language": "en",
             "organization_id": 1,
+            "description": "Full posting with content.",
             "skills_raw": ["CRM"],
             "skills": [],
             "scraped_at": "2026-01-02",
@@ -766,6 +777,7 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
             "is_sse": False,
             "language": "en",
             "organization_id": 1,
+            "description": "Full posting with content.",
             "skills_raw": ["CRM"],
             "skills": None,
             "scraped_at": "2026-01-03",
@@ -788,7 +800,6 @@ def test_process_unprocessed_jobs_routes_skills_only_to_skills_task():
     task='skills', not task='all'. With task='all' and no force flag the skills
     gate is bypassed and the job loops forever in the catch-up queue."""
     from scripts.process_unprocessed import process_unprocessed_jobs
-    from scripts.unified_post_processor import ProcessingOptions
 
     skills_only_job = {
         "id": "skills-only-1",

@@ -579,17 +579,25 @@ def main():
     args = parser.parse_args()
 
     # Process jobs
-    result = process_jobs_unified(ProcessingOptions(
-        task=args.task,
-        page_limit=args.page_limit,
-        job_ids=args.job_id or [],
-        dry_run=args.dry_run,
-        verbose=args.verbose,
-        since_days=args.since_days,
-        force_language_reprocess=args.force_language_reprocess,
-        reextract_skills_below=args.reextract_skills_below,
-        force_reextract_skills=args.force_reextract_skills,
-    ))
+    try:
+        result = process_jobs_unified(ProcessingOptions(
+            task=args.task,
+            page_limit=args.page_limit,
+            job_ids=args.job_id or [],
+            dry_run=args.dry_run,
+            verbose=args.verbose,
+            since_days=args.since_days,
+            force_language_reprocess=args.force_language_reprocess,
+            reextract_skills_below=args.reextract_skills_below,
+            force_reextract_skills=args.force_reextract_skills,
+        ))
+    except DailyQuotaExhaustedError as e:
+        print(
+            f"\nAborted: all LLM backends exhausted daily/free-tier quota (429): {e}\n"
+            "Swap GEMINI_API_KEY / GROQ_API_KEY or enable billing, then re-run — "
+            "already-done jobs are skipped."
+        )
+        sys.exit(2)
 
     # Print summary
     print("\n" + "=" * 70)
@@ -611,14 +619,6 @@ def main():
         print(f"Raw skills extracted: {result['updated']['skills_raw']}")
 
     print(f"Errors: {result['errors']}")
-
-    if result.get("aborted_quota"):
-        print(
-            "\nAborted: all LLM backends exhausted daily/free-tier quota (429). "
-            "Swap GEMINI_API_KEY / GROQ_API_KEY or enable billing, then re-run — "
-            "already-done jobs are skipped."
-        )
-        sys.exit(2)
 
     if result['errors'] > 0:
         sys.exit(1)
