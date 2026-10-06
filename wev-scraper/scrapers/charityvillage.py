@@ -18,7 +18,7 @@ _EMPLOYMENT_TYPE_KEYWORDS = [
 class CharityVillageScraper(BaseScraper):
     is_chronological = True
     listing_selector = "div[data-testid='jcl-job-teaser-wrapper']"
-    job_wait_selector = "div[data-testid='job-detail-description'] .wysiwyg_wysiwyg__dZvsP"
+    job_wait_selector = "div[data-testid='job-detail-description'] p"
 
     def __init__(self, source):
         super().__init__(source)
