@@ -1,56 +1,201 @@
 import re
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
 
+_PDF_MAX_BYTES = 10 * 1024 * 1024
+_PDF_MAX_PAGES = 50
+_PDF_MAX_CHARS = 200_000
+_PDF_ALLOWED_SCHEMES = {"http", "https"}
+_PDF_ALLOWED_PORTS = {"http": 80, "https": 443}
+
+
+def _ip_is_non_public(ip) -> bool:
+    return (ip.is_private or ip.is_loopback or ip.is_link_local or
+            ip.is_multicast or ip.is_reserved or
+            (hasattr(ip, "is_unspecified") and ip.is_unspecified))
+
+
+def _normalize_pdf_url(pdf_url: str, base_url: str | None = None) -> str | None:
+    absolute_url = urljoin(base_url, pdf_url) if base_url else pdf_url
+    try:
+        parsed = urlparse(absolute_url)
+    except Exception:
+        return None
+
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in _PDF_ALLOWED_SCHEMES:
+        return None
+    if not parsed.hostname or parsed.username or parsed.password:
+        return None
+    try:
+        port = parsed.port
+    except ValueError:
+        return None
+    if port is not None and port != _PDF_ALLOWED_PORTS[scheme]:
+        return None
+
+    return parsed._replace(fragment="").geturl()
+
 
 def _is_safe_pdf_url(pdf_url: str) -> bool:
-    """Basic guard: reject localhost / RFC1918 / metadata IPs in the netloc.
+    """Reject PDF URLs that could egress to local or private network targets."""
+    import ipaddress
+    import socket
 
-    The URL comes from a CharityVillage iframe src so risk is low, but this
-    prevents accidental egress to internal hosts if the embed is ever
-    misconfigured or compromised.
-    """
     try:
-        host = urlparse(pdf_url).hostname or ""
+        parsed = urlparse(pdf_url)
     except Exception:
         return False
-    if not host:
+
+    scheme = (parsed.scheme or "").lower()
+    host = parsed.hostname or ""
+    if scheme not in _PDF_ALLOWED_SCHEMES or not host:
         return False
+
     lower = host.lower()
     if lower in ("localhost", "metadata", "metadata.google.internal"):
         return False
     if lower.endswith(".local") or lower.endswith(".internal"):
         return False
-    import ipaddress
+
     try:
-        ip = ipaddress.ip_address(host)
+        host = host.encode("idna").decode("ascii")
+    except Exception:
+        return False
+
+    try:
+        literal_ip = ipaddress.ip_address(host)
     except ValueError:
-        return True
-    return not (ip.is_private or ip.is_loopback or ip.is_link_local or
-                ip.is_multicast or ip.is_reserved or
-                (hasattr(ip, 'is_unspecified') and ip.is_unspecified))
+        pass
+    else:
+        if _ip_is_non_public(literal_ip):
+            return False
+
+    try:
+        addrinfo = socket.getaddrinfo(
+            host,
+            parsed.port or _PDF_ALLOWED_PORTS[scheme],
+            type=socket.SOCK_STREAM,
+        )
+    except socket.gaierror:
+        return False
+    if not addrinfo:
+        return False
+
+    resolved_any = False
+    for *_, sockaddr in addrinfo:
+        try:
+            resolved_ip = ipaddress.ip_address(sockaddr[0])
+        except (IndexError, ValueError):
+            return False
+        if _ip_is_non_public(resolved_ip):
+            return False
+        resolved_any = True
+    return resolved_any
+
+
+def _build_no_redirect_opener():
+    import urllib.error
+    import urllib.request
+
+    class NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: PLR0913
+            raise urllib.error.HTTPError(
+                req.full_url,
+                code,
+                f"PDF redirect blocked ({newurl})",
+                headers,
+                fp,
+            )
+
+    return urllib.request.build_opener(NoRedirectHandler())
+
+
+def _read_pdf_response(resp) -> bytes | None:
+    ctype = resp.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
+    if ctype != "application/pdf":
+        scraper_log(f"\tCharityVillage: rejecting PDF response with Content-Type={ctype or 'missing'}")
+        return None
+
+    try:
+        clen = int(resp.headers.get("Content-Length", "0") or "0")
+    except ValueError:
+        clen = 0
+    if clen > _PDF_MAX_BYTES:
+        scraper_log(f"\tCharityVillage: rejecting PDF larger than {_PDF_MAX_BYTES} bytes")
+        return None
+
+    chunks = []
+    total = 0
+    while True:
+        chunk = resp.read(65536)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > _PDF_MAX_BYTES:
+            scraper_log(f"\tCharityVillage: PDF stream exceeded {_PDF_MAX_BYTES} bytes")
+            return None
+        chunks.append(chunk)
+    pdf_bytes = b"".join(chunks)
+    if not pdf_bytes.lstrip().startswith(b"%PDF"):
+        scraper_log("\tCharityVillage: rejecting PDF response without PDF magic bytes")
+        return None
+    return pdf_bytes
+
+
+def _extract_bounded_pdf_text(reader) -> str | None:
+    parts = []
+    total = 0
+    truncated = False
+    for page in reader.pages[:_PDF_MAX_PAGES]:
+        page_text = page.extract_text() or ""
+        if not page_text:
+            continue
+        remaining = _PDF_MAX_CHARS - total
+        if len(page_text) > remaining:
+            parts.append(page_text[:remaining])
+            truncated = True
+            break
+        parts.append(page_text)
+        total += len(page_text)
+        if total >= _PDF_MAX_CHARS:
+            truncated = True
+            break
+
+    text = "\n".join(parts).strip()
+    if not text:
+        return None
+    if truncated or len(reader.pages) > _PDF_MAX_PAGES:
+        text = f"{text}\n\n[truncated: description exceeded PDF extraction limits]"
+    return text
 
 
 def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
     """Fetch a PDF by URL and extract its plain text using pypdf."""
+    original_pdf_url = pdf_url
     try:
         import io
         import urllib.request
 
         from pypdf import PdfReader
+        pdf_url = _normalize_pdf_url(pdf_url)
+        if not pdf_url:
+            scraper_log(f"\tCharityVillage: rejecting invalid PDF URL ({original_pdf_url})")
+            return None
         if not _is_safe_pdf_url(pdf_url):
             scraper_log(f"\tCharityVillage: rejecting unsafe PDF URL host ({pdf_url})")
             return None
         req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            pdf_bytes = resp.read()
+        opener = _build_no_redirect_opener()
+        with opener.open(req, timeout=20) as resp:
+            pdf_bytes = _read_pdf_response(resp)
+        if not pdf_bytes:
+            return None
         reader = PdfReader(io.BytesIO(pdf_bytes))
-        pages_text = [page.extract_text() or "" for page in reader.pages]
-        text = "\n".join(pages_text).strip()
-        return text if text else None
+        return _extract_bounded_pdf_text(reader)
     except Exception as e:
         scraper_log(f"\tCharityVillage: PDF extraction failed ({pdf_url}): {e}")
         return None
@@ -150,8 +295,10 @@ class CharityVillageScraper(BaseScraper):
             if iframe.count() > 0:
                 pdf_url = iframe.first.get_attribute("src", timeout=3000)
                 if pdf_url and ".pdf" in pdf_url.lower():
-                    # Strip PDF viewer params (e.g. #navpanes=0&toolbar=0)
-                    pdf_url = pdf_url.split("#")[0]
+                    pdf_url = _normalize_pdf_url(pdf_url, page.url)
+                    if not pdf_url:
+                        scraper_log("\tCharityVillage: rejecting invalid PDF iframe URL")
+                        return self._extract_text(page, "[data-testid='job-detail-description']")
                     scraper_log(f"\tCharityVillage: description is a PDF — extracting from {pdf_url}")
                     text = _extract_text_from_pdf_url(pdf_url)
                     if text:
