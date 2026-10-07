@@ -80,7 +80,6 @@ def _is_safe_pdf_url(pdf_url: str) -> bool:
         if _ip_is_non_public(literal_ip):
             return False
 
-    socket_timeout = _PDF_CONNECT_TIMEOUT
     try:
         addrinfo = socket.getaddrinfo(
             host,
@@ -208,7 +207,7 @@ def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
             return None
         req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
         opener = _build_no_redirect_opener()
-        with opener.open(req, timeout=(_PDF_CONNECT_TIMEOUT, _PDF_READ_TIMEOUT)) as resp:
+        with opener.open(req, timeout=_PDF_READ_TIMEOUT) as resp:
             pdf_bytes = _read_pdf_response(resp)
         if not pdf_bytes:
             return None
