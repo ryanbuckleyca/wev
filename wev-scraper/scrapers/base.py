@@ -447,7 +447,7 @@ class BaseScraper:
                 page_was_all_run_dupes = (
                     len(self.scraped_urls) == scraped_before
                     and self.skipped_duplicates == skipped_before
-                    and self.skipped_duplicates > 0
+                    and len(self.scraped_urls) > 0
                 )
                 if page_was_all_run_dupes:
                     all_duplicate_pages += 1

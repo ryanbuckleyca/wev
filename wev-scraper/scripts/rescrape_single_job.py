@@ -75,14 +75,14 @@ def main():
             print(f"  Frame {i}: {f.url[:100]}")
         # Check for embeds/objects/iframes in DOM
         for sel in ["iframe", "embed", "object", "[data-testid='job-detail-description']", "[class*='description']"]:
+            count = 0
             try:
                 count = job_page.locator(sel).count()
                 if count:
                     txt = job_page.locator(sel).first.inner_text(timeout=2000).strip()
                     print(f"  {sel} ({count}): {repr(txt[:150])}")
             except Exception as e:
-                if count:
-                    print(f"  {sel} ({count}): (no inner_text — {e})")
+                print(f"  {sel} (count={count}): error — {e}")
         print("--- end diagnostics ---\n")
 
         desc = (scraper.extract_description(job_page, {}) or "").strip()
