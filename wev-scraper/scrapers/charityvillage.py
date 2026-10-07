@@ -1,8 +1,28 @@
 import re
 
+import re
+
 from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
+
+
+def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
+    """Fetch a PDF by URL and extract its plain text using pypdf."""
+    try:
+        import io
+        import urllib.request
+        from pypdf import PdfReader
+        req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            pdf_bytes = resp.read()
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        pages_text = [page.extract_text() or "" for page in reader.pages]
+        text = "\n".join(pages_text).strip()
+        return text if text else None
+    except Exception as e:
+        scraper_log(f"\tCharityVillage: PDF extraction failed ({pdf_url}): {e}")
+        return None
 
 _LISTINGS_URL = "https://www.charityvillage.com/jobs"
 
@@ -92,6 +112,22 @@ class CharityVillageScraper(BaseScraper):
         return self._extract_text(page, "[data-testid='company-name']")
 
     def extract_description(self, page, listing_data) -> str | None:
+        # Check for an iframe PDF embed first — CharityVillage posts some job
+        # descriptions as PDF files embedded via <iframe src="...pdf">.
+        try:
+            iframe = page.locator("[data-testid='job-detail-description'] iframe")
+            if iframe.count() > 0:
+                pdf_url = iframe.first.get_attribute("src", timeout=3000)
+                if pdf_url and ".pdf" in pdf_url.lower():
+                    # Strip PDF viewer params (e.g. #navpanes=0&toolbar=0)
+                    pdf_url = pdf_url.split("#")[0]
+                    scraper_log(f"\tCharityVillage: description is a PDF — extracting from {pdf_url}")
+                    text = _extract_text_from_pdf_url(pdf_url)
+                    if text:
+                        return text
+                    scraper_log("\tCharityVillage: PDF extraction returned no text, falling back to DOM")
+        except Exception:
+            pass
         return self._extract_text(page, "[data-testid='job-detail-description']")
 
     def extract_location(self, page, listing_data) -> str | None:
