@@ -10,6 +10,9 @@ _PDF_MAX_PAGES = 50
 _PDF_MAX_CHARS = 200_000
 _PDF_ALLOWED_SCHEMES = {"http", "https"}
 _PDF_ALLOWED_PORTS = {"http": 80, "https": 443}
+_PDF_CONNECT_TIMEOUT = 10
+_PDF_READ_TIMEOUT = 20
+_PDF_ALLOWED_HOST_SUFFIXES = (".charityvillage.com", "charityvillage.com")
 
 
 def _ip_is_non_public(ip) -> bool:
@@ -61,6 +64,9 @@ def _is_safe_pdf_url(pdf_url: str) -> bool:
     if lower.endswith(".local") or lower.endswith(".internal"):
         return False
 
+    if not lower.endswith(_PDF_ALLOWED_HOST_SUFFIXES):
+        return False
+
     try:
         host = host.encode("idna").decode("ascii")
     except Exception:
@@ -74,6 +80,7 @@ def _is_safe_pdf_url(pdf_url: str) -> bool:
         if _ip_is_non_public(literal_ip):
             return False
 
+    socket_timeout = _PDF_CONNECT_TIMEOUT
     try:
         addrinfo = socket.getaddrinfo(
             host,
@@ -98,6 +105,7 @@ def _is_safe_pdf_url(pdf_url: str) -> bool:
 
 
 def _build_no_redirect_opener():
+    import ssl
     import urllib.error
     import urllib.request
 
@@ -111,7 +119,12 @@ def _build_no_redirect_opener():
                 fp,
             )
 
-    return urllib.request.build_opener(NoRedirectHandler())
+    ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    ssl_context.check_hostname = True
+    ssl_context.verify_mode = ssl.CERT_REQUIRED
+    https_handler = urllib.request.HTTPSHandler(context=ssl_context, check_hostname=True)
+
+    return urllib.request.build_opener(NoRedirectHandler, https_handler)
 
 
 def _read_pdf_response(resp) -> bytes | None:
@@ -175,12 +188,17 @@ def _extract_bounded_pdf_text(reader) -> str | None:
 
 def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
     """Fetch a PDF by URL and extract its plain text using pypdf."""
+    import io
+    import socket
+    import ssl
+    import urllib.error
+    import urllib.request
+
+    from pypdf import PdfReader
+    from pypdf.errors import PdfReadError
+
     original_pdf_url = pdf_url
     try:
-        import io
-        import urllib.request
-
-        from pypdf import PdfReader
         pdf_url = _normalize_pdf_url(pdf_url)
         if not pdf_url:
             scraper_log(f"\tCharityVillage: rejecting invalid PDF URL ({original_pdf_url})")
@@ -190,15 +208,36 @@ def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
             return None
         req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
         opener = _build_no_redirect_opener()
-        with opener.open(req, timeout=20) as resp:
+        with opener.open(req, timeout=(_PDF_CONNECT_TIMEOUT, _PDF_READ_TIMEOUT)) as resp:
             pdf_bytes = _read_pdf_response(resp)
         if not pdf_bytes:
             return None
-        reader = PdfReader(io.BytesIO(pdf_bytes))
+        try:
+            reader = PdfReader(io.BytesIO(pdf_bytes))
+        except (PdfReadError, OSError, ValueError) as e:
+            scraper_log(f"\tCharityVillage: PDF parse failed ({pdf_url}): {e}")
+            return None
         return _extract_bounded_pdf_text(reader)
-    except Exception as e:
+    except urllib.error.HTTPError as e:
+        scraper_log(f"\tCharityVillage: PDF HTTP error ({pdf_url}): HTTP {e.code}")
+        return None
+    except urllib.error.URLError as e:
+        reason = getattr(e, "reason", e)
+        scraper_log(f"\tCharityVillage: PDF URL error ({pdf_url}): {reason}")
+        return None
+    except socket.timeout:
+        scraper_log(f"\tCharityVillage: PDF fetch timed out ({pdf_url})")
+        return None
+    except ssl.SSLError as e:
+        scraper_log(f"\tCharityVillage: PDF SSL error ({pdf_url}): {e}")
+        return None
+    except (PdfReadError, OSError, ValueError) as e:
         scraper_log(f"\tCharityVillage: PDF extraction failed ({pdf_url}): {e}")
         return None
+    except Exception as e:
+        scraper_log(f"\tCharityVillage: unexpected PDF error ({pdf_url}): {type(e).__name__}: {e}")
+        return None
+
 
 _LISTINGS_URL = "https://www.charityvillage.com/jobs"
 

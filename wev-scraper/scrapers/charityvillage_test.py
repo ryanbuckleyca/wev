@@ -78,22 +78,48 @@ def test_pdf_url_normalization_rejects_unsafe_inputs():
 
 def test_pdf_url_safety_rejects_private_dns_results(monkeypatch):
     def fake_getaddrinfo(host, port, type=socket.SOCK_STREAM):
-        assert host == "jobs.example.org"
+        assert host == "jobs.charityvillage.com"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.8", port))]
 
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
-    assert _is_safe_pdf_url("https://jobs.example.org/job.pdf") is False
+    assert _is_safe_pdf_url("https://jobs.charityvillage.com/job.pdf") is False
 
 
 def test_pdf_url_safety_allows_public_dns_results(monkeypatch):
     def fake_getaddrinfo(host, port, type=socket.SOCK_STREAM):
-        assert host == "jobs.example.org"
+        assert host == "jobs.charityvillage.com"
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port))]
 
     monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
 
-    assert _is_safe_pdf_url("https://jobs.example.org/job.pdf") is True
+    assert _is_safe_pdf_url("https://jobs.charityvillage.com/job.pdf") is True
+
+
+def test_pdf_url_safety_rejects_mixed_public_private_dns_results(monkeypatch):
+    def fake_getaddrinfo(host, port, type=socket.SOCK_STREAM):
+        assert host == "jobs.charityvillage.com"
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.8", port)),
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+
+    assert _is_safe_pdf_url("https://jobs.charityvillage.com/job.pdf") is False
+
+
+def test_pdf_url_safety_rejects_host_outside_allowlist(monkeypatch):
+    called = {"dns": False}
+
+    def fake_getaddrinfo(host, port, type=socket.SOCK_STREAM):
+        called["dns"] = True
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", port))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+
+    assert _is_safe_pdf_url("https://evil.example.org/job.pdf") is False
+    assert called["dns"] is False
 
 
 class FakePdfResponse:
