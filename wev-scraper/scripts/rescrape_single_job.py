@@ -36,11 +36,11 @@ def main():
         os.environ["SCRAPER_HEADED"] = "1"
 
     # Look up source
-    source_resp = supabase.table("sources").select("id, name, url, slug").eq("slug", args.source).single().execute()
+    source_resp = supabase.table("sources").select("id, name, url, slug").eq("slug", args.source).limit(1).execute()
     if not source_resp.data:
         print(f"❌ Source '{args.source}' not found in DB", file=sys.stderr)
         sys.exit(1)
-    source = source_resp.data
+    source = source_resp.data[0]
     print(f"✓ Source: {source['name']}")
 
     # Resolve scraper class from the centralized registry (slug → prod UUID → name fallback chain)

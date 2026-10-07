@@ -433,7 +433,7 @@ class BaseScraper:
                 if self.should_quit_list:
                     break
                 items = self.get_listing_items(self.listings_page)
-                run_new_scraped, run_new_skipped = self._process_listing_items(items)
+                run_new_scraped, run_new_skipped, run_dup_urls = self._process_listing_items(items)
                 if self.should_quit_list:
                     scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
                     break
@@ -442,9 +442,11 @@ class BaseScraper:
                 # Only trigger after we've already scraped some new URLs this run
                 # so we don't stop prematurely on pages where everything already
                 # exists in the DB from a previous run.
+                # Cycling = no new URLs on this page, but at least one URL was
+                # already seen earlier in this same run (duplicate from earlier pages).
                 page_was_all_run_dupes = (
                     run_new_scraped == 0
-                    and run_new_skipped == 0
+                    and run_dup_urls >= 1
                     and len(self.scraped_urls) > 0
                 )
                 if page_was_all_run_dupes:
@@ -471,13 +473,18 @@ class BaseScraper:
         return self.jobs
 
     def _process_listing_items(self, items):
-        """Process listing items. Returns (newly_scraped_count, newly_skipped_count)
-        for this specific call, avoiding reliance on shared/external counters."""
+        """Process listing items. Returns a 3-tuple:
+        (newly_scraped_count, newly_skipped_count, already_seen_this_run_count)
+        for this specific call, avoiding reliance on shared/external counters.
+        already_seen_this_run_count counts listings whose URL was already added
+        to scraped_urls in an earlier page this run (i.e. page cycling indicator).
+        """
         max_jobs = self._max_jobs
         max_jobs_per_page = self._max_jobs_per_page
 
         newly_scraped = 0
         newly_skipped = 0
+        already_seen_this_run = 0
         jobs_this_page = 0
         for i, item in self._iter_items(items):
             if self.should_quit_list:
@@ -530,6 +537,7 @@ class BaseScraper:
 
                 if norm_url in self.scraped_urls:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), already scraped this run")
+                    already_seen_this_run += 1
                     continue
                 self.scraped_urls.add(norm_url)
                 newly_scraped += 1
@@ -559,7 +567,7 @@ class BaseScraper:
                         job_page.close()
                     except Exception:
                         pass
-        return newly_scraped, newly_skipped
+        return newly_scraped, newly_skipped, already_seen_this_run
 
     def _iter_items(self, items):
         # Supports Playwright Locator or a list of Locators
