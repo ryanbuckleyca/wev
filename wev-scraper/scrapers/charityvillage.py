@@ -1,10 +1,37 @@
 import re
-
-import re
+from urllib.parse import urlparse
 
 from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
+
+
+def _is_safe_pdf_url(pdf_url: str) -> bool:
+    """Basic guard: reject localhost / RFC1918 / metadata IPs in the netloc.
+
+    The URL comes from a CharityVillage iframe src so risk is low, but this
+    prevents accidental egress to internal hosts if the embed is ever
+    misconfigured or compromised.
+    """
+    try:
+        host = urlparse(pdf_url).hostname or ""
+    except Exception:
+        return False
+    if not host:
+        return False
+    lower = host.lower()
+    if lower in ("localhost", "metadata", "metadata.google.internal"):
+        return False
+    if lower.endswith(".local") or lower.endswith(".internal"):
+        return False
+    import ipaddress
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return True
+    return not (ip.is_private or ip.is_loopback or ip.is_link_local or
+                ip.is_multicast or ip.is_reserved or
+                (hasattr(ip, 'is_unspecified') and ip.is_unspecified))
 
 
 def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
@@ -12,7 +39,11 @@ def _extract_text_from_pdf_url(pdf_url: str) -> str | None:
     try:
         import io
         import urllib.request
+
         from pypdf import PdfReader
+        if not _is_safe_pdf_url(pdf_url):
+            scraper_log(f"\tCharityVillage: rejecting unsafe PDF URL host ({pdf_url})")
+            return None
         req = urllib.request.Request(pdf_url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=20) as resp:
             pdf_bytes = resp.read()

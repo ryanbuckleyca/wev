@@ -10,3 +10,4 @@ tenacity
 feedparser
 pydantic>=2.0.0
 tavily-python==0.7.27
+pypdf
