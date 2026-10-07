@@ -15,8 +15,8 @@ from settings import ensure_env_loaded
 
 ensure_env_loaded()
 
-from utils.db import save_job, supabase  # noqa: E402
 from scrapers.registry import get_scraper_class  # noqa: E402
+from utils.db import save_job, supabase  # noqa: E402
 
 
 def main():
