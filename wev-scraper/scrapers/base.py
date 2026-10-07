@@ -149,6 +149,11 @@ class BaseScraper:
         self.next_button = None
         self.jobs = []
         self.scraped_urls = set()
+        # URLs observed on listing pages this run, used *only* for page-cycling
+        # detection. Separate from scraped_urls so URLs that are never scrape
+        # candidates (e.g. COMPARE_ONLY mode skips) still contribute to the
+        # "seen this run" counter that detects stuck pagination.
+        self._pagination_seen_urls = set()
         # Flag to track if we should stop scraping early (for chronological scrapers)
         self.should_quit_list = False
         # Standardized job page wait/timeout configuration
@@ -428,14 +433,34 @@ class BaseScraper:
             self.should_quit_list = False
             self.open_listings_page(self.listings_page)
             self.setup_pagination(self.listings_page)
+            all_duplicate_pages = 0
             while True:
                 if self.should_quit_list:
                     break
                 items = self.get_listing_items(self.listings_page)
-                self._process_listing_items(items)
+                run_new_scraped, run_new_skipped, run_dup_urls = self._process_listing_items(items)
                 if self.should_quit_list:
                     scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
                     break
+                # Detect page cycling: the site is serving the same content on
+                # every page (seen after login modal blocks pagination).
+                # Only trigger after we've already scraped some new URLs this run
+                # so we don't stop prematurely on pages where everything already
+                # exists in the DB from a previous run.
+                # Cycling = no new URLs on this page, but at least one URL was
+                # already seen earlier in this same run (duplicate from earlier pages).
+                page_was_all_run_dupes = (
+                    run_new_scraped == 0
+                    and run_dup_urls >= 1
+                    and len(self.scraped_urls) > 0
+                )
+                if page_was_all_run_dupes:
+                    all_duplicate_pages += 1
+                    if all_duplicate_pages >= 2:
+                        scraper_log(f"\tStopping: {all_duplicate_pages} consecutive pages were already scraped this run (page cycling detected).")
+                        break
+                else:
+                    all_duplicate_pages = 0
                 if not self.has_next_page(self.listings_page):
                     scraper_log(f"\tNo more pages after page {self.current_page_number}.")
                     break
@@ -453,9 +478,21 @@ class BaseScraper:
         return self.jobs
 
     def _process_listing_items(self, items):
+        """Process listing items. Returns a 3-tuple:
+        (newly_scraped_count, newly_skipped_count, already_seen_this_run_count)
+        for this specific call, avoiding reliance on shared/external counters.
+        already_seen_this_run_count counts listings whose URL was already
+        observed on an earlier page this run via self._pagination_seen_urls.
+        This set is tracked separately from scraped_urls so URLs that are never
+        scrape candidates (e.g. COMPARE_ONLY skips) still contribute to the
+        pagination-cycle detection.
+        """
         max_jobs = self._max_jobs
         max_jobs_per_page = self._max_jobs_per_page
 
+        newly_scraped = 0
+        newly_skipped = 0
+        already_seen_this_run = 0
         jobs_this_page = 0
         for i, item in self._iter_items(items):
             if self.should_quit_list:
@@ -499,16 +536,34 @@ class BaseScraper:
                 if norm_url in self.existing_urls and skip_on_existing:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), already exists in database")
                     self.skipped_duplicates += 1
+                    newly_skipped += 1
+                    # Still record in the pagination-seen set (not a scrape
+                    # candidate) so repeated pages of DB-only duplicates are
+                    # visible to the cycle guard if this URL resurfaces.
+                    if norm_url in self._pagination_seen_urls:
+                        already_seen_this_run += 1
+                    self._pagination_seen_urls.add(norm_url)
                     continue
 
                 if compare_only and norm_url not in self.existing_urls:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), new URL (compare-only mode)")
+                    # Record in the pagination-seen set (not a scrape candidate)
+                    # so repeated pages with these URLs are flagged as cycling
+                    # even though we never open/extract them.
+                    if norm_url in self._pagination_seen_urls:
+                        already_seen_this_run += 1
+                    self._pagination_seen_urls.add(norm_url)
                     continue
 
+                if norm_url in self._pagination_seen_urls:
+                    already_seen_this_run += 1
                 if norm_url in self.scraped_urls:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), already scraped this run")
+                    self._pagination_seen_urls.add(norm_url)
                     continue
+                self._pagination_seen_urls.add(norm_url)
                 self.scraped_urls.add(norm_url)
+                newly_scraped += 1
 
                 listing_data = self.get_listing_data(item) or {}
                 # Crucially, set listing_url from the listing item as it's the unique ID
@@ -535,6 +590,7 @@ class BaseScraper:
                         job_page.close()
                     except Exception:
                         pass
+        return newly_scraped, newly_skipped, already_seen_this_run
 
     def _iter_items(self, items):
         # Supports Playwright Locator or a list of Locators
