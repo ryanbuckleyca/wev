@@ -18,7 +18,11 @@ _EMPLOYMENT_TYPE_KEYWORDS = [
 class CharityVillageScraper(BaseScraper):
     is_chronological = True
     listing_selector = "div[data-testid='jcl-job-teaser-wrapper']"
-    job_wait_selector = "div[data-testid='job-detail-description'] p"
+    # Wait for the description content to hydrate (Next.js SSR — content is
+    # empty until React runs). The comma makes Playwright accept whichever
+    # selector resolves first, so thin/empty postings that have no <p> in the
+    # description still open successfully via the outer wrapper.
+    job_wait_selector = "div[data-testid='job-detail-description'] p, div[data-testid='job-detail-wrapper']"
 
     def __init__(self, source):
         super().__init__(source)
