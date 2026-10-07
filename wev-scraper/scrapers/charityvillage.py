@@ -50,14 +50,17 @@ class CharityVillageScraper(BaseScraper):
 
     def go_next_page(self, page):
         self.current_page_number += 1
-        # Dismiss any login/paywall modal that may be blocking the Next button
+        # Dismiss any login/paywall modal that may be blocking the Next button.
+        # Cheap count() guard first to avoid the is_visible() wait on pages with
+        # no overlay at all; is_visible() short-wait then covers cases where the
+        # element exists in DOM but is being animated in/out.
         try:
             overlay = page.locator("[data-state='open'][aria-hidden='true'], .modal_modalOverlay__wmp_F")
-            if overlay.count() > 0:
+            if overlay.count() > 0 and overlay.first.is_visible(timeout=500):
                 page.keyboard.press("Escape")
                 page.wait_for_timeout(500)
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tCharityVillage: notice dismissing overlay: {e!r}")
         next_el = self._find_next_element(page)
         if next_el:
             try:
@@ -87,8 +90,8 @@ class CharityVillageScraper(BaseScraper):
             if li.count() > 0:
                 a = li.locator("a")
                 return a.first if a.count() > 0 else li.first
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tCharityVillage: notice finding next element: {e!r}")
         return None
 
     def _build_page_url(self, page) -> str:
@@ -150,8 +153,8 @@ class CharityVillageScraper(BaseScraper):
             exp_match = re.search(r"Expires:\s*(\d{4}-\d{2}-\d{2})", text)
             if exp_match:
                 data["close_date"] = exp_match.group(1)
-        except Exception:
-            pass
+        except Exception as e:
+            scraper_log(f"\tCharityVillage: notice extracting listing data: {e!r}")
         return data
 
     def _extract_text(self, page, selector: str) -> str | None:
@@ -160,5 +163,6 @@ class CharityVillageScraper(BaseScraper):
             if loc.count() == 0:  # count() does not wait
                 return None
             return loc.first.inner_text().strip()
-        except Exception:
+        except Exception as e:
+            scraper_log(f"\tCharityVillage: notice extracting text for {selector!r}: {e!r}")
             return None

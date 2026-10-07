@@ -3,7 +3,7 @@
 Usage (from wev-scraper/):
     venv/bin/python -m scripts.rescrape_single_job \
         --url 'https://www.charityvillage.com/job/...' \
-        [--source charityvillage] [--dry-run]
+        [--source charityvillage] [--dry-run] [--headed]
 """
 from __future__ import annotations
 
@@ -15,9 +15,8 @@ from settings import ensure_env_loaded
 
 ensure_env_loaded()
 
-import importlib  # noqa: E402
-
 from utils.db import save_job, supabase  # noqa: E402
+from scrapers.registry import get_scraper_class  # noqa: E402
 
 
 def main():
@@ -25,32 +24,40 @@ def main():
     parser.add_argument("--url", required=True, help="Full listing URL to rescrape")
     parser.add_argument("--source", default="charityvillage", help="Source slug (default: charityvillage)")
     parser.add_argument("--dry-run", action="store_true", help="Print result without writing to DB")
+    parser.add_argument(
+        "--headed",
+        action="store_true",
+        help="Run browser in headed (visible) mode. Default: headless unless SCRAPER_HEADED=1 in env",
+    )
     args = parser.parse_args()
 
-    os.environ["SCRAPER_HEADED"] = "1"
+    # Headed mode: CLI --headed flag takes priority, fall back to SCRAPER_HEADED env
+    if args.headed:
+        os.environ["SCRAPER_HEADED"] = "1"
 
     # Look up source
-    source_resp = supabase.table("sources").select("id, name, url").eq("slug", args.source).single().execute()
+    source_resp = supabase.table("sources").select("id, name, url, slug").eq("slug", args.source).single().execute()
     if not source_resp.data:
         print(f"❌ Source '{args.source}' not found in DB", file=sys.stderr)
         sys.exit(1)
     source = source_resp.data
     print(f"✓ Source: {source['name']}")
 
-    # Dynamically load the scraper class for this source
-    scraper_module_map = {
-        "charityvillage": ("scrapers.charityvillage", "CharityVillageScraper"),
-    }
-    if args.source not in scraper_module_map:
-        print(f"❌ No scraper class mapped for '{args.source}'. Add it to scraper_module_map.", file=sys.stderr)
+    # Resolve scraper class from the centralized registry (slug → prod UUID → name fallback chain)
+    ScraperClass = get_scraper_class(source)
+    if ScraperClass is None:
+        from scrapers.registry import get_all_registered_source_slugs
+        print(
+            f"❌ No scraper registered for source '{source.get('slug') or source['name']}'. "
+            f"Known slugs: {', '.join(get_all_registered_source_slugs())}",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
-    mod_name, cls_name = scraper_module_map[args.source]
-    mod = importlib.import_module(mod_name)
-    ScraperClass = getattr(mod, cls_name)
-
     scraper = ScraperClass(source)
-    scraper.start_browser(headless=False, use_real_chrome=True, use_stealth=True)
+    # start_browser already respects SCRAPER_HEADED via _resolve_headless,
+    # so we default to headless=True letting the env/flag override it.
+    scraper.start_browser(headless=True, use_real_chrome=True, use_stealth=True)
 
     try:
         import time
@@ -114,13 +121,14 @@ def main():
         }
         job_page.close()
 
-        # Delete existing row so save_job can insert fresh
-        supabase.table("jobs").delete().eq("listing_url", args.url).execute()
-        print("✓ Deleted existing row")
+        # Enable override mode so save_job will update any existing row in-place
+        # instead of skipping. This preserves the original row if save_job fails —
+        # no unconditional delete-before-write that could cause data loss.
+        os.environ["SHOULD_OVERRIDE_EXISTING"] = "1"
 
         result, job_id = save_job(fields, source["id"])
         if job_id:
-            print(f"✓ Saved job: {job_id}")
+            print(f"✓ Saved job ({result}): {job_id}")
         else:
             print(f"⚠ save_job returned no ID (result={result})")
             return
