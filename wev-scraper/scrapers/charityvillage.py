@@ -81,12 +81,17 @@ def _is_safe_pdf_url(pdf_url: str) -> bool:
             return False
 
     try:
-        addrinfo = socket.getaddrinfo(
-            host,
-            parsed.port or _PDF_ALLOWED_PORTS[scheme],
-            type=socket.SOCK_STREAM,
-        )
-    except socket.gaierror:
+        prev_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(_PDF_CONNECT_TIMEOUT)
+        try:
+            addrinfo = socket.getaddrinfo(
+                host,
+                parsed.port or _PDF_ALLOWED_PORTS[scheme],
+                type=socket.SOCK_STREAM,
+            )
+        finally:
+            socket.setdefaulttimeout(prev_timeout)
+    except (socket.gaierror, socket.timeout):
         return False
     if not addrinfo:
         return False
