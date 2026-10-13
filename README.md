@@ -2,6 +2,8 @@
 
 Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure.
 
+For database design goals and schema requirements, see [supabase/DATABASE_OBJECTIVES.md](supabase/DATABASE_OBJECTIVES.md).
+
 ## Prerequisites (manual install)
 
 These cannot be automated; install them first.
