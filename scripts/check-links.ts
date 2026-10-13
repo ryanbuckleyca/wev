@@ -18,7 +18,7 @@ const IGNORED_DIRS = new Set([
   ".pytest_cache",
 ]);
 
-interface BrokenLink {
+export interface BrokenLink {
   file: string;
   line: number;
   linkText: string;
@@ -27,7 +27,13 @@ interface BrokenLink {
   reason: string;
 }
 
-function findMarkdownFiles(dir: string): string[] {
+/**
+ * Recursively scans a directory for markdown (.md) files, skipping ignored directories.
+ *
+ * @param dir The root directory path to scan.
+ * @returns An array of absolute file paths for matching markdown files.
+ */
+export function findMarkdownFiles(dir: string): string[] {
   const results: string[] = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
 
@@ -44,8 +50,22 @@ function findMarkdownFiles(dir: string): string[] {
   return results;
 }
 
-function checkLinksInFile(filePath: string): BrokenLink[] {
-  const content = fs.readFileSync(filePath, "utf-8");
+/**
+ * Scans markdown content for relative links, validating that their targets exist locally.
+ *
+ * Tracks opening and closing code block fences to ignore links inside code blocks,
+ * strips query and hash components, and safely decodes percent-encoded targets.
+ *
+ * @param content The raw markdown file text.
+ * @param filePath The path of the file being checked (used for resolving relative links).
+ * @param repoRoot The repository root path (used for resolving leading-slash links).
+ * @returns An array of BrokenLink descriptors for any invalid or missing link targets.
+ */
+export function checkLinksInContent(
+  content: string,
+  filePath: string,
+  repoRoot: string = REPO_ROOT,
+): BrokenLink[] {
   const lines = content.split("\n");
   const brokenLinks: BrokenLink[] = [];
   const fileDir = path.dirname(filePath);
@@ -53,16 +73,31 @@ function checkLinksInFile(filePath: string): BrokenLink[] {
   // Match Markdown links: [text](target "optional title") or ![alt](target)
   const linkRegex = /!?\[([^\]]*)\]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
 
-  let inCodeBlock = false;
+  let fenceChar: "`" | "~" | null = null;
+  let fenceLength = 0;
 
   lines.forEach((lineText, lineIndex) => {
-    const trimmed = lineText.trim();
-    if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
-      inCodeBlock = !inCodeBlock;
-      return;
-    }
-
-    if (inCodeBlock) {
+    if (fenceChar === null) {
+      const openMatch = lineText.match(/^[ ]{0,3}(`{3,}|~{3,})(.*)$/);
+      if (openMatch) {
+        const marker = openMatch[1];
+        const rest = openMatch[2];
+        const char = marker[0] as "`" | "~";
+        if (char !== "`" || !rest.includes("`")) {
+          fenceChar = char;
+          fenceLength = marker.length;
+          return;
+        }
+      }
+    } else {
+      const closeRegex = new RegExp(
+        `^[ ]{0,3}${fenceChar === "`" ? "`" : "~"}{${fenceLength},}\\s*$`,
+      );
+      if (closeRegex.test(lineText)) {
+        fenceChar = null;
+        fenceLength = 0;
+        return;
+      }
       return;
     }
 
@@ -85,27 +120,43 @@ function checkLinksInFile(filePath: string): BrokenLink[] {
         continue;
       }
 
-      // Strip query parameters and hash anchors
-      const cleanTarget = rawTarget.split("?")[0].split("#")[0];
+      // Strip query parameters and hash anchors before decoding
+      const cleanTarget = rawTarget.split(/[?#]/)[0];
       if (!cleanTarget) {
+        continue;
+      }
+
+      // Decode percent-encoded filenames so they match filesystem names
+      let decodedTarget: string;
+      try {
+        decodedTarget = decodeURIComponent(cleanTarget);
+      } catch {
+        brokenLinks.push({
+          file: path.relative(repoRoot, filePath),
+          line: lineIndex + 1,
+          linkText,
+          target: rawTarget,
+          resolvedPath: cleanTarget,
+          reason: "Malformed percent-encoded target",
+        });
         continue;
       }
 
       // Handle root-relative vs relative paths
       let resolvedPath: string;
-      if (cleanTarget.startsWith("/")) {
-        resolvedPath = path.join(REPO_ROOT, cleanTarget.slice(1));
+      if (decodedTarget.startsWith("/")) {
+        resolvedPath = path.join(repoRoot, decodedTarget.slice(1));
       } else {
-        resolvedPath = path.resolve(fileDir, cleanTarget);
+        resolvedPath = path.resolve(fileDir, decodedTarget);
       }
 
       if (!fs.existsSync(resolvedPath)) {
         brokenLinks.push({
-          file: path.relative(REPO_ROOT, filePath),
+          file: path.relative(repoRoot, filePath),
           line: lineIndex + 1,
           linkText,
           target: rawTarget,
-          resolvedPath: path.relative(REPO_ROOT, resolvedPath),
+          resolvedPath: path.relative(repoRoot, resolvedPath),
           reason: "Target file does not exist",
         });
       }
@@ -115,7 +166,22 @@ function checkLinksInFile(filePath: string): BrokenLink[] {
   return brokenLinks;
 }
 
-function main() {
+/**
+ * Reads a markdown file from disk and validates all relative links within it.
+ *
+ * @param filePath The absolute or relative path to the markdown file to inspect.
+ * @returns An array of BrokenLink descriptors found in the file.
+ */
+export function checkLinksInFile(filePath: string): BrokenLink[] {
+  const content = fs.readFileSync(filePath, "utf-8");
+  return checkLinksInContent(content, filePath, REPO_ROOT);
+}
+
+/**
+ * CLI entrypoint that discovers all markdown files in the repository and validates relative links.
+ * Exits with status code 1 if any broken links are detected.
+ */
+export function main() {
   console.log(
     "🔍 Scanning repository markdown files for relative link validity...",
   );
@@ -148,4 +214,10 @@ function main() {
   }
 }
 
-main();
+if (
+  require.main === module ||
+  (process.argv[1] &&
+    path.resolve(process.argv[1]) === path.resolve(__filename))
+) {
+  main();
+}

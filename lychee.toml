@@ -37,18 +37,18 @@ exclude_all_private = true
 
 # Exclude build, cache, and dependency directories
 exclude_path = [
-  "node_modules",
-  ".git",
-  ".next",
-  "dist",
-  "build",
-  "coverage",
-  ".trunk",
-  ".cache",
-  "venv",
-  ".venv",
-  "archives",
-  ".pytest_cache",
+  '(^|/)node_modules/',
+  '(^|/)\.git/',
+  '(^|/)\.next/',
+  '(^|/)dist/',
+  '(^|/)build/',
+  '(^|/)coverage/',
+  '(^|/)\.trunk/',
+  '(^|/)\.cache/',
+  '(^|/)venv/',
+  '(^|/)\.venv/',
+  '(^|/)archives/',
+  '(^|/)\.pytest_cache/',
 ]
 
 # Enable caching to avoid re-checking identical links on repeated runs
