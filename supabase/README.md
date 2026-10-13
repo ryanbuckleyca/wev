@@ -7,6 +7,7 @@ This folder contains scripts and migrations for managing your Supabase database 
 - **migrations/**: All migration .sql files (schema changes) are stored here.
 - **backups/**: All backup .json files are saved here by the backup script.
 - **backup.js**: Script to back up all public tables (and attempts auth tables) to JSON files in backups/.
+- **[DATABASE_OBJECTIVES.md](./DATABASE_OBJECTIVES.md)**: Database mission statement, domain scope, and functional design requirements.
 
 ## Local Development (Full Setup)
 
