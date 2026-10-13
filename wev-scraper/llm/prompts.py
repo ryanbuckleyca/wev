@@ -280,7 +280,7 @@ def get_unified_system_prompt(include_sse: bool = False) -> str:
     base_parts = [
         "You are an expert job analyst. For each job, provide:",
         "- summary: 1 sentence describing the work and its impact",
-        "- language: string - 'en', 'fr', or 'bilingual' (if the job explicitly requires both English and French, or has significant content in both languages)",
+        "- language: string - 'en', 'fr', or 'bilingual' (if the job explicitly requires or mentions proficiency in both English and French, especially in qualifications or responsibilities)",
         "- values: array of the top 5 most relevant values from the provided taxonomy — rank by strength of evidence in the job text and return only the 5 best matches",
         f"- skills_raw: {get_skills_raw_extraction_rules()}",
     ]

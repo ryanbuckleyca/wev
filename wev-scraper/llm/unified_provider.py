@@ -167,10 +167,8 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
 
         prompt_parts = [
             get_unified_prompt_instructions(include_sse),
-            "IMPORTANT: Detect the language of each job posting. Look for French words, phrases, or job titles. If the posting contains French content, you MUST write the summary in French. "
-            "If the posting is in French, write your sentence in French. If in English, write in English. "
-            "If the posting is written in both English and French, or explicitly requires both languages, "
-            "you may write the summary in either language.",
+            "IMPORTANT: Detect the primary language of each job posting. If the job explicitly requires or highlights proficiency in both English and French (e.g., in qualifications or responsibilities), set the language as 'bilingual'. "
+            "Otherwise, if predominantly French, set as 'fr'; if predominantly English, set as 'en'.",
             f"\n\nWORK VALUES TAXONOMY:\n{_get_formatted_taxonomy()}\n",
         ]
 
