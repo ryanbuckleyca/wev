@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 const backupsDir = path.resolve(__dirname, "backups");
 const archiveDir = path.resolve(backupsDir, "archives");
@@ -21,10 +21,8 @@ if (jsonFiles.length === 0) {
 }
 
 try {
-  // Change directory to backupsDir so zip command includes only file names, not full paths
-  execSync(
-    `zip -j ${archiveFilePath} ${jsonFiles.map((f) => path.join(backupsDir, f)).join(" ")}`,
-  );
+  const fileArgs = jsonFiles.map((f) => path.join(backupsDir, f));
+  execFileSync("zip", ["-j", archiveFilePath, ...fileArgs]);
   console.log(`Successfully created archive: ${archiveFilePath}`);
 
   // Optional: Remove individual JSON files after zipping
