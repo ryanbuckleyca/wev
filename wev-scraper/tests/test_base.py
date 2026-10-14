@@ -350,6 +350,15 @@ def test_retry_bails_on_403_non_ci(monkeypatch):
     assert mock_func.call_count == 1
 
 
+def test_retry_bails_on_403_ci(monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    scraper = BaseScraper(make_source())
+    mock_func = MagicMock(side_effect=Exception("403 Forbidden"))
+    with pytest.raises(Exception, match="403 Forbidden"):
+        scraper._retry(mock_func)
+    assert mock_func.call_count == 1
+
+
 # --- _is_error_page ---
 
 def test_is_error_page_403(page):
