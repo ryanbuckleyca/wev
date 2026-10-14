@@ -6,7 +6,7 @@ import pytest
 from playwright.sync_api import Locator
 
 from conftest import make_source
-from scrapers.base import BaseScraper, _block_heavy_resources, _get_stealth, _is_ci
+from scrapers.base import BaseScraper, _get_stealth, _is_ci
 
 
 class StubScraper(BaseScraper):
@@ -549,9 +549,3 @@ def test_close_browser_failure_handling():
     assert scraper.browser is not None
     # Attribute for successful close should be None
     assert scraper.playwright is None
-
-
-def test_block_heavy_resources():
-    mock_context = MagicMock()
-    _block_heavy_resources(mock_context)
-    mock_context.route.assert_called_once()
