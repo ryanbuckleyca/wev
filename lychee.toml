@@ -16,8 +16,8 @@ max_retries = 3
 # Concurrent requests
 max_concurrency = 8
 
-# Custom accepted status codes (accept 429 Too Many Requests to prevent CI flakiness)
-accept = [200, 204, 301, 302, 307, 308, 429]
+# Custom accepted status codes (accept 200-299 success range, redirects, and 429 Too Many Requests)
+accept = ["200..=299", "301", "302", "307", "308", "429"]
 
 # Exclude local dev URLs, mail, and bot-blocking external sites
 exclude = [

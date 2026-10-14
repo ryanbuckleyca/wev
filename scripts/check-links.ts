@@ -108,10 +108,10 @@ export function checkLinksInContent(
       const linkText = match[1];
       const rawTarget = match[2];
 
-      // Skip external URLs, mailto, tel, or anchor-only links
+      // Skip external URLs, scheme-relative URLs, mailto, tel, or anchor-only links
       if (
-        rawTarget.startsWith("http://") ||
-        rawTarget.startsWith("https://") ||
+        /^https?:\/\//i.test(rawTarget) ||
+        rawTarget.startsWith("//") ||
         rawTarget.startsWith("mailto:") ||
         rawTarget.startsWith("tel:") ||
         rawTarget.startsWith("#") ||

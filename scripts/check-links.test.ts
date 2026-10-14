@@ -105,3 +105,94 @@ test("checkLinksInContent: skips external URLs, mailto, tel, and anchor links", 
   const results = checkLinksInContent(content, "/repo/docs/test.md", "/repo");
   assert.equal(results.length, 0);
 });
+
+test("checkLinksInContent: skips case-insensitive HTTP/HTTPS, scheme-relative URLs, and empty links", () => {
+  const content = [
+    "[uppercase http](HTTP://EXAMPLE.COM/PATH)",
+    "[mixed https](Https://example.com/test?query=1)",
+    "[scheme relative](//cdn.example.com/library.js)",
+    "[empty target]()",
+  ].join("\n");
+
+  const results = checkLinksInContent(content, "/repo/docs/test.md", "/repo");
+  assert.equal(results.length, 0);
+});
+
+test("checkLinksInContent: resolves relative links between distributed README files across directories", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "readme-links-test-"));
+  try {
+    const rootReadme = path.join(tempDir, "README.md");
+    const subDir = path.join(tempDir, "subproject");
+    const subReadme = path.join(subDir, "README.md");
+    const otherDir = path.join(tempDir, "docs");
+    const otherReadme = path.join(otherDir, "README.md");
+
+    fs.mkdirSync(subDir, { recursive: true });
+    fs.mkdirSync(otherDir, { recursive: true });
+    fs.writeFileSync(rootReadme, "# Root", "utf-8");
+    fs.writeFileSync(subReadme, "# Sub", "utf-8");
+    fs.writeFileSync(otherReadme, "# Docs", "utf-8");
+
+    // Root README linking to subproject and docs READMEs
+    const rootContent = [
+      "- [Subproject](subproject/README.md)",
+      "- [Docs](./docs/README.md)",
+    ].join("\n");
+    const rootResults = checkLinksInContent(rootContent, rootReadme, tempDir);
+    assert.equal(rootResults.length, 0);
+
+    // Subproject README linking up to root README and across to sibling README
+    const subContent = [
+      "- [Root](../README.md)",
+      "- [Docs](../docs/README.md)",
+      "- [Broken sibling](../nonexistent/README.md)",
+    ].join("\n");
+    const subResults = checkLinksInContent(subContent, subReadme, tempDir);
+    assert.equal(subResults.length, 1);
+    assert.equal(subResults[0].target, "../nonexistent/README.md");
+    assert.equal(subResults[0].reason, "Target file does not exist");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+});
+
+test("repository READMEs: ensures distributed README files are discoverable and have valid relative links", () => {
+  const repoRoot = path.resolve(__dirname, "..");
+  const allMdFiles = findMarkdownFiles(repoRoot);
+  const readmeFiles = allMdFiles.filter((file) =>
+    path.basename(file).toLowerCase().includes("readme"),
+  );
+
+  // Assert distributed READMEs exist
+  assert.ok(
+    readmeFiles.length >= 5,
+    `Expected multiple distributed READMEs, found ${readmeFiles.length}`,
+  );
+
+  // Assert main README exists and links to key distributed component READMEs
+  const mainReadmePath = path.join(repoRoot, "README.md");
+  assert.ok(fs.existsSync(mainReadmePath), "Root README.md must exist");
+  const mainReadmeContent = fs.readFileSync(mainReadmePath, "utf-8");
+  assert.ok(
+    mainReadmeContent.includes("wev-bulletin/README.md"),
+    "Main README should link to wev-bulletin/README.md for discoverability",
+  );
+  assert.ok(
+    mainReadmeContent.includes("wev-scraper/README.md"),
+    "Main README should link to wev-scraper/README.md for discoverability",
+  );
+  assert.ok(
+    mainReadmeContent.includes("supabase/README.md"),
+    "Main README should link to supabase/README.md for discoverability",
+  );
+
+  // Verify that all relative links inside all repository READMEs are valid
+  for (const readme of readmeFiles) {
+    const broken = checkLinksInFile(readme);
+    assert.deepEqual(
+      broken,
+      [],
+      `Expected no broken links in ${path.relative(repoRoot, readme)}, but found: ${JSON.stringify(broken)}`,
+    );
+  }
+});
