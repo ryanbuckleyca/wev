@@ -1,0 +1,65 @@
+name: Markdown Link Check
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+      - production
+    paths:
+      - "**.md"
+      - ".github/workflows/link-check.yml"
+      - "lychee.toml"
+      - "package.json"
+      - "scripts/check-links.ts"
+      - "scripts/check-links.test.ts"
+  pull_request:
+    branches:
+      - main
+      - production
+    paths:
+      - "**.md"
+      - ".github/workflows/link-check.yml"
+      - "lychee.toml"
+      - "package.json"
+      - "scripts/check-links.ts"
+      - "scripts/check-links.test.ts"
+  workflow_dispatch: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link_check:
+    name: Markdown Link Checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run link checker unit tests
+        run: npm run test:links
+
+      - name: Check relative markdown links
+        run: npm run check:links
+
+      - name: Run Lychee Link Checker
+        uses: lycheeverse/lychee-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --config ./lychee.toml --root-dir "$(pwd)" --verbose --no-progress './**/*.md'
+          fail: true

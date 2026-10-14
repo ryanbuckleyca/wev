@@ -1,8 +1,12 @@
 # Wev Monorepo
 
-Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure.
+Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure:
 
-For database design goals and schema requirements, see [supabase/DATABASE_OBJECTIVES.md](supabase/DATABASE_OBJECTIVES.md).
+- **Bulletin App (Next.js)**: [wev-bulletin/README.md](wev-bulletin/README.md)
+- **Scraper Service (Python)**: [wev-scraper/README.md](wev-scraper/README.md)
+- **Supabase Infrastructure**: [supabase/README.md](supabase/README.md)
+
+For database design goals and schema requirements, see [supabase/DATABASE_OBJECTIVES.md](supabase/DATABASE_OBJECTIVES.md). For testing practices, see [TESTING.md](TESTING.md).
 
 ## Prerequisites (manual install)
 
