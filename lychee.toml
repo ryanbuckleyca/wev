@@ -49,6 +49,16 @@ exclude_path = [
   '(^|/)\.venv/',
   '(^|/)archives/',
   '(^|/)\.pytest_cache/',
+  '(^|/)\.ai/',
+  '(^|/)\.agents/',
+  '(^|/)\.antigravity/',
+  '(^|/)\.cursor/',
+  '(^|/)\.idea/',
+  '(^|/)\.kiro/',
+  '(^|/)\.windsurf/',
+  '(^|/)\.vscode/',
+  '(^|/)\.trae/',
+  '(^|/)\.agent/',
 ]
 
 # Enable caching to avoid re-checking identical links on repeated runs

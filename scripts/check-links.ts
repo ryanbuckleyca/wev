@@ -16,6 +16,16 @@ const IGNORED_DIRS = new Set([
   ".venv",
   "archives",
   ".pytest_cache",
+  ".ai",
+  ".agents",
+  ".antigravity",
+  ".cursor",
+  ".idea",
+  ".kiro",
+  ".windsurf",
+  ".vscode",
+  ".trae",
+  ".agent",
 ]);
 
 export interface BrokenLink {
