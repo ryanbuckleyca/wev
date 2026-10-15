@@ -60,9 +60,6 @@ jobs:
           SHOULD_RE_TAG_VALUES: ${{ vars.SHOULD_RE_TAG_VALUES }}
           SHOULD_RE_TAG_SKILLS: ${{ vars.SHOULD_RE_TAG_SKILLS }}
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
-          PROXY_SERVER: ${{ secrets.PROXY_SERVER }}
-          PROXY_USERNAME: ${{ secrets.PROXY_USERNAME }}
-          PROXY_PASSWORD: ${{ secrets.PROXY_PASSWORD }}
         shell: bash
         run: |
           set -o pipefail

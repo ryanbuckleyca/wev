@@ -185,6 +185,39 @@ test("repository READMEs: ensures distributed README files are discoverable and 
     mainReadmeContent.includes("supabase/README.md"),
     "Main README should link to supabase/README.md for discoverability",
   );
+  assert.match(
+    mainReadmeContent,
+    /\[[^\]]+\]\(wev-bulletin\/lib\/cv\/README\.md\)/,
+    "Main README should link to wev-bulletin/lib/cv/README.md for discoverability",
+  );
+
+  // Assert sub-READMEs are discoverable from their parent READMEs
+  const bulletinReadme = fs.readFileSync(
+    path.join(repoRoot, "wev-bulletin/README.md"),
+    "utf-8",
+  );
+  assert.ok(
+    bulletinReadme.includes("components/README.md"),
+    "wev-bulletin/README.md should link to components/README.md",
+  );
+
+  const supabaseReadme = fs.readFileSync(
+    path.join(repoRoot, "supabase/README.md"),
+    "utf-8",
+  );
+  assert.ok(
+    supabaseReadme.includes("backup.md"),
+    "supabase/README.md should link to backup.md",
+  );
+
+  const scraperReadme = fs.readFileSync(
+    path.join(repoRoot, "wev-scraper/README.md"),
+    "utf-8",
+  );
+  assert.ok(
+    scraperReadme.includes("scrapers/README.md"),
+    "wev-scraper/README.md should link to scrapers/README.md",
+  );
 
   // Verify that all relative links inside all repository READMEs are valid
   for (const readme of readmeFiles) {

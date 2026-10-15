@@ -87,10 +87,8 @@ Same via flags on `scrape`: `npm run scrape -- --env staging --source cent`
 npm run scrape:list-sources
 npm run scrape:local
 npm run scrape:prod -- --source mac
-```
 
 npm run process:staging -- --limit 50
-
 # or: npm run process -- --env staging --limit 50
 
 npm run skills:index # ESCO API → JSON file only
@@ -99,7 +97,6 @@ npm run skills:index -- --upsert-db --staging
 npm run skills:embeddings # embed skills in local DB
 npm run skills:embeddings -- --staging
 npm run skills:embeddings -- --prod # prompts for YES
-
 ```
 
 - `npm run test` — full test suite (Bulletin + scraper).
@@ -121,5 +118,4 @@ npm run skills:embeddings -- --prod # prompts for YES
 
 ## Architectural Roadmap
 
-- **CV Uploads**: Currently implemented as a synchronous API route with inline `worker_threads` for parsing to avoid event loop blocking. As scale increases, this should be moved to a decoupled Background Job / Microservice architecture (uploading to Supabase Storage -> async queue processing) to fully resolve potential HTTP load-balancer timeouts.
-```
+- **CV Uploads**: Architectural considerations and scaling roadmap are documented in [wev-bulletin/lib/cv/README.md](wev-bulletin/lib/cv/README.md).
