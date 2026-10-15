@@ -8,7 +8,7 @@ Each site scraper inherits from `BaseScraper`, which provides standard lifecycle
 
 - **Browser Lifecycle**: Launches Playwright with stealth settings and headers mimicking desktop Chrome to avoid bot detection.
 - **Error Detection & Retries**: Automatically detects HTTP 403/404 errors, bot challenge screens, and page load timeouts.
-- **Pagination**: Supports both numeric pagination (`/page/N/`) and dynamic buttons ("Load More").
+- **Pagination**: Site-specific; `BaseScraper.fetch_jobs()` stops when `has_next_page(page)` returns `False` (the default). Multi-page scrapers must override `has_next_page(page)` and `go_next_page(page)` (e.g. for numeric `/page/N/` URLs or dynamic "Load More" buttons).
 - **Deduplication**: Checks URLs against database records to avoid redundant page loads unless explicitly instructed to overwrite existing rows.
 - **Field Normalization**: Standardizes job titles, organizations, locations, dates, wages, and employment types via `normalize_job_data`.
 
@@ -33,5 +33,5 @@ Each site scraper inherits from `BaseScraper`, which provides standard lifecycle
        }
    ```
 
-2. Override extraction hooks as needed (e.g. `extract_wage`, `setup_pagination`, `get_listing_data`).
+2. Override extraction and pagination hooks as needed (e.g. `has_next_page`, `go_next_page`, `setup_pagination`, `extract_wage`, `get_listing_data`).
 3. Register the scraper in `scrapers/registry.py`.

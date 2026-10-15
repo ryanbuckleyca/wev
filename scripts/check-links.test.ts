@@ -185,8 +185,9 @@ test("repository READMEs: ensures distributed README files are discoverable and 
     mainReadmeContent.includes("supabase/README.md"),
     "Main README should link to supabase/README.md for discoverability",
   );
-  assert.ok(
-    mainReadmeContent.includes("wev-bulletin/lib/cv/README.md"),
+  assert.match(
+    mainReadmeContent,
+    /\[[^\]]+\]\(wev-bulletin\/lib\/cv\/README\.md\)/,
     "Main README should link to wev-bulletin/lib/cv/README.md for discoverability",
   );
 
