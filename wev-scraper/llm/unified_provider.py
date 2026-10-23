@@ -167,18 +167,16 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
 
         prompt_parts = [
             get_unified_prompt_instructions(include_sse),
-            "IMPORTANT: Detect the language of each job posting. Look for French words, phrases, or job titles. If the posting contains French content, you MUST write the summary in French. "
-            "If the posting is in French, write your sentence in French. If in English, write in English. "
-            "If the posting is written in both English and French, or explicitly requires both languages, "
-            "you may write the summary in either language.",
+            "IMPORTANT: Detect the primary language of each job posting. If the job explicitly requires or highlights proficiency in both English and French (e.g., in qualifications or responsibilities), set the language as 'bilingual'. "
+            "Otherwise, if predominantly French, set as 'fr'; if predominantly English, set as 'en'.",
             f"\n\nWORK VALUES TAXONOMY:\n{_get_formatted_taxonomy()}\n",
         ]
 
-        job_chunks = format_job_chunks(jobs, max_desc_chars=4000)
+        job_chunks = format_job_chunks(jobs, max_desc_chars=8000)
         for chunk in job_chunks:
             prompt_parts.append(f"\n{chunk}")
 
-        fields = "index, summary, language, values, is_sse, sse_confidence" if include_sse else "index, summary, language, values"
+        fields = "index, summary, language, values, skills_raw, is_sse, sse_confidence" if include_sse else "index, summary, language, values, skills_raw"
         prompt_parts.append(f"\n\nOutput JSON array with objects containing: {fields}")
 
         return "".join(prompt_parts)
@@ -251,6 +249,17 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                                 "Unexpected language value from LLM: %r — omitting", lang
                             )
                             item.pop("language", None)
+                if isinstance(item, dict) and "skills_raw" in item:
+                    raw_skills = item.get("skills_raw")
+                    if isinstance(raw_skills, list):
+                        valid_skills = [str(s).strip() for s in raw_skills if str(s).strip()]
+                        item["skills_raw"] = valid_skills
+                    else:
+                        logger.warning(
+                            "Unexpected skills_raw value from LLM (not a list): %r — omitting",
+                            raw_skills,
+                        )
+                        item.pop("skills_raw", None)
             return items
 
         # 1. Try raw response first

@@ -2,6 +2,7 @@
 
 Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocessed.py.
 - An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills
+  (skills uses the skills_raw / jobs.skills contract — see job_needs_skills)
 - An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
   valid language, or values_list
 
@@ -59,6 +60,29 @@ def _is_org_field_missing(org: Dict[str, Any], field: str) -> bool:
     return False
 
 
+def job_needs_skills(job: Dict[str, Any]) -> bool:
+    """True when this job still needs skills extract and/or ESCO tagging.
+
+    Contract:
+    - no description → False (nothing to extract; matches _needs_skills_reextract guard)
+    - ``skills_raw is None`` → never extracted (needs unified extract, then tag)
+    - ``skills_raw == []`` (or only blank strings) → extract finished empty; done
+    - phrases present + ``skills is None`` → phrases awaiting ESCO tag
+    - phrases present + ``skills == []`` → tagged, zero ESCO hits; done (durable)
+    - phrases present + non-empty ``skills`` → tagged; done
+    """
+    if not (job.get("description") or "").strip():
+        return False
+    skills_raw = job.get("skills_raw")
+    if skills_raw is None:
+        return True
+    if not isinstance(skills_raw, list):
+        return True
+    if not any(str(s).strip() for s in skills_raw):
+        return False
+    return job.get("skills") is None
+
+
 # ---------------------------------------------------------------------------
 # Query helpers
 # ---------------------------------------------------------------------------
@@ -68,8 +92,8 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
     """Return (job, needs[]) tuples for every job that is missing post-processing fields."""
     jobs: List[dict] = fetch_all_rows(
         "jobs",
-        "id, listing_url, summary, values, is_sse, language, skills, organization_id, "
-        "job_title, organization, scraped_at",
+        "id, listing_url, summary, values, is_sse, language, skills, skills_raw, "
+        "description, organization_id, job_title, organization, scraped_at",
         order_by="scraped_at",
         desc=False,
     )
@@ -84,7 +108,7 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
             needs.append("sse")
         if j.get("language") not in VALID_LANGUAGES:
             needs.append("language")
-        if not j.get("skills"):
+        if job_needs_skills(j):
             needs.append("skills")
         if j.get("organization_id") is None:
             needs.append("organization_id")
@@ -377,23 +401,34 @@ def process_unprocessed_jobs(
     total_errors = 0
     total_processed = 0
 
-    # 1) Unified post-processor (summary / values / SSE / language)
-    unified_job_ids = [
+    # 1) Unified post-processor (summary / values / SSE / language / skills extract)
+    # Jobs needing LLM work beyond skills go through task="all".
+    # Jobs that only need skills_raw extraction go through task="skills" so
+    # _needs_processing fires its skills gate without a force flag.
+    NON_SKILLS_NEEDS = {"summary", "values", "sse", "language"}
+    all_task_ids = [
         j["id"] for j, needs in unprocessed
-        if any(req in needs for req in ("summary", "values", "sse", "language"))
+        if any(req in needs for req in NON_SKILLS_NEEDS)
     ]
-    if unified_job_ids:
+    skills_only_ids = [
+        j["id"] for j, needs in unprocessed
+        if "skills" in needs and not any(req in needs for req in NON_SKILLS_NEEDS)
+    ]
+
+    for task, job_ids_chunk in [("all", all_task_ids), ("skills", skills_only_ids)]:
+        if not job_ids_chunk:
+            continue
         try:
             from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
 
             result = process_jobs_unified(
-                ProcessingOptions(task="all", page_limit=None, job_ids=unified_job_ids, dry_run=False, verbose=False)
+                ProcessingOptions(task=task, page_limit=None, job_ids=job_ids_chunk, dry_run=False, verbose=False)
             )
             total_processed += result.get("processed", 0)
             total_errors += result.get("errors", 0)
         except Exception as e:
-            _log(f"❌ Unified post-processor failed: {e}")
-            total_errors += len(unified_job_ids)
+            _log(f"❌ Unified post-processor (task={task}) failed: {e}")
+            total_errors += len(job_ids_chunk)
 
     # 2) ESCO skills vector tagging
     esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]

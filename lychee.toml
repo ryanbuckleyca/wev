@@ -1,0 +1,68 @@
+# Lychee link checker configuration
+# https://github.com/lycheeverse/lychee
+
+# Verbose output for CI and local debugging
+verbose = "info"
+
+# Don't show interactive progress bar in CI environments
+no_progress = true
+
+# Request timeout in seconds
+timeout = 20
+
+# Retries for network hiccups
+max_retries = 3
+
+# Concurrent requests
+max_concurrency = 8
+
+# Custom accepted status codes (accept 200-299 success range, redirects, and 429 Too Many Requests)
+accept = ["200..=299", "301", "302", "307", "308", "429"]
+
+# Exclude local dev URLs, mail, and bot-blocking external sites
+exclude = [
+  "^http://localhost",
+  "^http://127.0.0.1",
+  "^http://0.0.0.0",
+  "^mailto:",
+  "^tel:",
+  "^https://linkedin.com",
+  "^https://www.linkedin.com",
+  "^https://twitter.com",
+  "^https://x.com",
+  # ESCO API serves a bot/WAF wall (403 → sorry.ec.europa.eu) to automated checkers
+  "^https://ec\\.europa\\.eu/esco/api",
+]
+
+# Exclude private IPs / loopback
+exclude_all_private = true
+
+# Exclude build, cache, and dependency directories
+exclude_path = [
+  '(^|/)node_modules/',
+  '(^|/)\.git/',
+  '(^|/)\.next/',
+  '(^|/)dist/',
+  '(^|/)build/',
+  '(^|/)coverage/',
+  '(^|/)\.trunk/',
+  '(^|/)\.cache/',
+  '(^|/)venv/',
+  '(^|/)\.venv/',
+  '(^|/)archives/',
+  '(^|/)\.pytest_cache/',
+  '(^|/)\.ai/',
+  '(^|/)\.agents/',
+  '(^|/)\.antigravity/',
+  '(^|/)\.cursor/',
+  '(^|/)\.idea/',
+  '(^|/)\.kiro/',
+  '(^|/)\.windsurf/',
+  '(^|/)\.vscode/',
+  '(^|/)\.trae/',
+  '(^|/)\.agent/',
+]
+
+# Enable caching to avoid re-checking identical links on repeated runs
+cache = true
+max_cache_age = "1d"

@@ -18,6 +18,7 @@ dependencies = [
   "geocodio-library-python",
   "google-genai",
   "tenacity",
+  "pypdf==6.19.0",
 ]
 
 [tool.setuptools]

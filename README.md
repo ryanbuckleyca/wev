@@ -1,6 +1,12 @@
 # Wev Monorepo
 
-Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure.
+Welcome to the Wev project. This repository contains the Bulletin app, the Scraper service, and the Supabase infrastructure:
+
+- **Bulletin App (Next.js)**: [wev-bulletin/README.md](wev-bulletin/README.md)
+- **Scraper Service (Python)**: [wev-scraper/README.md](wev-scraper/README.md)
+- **Supabase Infrastructure**: [supabase/README.md](supabase/README.md)
+
+For database design goals and schema requirements, see [supabase/DATABASE_OBJECTIVES.md](supabase/DATABASE_OBJECTIVES.md). For testing practices, see [TESTING.md](TESTING.md).
 
 ## Prerequisites (manual install)
 
@@ -53,11 +59,11 @@ The Makefile auto-detects a torch-compatible Python (`python3.11` → `python3.1
 
 ### Script naming
 
-| Pattern | When to use | Examples |
-|---------|-------------|----------|
-| `family:target` | **Named env/target** — thin alias → `npm run family -- --env target` | `scrape:staging` → `npm run scrape -- --env staging` |
-| `command` + `--` flags | Extra options on top of a named script | `npm run scrape:prod -- --source mac` |
-| `family:member` (colon) | **Different tasks** (not env variants) | `skills:index`, `test:e2e` |
+| Pattern                 | When to use                                                          | Examples                                             |
+| ----------------------- | -------------------------------------------------------------------- | ---------------------------------------------------- |
+| `family:target`         | **Named env/target** — thin alias → `npm run family -- --env target` | `scrape:staging` → `npm run scrape -- --env staging` |
+| `command` + `--` flags  | Extra options on top of a named script                               | `npm run scrape:prod -- --source mac`                |
+| `family:member` (colon) | **Different tasks** (not env variants)                               | `skills:index`, `test:e2e`                           |
 
 Run `npm run help` for a cheat sheet. `npm run` alone lists script names but not flags.
 
@@ -65,13 +71,13 @@ Run `npm run help` for a cheat sheet. `npm run` alone lists script names but not
 
 **Named targets** (visible in `npm run`):
 
-| Script | Target |
-|--------|--------|
-| `scrape:local` | Local DB |
-| `scrape:staging` | Staging |
-| `scrape:publish` | Prod DB, local LLMs (YES prompt) |
-| `scrape:prod` | Full prod (YES prompt) |
-| `scrape:list-sources` | List slugs (fast) |
+| Script                | Target                           |
+| --------------------- | -------------------------------- |
+| `scrape:local`        | Local DB                         |
+| `scrape:staging`      | Staging                          |
+| `scrape:publish`      | Prod DB, local LLMs (YES prompt) |
+| `scrape:prod`         | Full prod (YES prompt)           |
+| `scrape:list-sources` | List slugs (fast)                |
 
 Add options after `--`: `npm run scrape:prod -- --source mac`
 
@@ -81,17 +87,16 @@ Same via flags on `scrape`: `npm run scrape -- --env staging --source cent`
 npm run scrape:list-sources
 npm run scrape:local
 npm run scrape:prod -- --source mac
-```
 
 npm run process:staging -- --limit 50
 # or: npm run process -- --env staging --limit 50
 
-npm run skills:index                        # ESCO API → JSON file only
-npm run skills:index -- --upsert-db         # upsert skills to local DB
+npm run skills:index # ESCO API → JSON file only
+npm run skills:index -- --upsert-db # upsert skills to local DB
 npm run skills:index -- --upsert-db --staging
-npm run skills:embeddings                   # embed skills in local DB
+npm run skills:embeddings # embed skills in local DB
 npm run skills:embeddings -- --staging
-npm run skills:embeddings -- --prod         # prompts for YES
+npm run skills:embeddings -- --prod # prompts for YES
 ```
 
 - `npm run test` — full test suite (Bulletin + scraper).
@@ -113,4 +118,4 @@ npm run skills:embeddings -- --prod         # prompts for YES
 
 ## Architectural Roadmap
 
-- **CV Uploads**: Currently implemented as a synchronous API route with inline `worker_threads` for parsing to avoid event loop blocking. As scale increases, this should be moved to a decoupled Background Job / Microservice architecture (uploading to Supabase Storage -> async queue processing) to fully resolve potential HTTP load-balancer timeouts.
+- **CV Uploads**: Architectural considerations and scaling roadmap are documented in [wev-bulletin/lib/cv/README.md](wev-bulletin/lib/cv/README.md).

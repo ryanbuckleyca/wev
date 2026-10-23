@@ -8,6 +8,7 @@ from scripts.unified_post_processor import (
     _build_update_data,
     _enqueue_job_match_recalc,
     _needs_processing,
+    _needs_skills_reextract,
     _touches_match_relevant,
     _try_db_write,
     is_transient_db_error,
@@ -106,6 +107,36 @@ def test_build_update_data_gates_job_sse_on_org():
     assert no_claim["is_sse"] is False
 
 
+def test_build_update_data_persists_empty_skills_raw():
+    """Thin teasers return [] — must write so we do not re-extract forever."""
+    data = _build_update_data("skills", {"skills_raw": []})
+    assert data["skills_raw"] == []
+
+    data = _build_update_data("all", {"skills_raw": ["  CRM  ", "", "grant writing"]})
+    assert data["skills_raw"] == ["CRM", "grant writing"]
+
+    data = _build_update_data("skills", {"summary": "x"})
+    assert "skills_raw" not in data
+
+
+def test_needs_skills_reextract_treats_empty_list_as_done():
+    opts = ProcessingOptions(task="skills")
+    base = {"description": "Full posting with duties."}
+
+    assert _needs_skills_reextract({**base, "skills_raw": None}, opts) is True
+    assert _needs_skills_reextract(base, opts) is True  # key missing
+    assert _needs_skills_reextract({**base, "skills_raw": []}, opts) is False
+    assert _needs_skills_reextract({**base, "skills_raw": ["CRM"]}, opts) is False
+
+    below = ProcessingOptions(task="skills", reextract_skills_below=3)
+    assert _needs_skills_reextract({**base, "skills_raw": ["a"]}, below) is True
+    assert _needs_skills_reextract({**base, "skills_raw": ["a", "b", "c"]}, below) is False
+
+    force = ProcessingOptions(task="skills", force_reextract_skills=True)
+    assert _needs_skills_reextract({**base, "skills_raw": []}, force) is True
+    assert _needs_skills_reextract({"description": "", "skills_raw": None}, opts) is False
+
+
 def test_is_transient_db_error():
     e = Exception("timeout")
     e.code = "53000"
@@ -166,6 +197,27 @@ def test_needs_processing_all_requires_language():
         "language": "de",
     }
     assert _needs_processing(job, ProcessingOptions(task="all")) is True
+
+
+def test_needs_processing_all_does_not_trigger_skills_without_explicit_opt_in():
+    """Default 'all' run must not queue historical jobs (skills_raw IS NULL)."""
+    job = {
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": False,
+        "language": "en",
+        "description": "A full posting with skills content.",
+        "skills_raw": None,  # column just added — never extracted
+    }
+    # Without explicit opt-in, a NULL skills_raw must not trigger re-processing.
+    assert _needs_processing(job, ProcessingOptions(task="all")) is False
+
+    # With explicit opt-in, it should trigger.
+    opts_force = ProcessingOptions(task="all", force_reextract_skills=True)
+    assert _needs_processing(job, opts_force) is True
+
+    opts_below = ProcessingOptions(task="all", reextract_skills_below=5)
+    assert _needs_processing(job, opts_below) is True
 
 @patch("scripts.unified_post_processor.supabase")
 def test_try_db_write_success(mock_supabase):
@@ -320,7 +372,7 @@ def test_main_cli(mock_process):
         "processed": 5,
         "skipped": 0,
         "provider_used": "groq",
-        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0, "skills_raw": 0},
         "errors": 0
     }
     with patch("sys.argv", ["unified_post_processor.py", "--task", "sse", "--page-limit", "5"]):
@@ -335,6 +387,8 @@ def test_main_cli(mock_process):
             args.verbose = False
             args.since_days = None
             args.force_language_reprocess = False
+            args.reextract_skills_below = None
+            args.force_reextract_skills = False
             mock_args.return_value = args
 
             main()
@@ -347,6 +401,8 @@ def test_main_cli(mock_process):
                     verbose=False,
                     since_days=None,
                     force_language_reprocess=False,
+                    reextract_skills_below=None,
+                    force_reextract_skills=False,
                 )
             )
 
@@ -357,7 +413,7 @@ def test_main_cli_accepts_limit_alias(mock_process):
         "processed": 0,
         "skipped": 0,
         "provider_used": "groq",
-        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0, "skills_raw": 0},
         "errors": 0,
     }
 
@@ -373,6 +429,8 @@ def test_main_cli_accepts_limit_alias(mock_process):
             verbose=False,
             since_days=None,
             force_language_reprocess=False,
+            reextract_skills_below=None,
+            force_reextract_skills=False,
         )
     )
 
@@ -383,7 +441,7 @@ def test_main_cli_accepts_prod_flag(mock_process):
         "processed": 0,
         "skipped": 0,
         "provider_used": "groq",
-        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0},
+        "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0, "skills_raw": 0},
         "errors": 0,
     }
 

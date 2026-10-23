@@ -240,4 +240,76 @@ describe('useProfileForm', () => {
     expect(result.current.selectedValues).toEqual(importedValues);
     expect(result.current.formData.cv_import).toEqual(cvImport);
   });
+
+  it('does not let a stale post-save skills hydrate overwrite a local remove', async () => {
+    let resolveFetch: ((skills: any) => void) | undefined;
+    vi.mocked(fetchSkillsByUri).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveFetch = resolve;
+        }) as any,
+    );
+
+    let profileState = {
+      id: 'u1',
+      updated_at: '2024-01-01',
+      skills: ['s1', 's2'],
+      values: [],
+      work_types: [],
+      preferred_languages: [],
+    };
+    const rerenderRef: { current?: () => void } = {};
+
+    vi.mocked(useProfile).mockImplementation(
+      () =>
+        ({
+          profile: profileState,
+          loading: false,
+          error: null,
+          updateProfile: mockUpdateProfile,
+        }) as never,
+    );
+
+    mockUpdateProfile.mockImplementation(async () => {
+      profileState = { ...profileState, updated_at: '2024-01-02' };
+      rerenderRef.current?.();
+      return profileState;
+    });
+
+    const { result, rerender } = renderHook(() => useProfileForm('en'));
+    rerenderRef.current = rerender;
+
+    await waitFor(() => expect(resolveFetch).toBeDefined());
+    await act(async () => {
+      resolveFetch?.([
+        { uri: 's1', preferredLabel: { en: 'S1', fr: 'S1' } },
+        { uri: 's2', preferredLabel: { en: 'S2', fr: 'S2' } },
+      ]);
+    });
+    await waitFor(() => expect(result.current.selectedSkills).toHaveLength(2));
+
+    // Save bumps updated_at → a new skills fetch starts and stays pending.
+    resolveFetch = undefined;
+    await act(async () => {
+      await result.current.handleSaveProfile();
+    });
+    await waitFor(() => expect(resolveFetch).toBeDefined());
+
+    act(() => {
+      result.current.handleSkillRemove('s1');
+    });
+    expect(result.current.selectedSkills).toHaveLength(1);
+
+    // Stale hydrate for the post-save profile must not restore the removed skill.
+    await act(async () => {
+      resolveFetch?.([
+        { uri: 's1', preferredLabel: { en: 'S1', fr: 'S1' } },
+        { uri: 's2', preferredLabel: { en: 'S2', fr: 'S2' } },
+      ]);
+    });
+
+    expect(result.current.selectedSkills.map((s) => s.uri)).toEqual(['s2']);
+    // Hydration must complete so isDirty can detect the unsaved removal.
+    expect(result.current.isDirty).toBe(true);
+  });
 });

@@ -57,11 +57,10 @@ class IdealistScraper(BaseScraper):
         # identity for this board only.
         return {"Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8"}, None
 
-    def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True, use_stealth=True):
+    def start_browser(self, headless=True, viewport=None, use_real_chrome=True, use_stealth=True):
         return super().start_browser(
             headless=headless,
             viewport=viewport,
-            use_proxy=use_proxy,
             use_real_chrome=False,
             use_stealth=False,
         )

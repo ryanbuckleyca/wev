@@ -14,6 +14,7 @@ import { type RatedValue, type RatedSkill } from '@/lib/value-ratings';
 import { adjustCutoffOnRemove, adjustCutoffOnReorder } from '@/lib/ranked-list';
 import {
   MAX_PROFILE_SKILLS,
+  SOFT_PROFILE_SKILLS,
   MAX_PROFILE_VALUES,
   partitionByRating,
   validateProfileLimits,
@@ -30,7 +31,13 @@ export type LocationState = {
   province: string;
 };
 
-export { adjustCutoffOnRemove, adjustCutoffOnReorder, MAX_PROFILE_SKILLS, MAX_PROFILE_VALUES };
+export {
+  adjustCutoffOnRemove,
+  adjustCutoffOnReorder,
+  MAX_PROFILE_SKILLS,
+  SOFT_PROFILE_SKILLS,
+  MAX_PROFILE_VALUES,
+};
 
 export type CvImportStateUpdate<T> = {
   items: T[];
@@ -76,6 +83,8 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
   // Track the last profile snapshot we hydrated from
   const hydratedKeyRef = useRef<string | null>(null);
+  // Bumped on local skill edits so in-flight post-save hydrations cannot overwrite them.
+  const skillsHydrationEpochRef = useRef(0);
 
   const workValues: WorkValue[] = useMemo(() => {
     const tCurrent = (key: string, opts?: { defaultValue: string }) => tValues(key, opts ?? {});
@@ -141,8 +150,52 @@ export function useProfileForm(locale: 'en' | 'fr') {
       return;
     }
 
+    const skillsEpochAtStart = skillsHydrationEpochRef.current;
     void fetchSkillsByUri(profileSkills, locale)
       .then((fetched) => {
+        if (skillsEpochAtStart !== skillsHydrationEpochRef.current) {
+          // A local edit landed while this fetch was in flight. Preserve the
+          // edited skills in form state, but record the server-fetched skills
+          // as the saved baseline so isDirty can detect the unsaved change.
+          const psr = profile.skills_rated;
+          let savedSkills: EscoSkill[];
+          let savedCutoff: number;
+          if (psr && psr.length > 0) {
+            const { sorted, cutoff } = partitionByRating(fetched, psr);
+            savedSkills = sorted;
+            savedCutoff = cutoff;
+          } else {
+            savedSkills = fetched;
+            savedCutoff = 0;
+          }
+          const savedBaseline = serializeProfileFormState({
+            formData: {
+              full_name: profile.full_name || '',
+              bio: profile.bio || '',
+              work_types: normalizeWorkTypes(profile.work_types),
+              preferred_languages: normalizeLanguages(profile.preferred_languages),
+              location:
+                profile.lat != null && profile.lng != null && profile.location_display_name
+                  ? {
+                      lat: profile.lat,
+                      lng: profile.lng,
+                      display_name: profile.location_display_name,
+                      name: profile.municipality ?? '',
+                      province: profile.province ?? '',
+                    }
+                  : null,
+              cv_import: profile.cv_import ?? null,
+            },
+            valueItems: values.items,
+            valueCutoff: values.cutoff,
+            skillItems: savedSkills,
+            skillCutoff: savedCutoff,
+          });
+          baselineKeyRef.current = `${profile.id}:${profile.updated_at}:${locale}`;
+          setBaselineSnapshot(savedBaseline);
+          return;
+        }
+
         const psr = profile.skills_rated;
         if (psr && psr.length > 0) {
           const { sorted, cutoff } = partitionByRating(fetched, psr);
@@ -154,10 +207,13 @@ export function useProfileForm(locale: 'en' | 'fr') {
         }
       })
       .catch(() => {
+        if (skillsEpochAtStart !== skillsHydrationEpochRef.current) return;
         skills.setItems([]);
         skills.setCutoff(0);
       })
       .finally(() => {
+        // Always mark hydration complete so isDirty can fire even when a local
+        // edit blocked the setItems above. The edited skills are already in state.
         setHydrationComplete(true);
       });
   }, [profile, locale, values, skills]);
@@ -263,6 +319,34 @@ export function useProfileForm(locale: 'en' | 'fr') {
     }
   }, [formData, values, skills, updateProfile, t]);
 
+  const bumpSkillsHydrationEpoch = useCallback(() => {
+    skillsHydrationEpochRef.current += 1;
+  }, []);
+
+  const handleSkillToggle = useCallback(
+    (item: EscoSkill) => {
+      bumpSkillsHydrationEpoch();
+      skills.toggle(item);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
+  const handleSkillReorder = useCallback(
+    (from: number, to: number, explicitCutoff?: number) => {
+      bumpSkillsHydrationEpoch();
+      skills.reorder(from, to, explicitCutoff);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
+  const handleSkillRemove = useCallback(
+    (id: string) => {
+      bumpSkillsHydrationEpoch();
+      skills.remove(id);
+    },
+    [bumpSkillsHydrationEpoch, skills],
+  );
+
   const handleApplyCvImport = useCallback(
     ({
       skills: nextSkills,
@@ -278,6 +362,10 @@ export function useProfileForm(locale: 'en' | 'fr') {
       // Keep in-progress manual selections when the CV returns an empty list
       // for a category, while still replacing that category on non-empty imports.
       const nextSkillsState = resolveCvImportState(skills.items, skills.cutoff, nextSkills);
+      // Only bump the epoch when the CV actually replaces the skill list. When it
+      // returns empty and keeps the current list, leave any pending saved-skill
+      // hydration unblocked so it can complete normally.
+      if (nextSkills.length > 0) bumpSkillsHydrationEpoch();
       skills.setItems(nextSkillsState.items);
       skills.setCutoff(nextSkillsState.cutoff);
 
@@ -289,20 +377,21 @@ export function useProfileForm(locale: 'en' | 'fr') {
 
       notify.success(t('cvImportSuccess'));
     },
-    [skills, values, t],
+    [bumpSkillsHydrationEpoch, skills, values, t],
   );
 
   return {
     profile,
     profileLoading,
     profileError,
+    isDirty,
     formData,
     setFormData,
     selectedSkills: skills.items,
     skillCutoff: skills.cutoff,
-    handleSkillToggle: skills.toggle,
-    handleSkillReorder: skills.reorder,
-    handleSkillRemove: skills.remove,
+    handleSkillToggle,
+    handleSkillReorder,
+    handleSkillRemove,
     workValues,
     selectedValues: values.items,
     valueCutoff: values.cutoff,

@@ -1,6 +1,5 @@
 import os
 import time
-from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from utils.constants import BROWSER_USER_AGENT
@@ -9,9 +8,6 @@ from utils.env import is_truthy_env
 from utils.log import scraper_log
 from utils.normalize import normalize_job_data
 from utils.url import normalize_listing_url
-
-if TYPE_CHECKING:
-    from playwright.sync_api import ProxySettings
 
 
 def _is_ci() -> bool:
@@ -29,18 +25,7 @@ def _get_stealth():
     return _stealth_instance
 
 
-_HEAVY_RESOURCE_TYPES = {"image", "stylesheet", "font", "media"}
 
-def _block_heavy_resources(context) -> None:
-    """Block bandwidth-heavy resource types. Used when routing through a proxy."""
-    context.route(
-        "**/*",
-        lambda route: (
-            route.abort()
-            if route.request.resource_type in _HEAVY_RESOURCE_TYPES
-            else route.continue_()
-        ),
-    )
 
 
 class BaseScraper:
@@ -149,6 +134,11 @@ class BaseScraper:
         self.next_button = None
         self.jobs = []
         self.scraped_urls = set()
+        # URLs observed on listing pages this run, used *only* for page-cycling
+        # detection. Separate from scraped_urls so URLs that are never scrape
+        # candidates (e.g. COMPARE_ONLY mode skips) still contribute to the
+        # "seen this run" counter that detects stuck pagination.
+        self._pagination_seen_urls = set()
         # Flag to track if we should stop scraping early (for chronological scrapers)
         self.should_quit_list = False
         # Standardized job page wait/timeout configuration
@@ -172,7 +162,7 @@ class BaseScraper:
         return self.source["url"]
 
     def _retry(self, func, *args, max_retries=3, **kwargs):
-        """Retry func up to max_retries times. Bails immediately on 403s when no proxy is available."""
+        """Retry func up to max_retries times. Bails immediately on 403s."""
         for attempt in range(1, max_retries + 1):
             try:
                 scraper_log(f"\tAttempt {attempt}/{max_retries}...")
@@ -188,8 +178,8 @@ class BaseScraper:
                 else:
                     scraper_log(f"\t⚠️  Error (attempt {attempt}/{max_retries}): {error_msg[:100]}")
 
-                if is_403 and not _is_ci():
-                    scraper_log("\t❌ 403 with no proxy — skipping retries")
+                if is_403:
+                    scraper_log("\t❌ 403 — skipping retries")
                     raise
 
                 if attempt < max_retries:
@@ -258,7 +248,7 @@ class BaseScraper:
                 raise Exception(f"Bot challenge detected: '{indicator}'")
 
     def get_listing_items(self, page):
-        """Get listing items with automatic retry logic for proxy rotation."""
+        """Get listing items with automatic retry logic."""
         if not self.listing_selector:
             raise NotImplementedError("Set listing_selector or override get_listing_items()")
 
@@ -428,14 +418,34 @@ class BaseScraper:
             self.should_quit_list = False
             self.open_listings_page(self.listings_page)
             self.setup_pagination(self.listings_page)
+            all_duplicate_pages = 0
             while True:
                 if self.should_quit_list:
                     break
                 items = self.get_listing_items(self.listings_page)
-                self._process_listing_items(items)
+                run_new_scraped, run_new_skipped, run_dup_urls = self._process_listing_items(items)
                 if self.should_quit_list:
                     scraper_log(f"\tStopped after page {self.current_page_number} (chronological early exit).")
                     break
+                # Detect page cycling: the site is serving the same content on
+                # every page (seen after login modal blocks pagination).
+                # Only trigger after we've already scraped some new URLs this run
+                # so we don't stop prematurely on pages where everything already
+                # exists in the DB from a previous run.
+                # Cycling = no new URLs on this page, but at least one URL was
+                # already seen earlier in this same run (duplicate from earlier pages).
+                page_was_all_run_dupes = (
+                    run_new_scraped == 0
+                    and run_dup_urls >= 1
+                    and len(self.scraped_urls) > 0
+                )
+                if page_was_all_run_dupes:
+                    all_duplicate_pages += 1
+                    if all_duplicate_pages >= 2:
+                        scraper_log(f"\tStopping: {all_duplicate_pages} consecutive pages were already scraped this run (page cycling detected).")
+                        break
+                else:
+                    all_duplicate_pages = 0
                 if not self.has_next_page(self.listings_page):
                     scraper_log(f"\tNo more pages after page {self.current_page_number}.")
                     break
@@ -453,9 +463,21 @@ class BaseScraper:
         return self.jobs
 
     def _process_listing_items(self, items):
+        """Process listing items. Returns a 3-tuple:
+        (newly_scraped_count, newly_skipped_count, already_seen_this_run_count)
+        for this specific call, avoiding reliance on shared/external counters.
+        already_seen_this_run_count counts listings whose URL was already
+        observed on an earlier page this run via self._pagination_seen_urls.
+        This set is tracked separately from scraped_urls so URLs that are never
+        scrape candidates (e.g. COMPARE_ONLY skips) still contribute to the
+        pagination-cycle detection.
+        """
         max_jobs = self._max_jobs
         max_jobs_per_page = self._max_jobs_per_page
 
+        newly_scraped = 0
+        newly_skipped = 0
+        already_seen_this_run = 0
         jobs_this_page = 0
         for i, item in self._iter_items(items):
             if self.should_quit_list:
@@ -499,16 +521,34 @@ class BaseScraper:
                 if norm_url in self.existing_urls and skip_on_existing:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), already exists in database")
                     self.skipped_duplicates += 1
+                    newly_skipped += 1
+                    # Still record in the pagination-seen set (not a scrape
+                    # candidate) so repeated pages of DB-only duplicates are
+                    # visible to the cycle guard if this URL resurfaces.
+                    if norm_url in self._pagination_seen_urls:
+                        already_seen_this_run += 1
+                    self._pagination_seen_urls.add(norm_url)
                     continue
 
                 if compare_only and norm_url not in self.existing_urls:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), new URL (compare-only mode)")
+                    # Record in the pagination-seen set (not a scrape candidate)
+                    # so repeated pages with these URLs are flagged as cycling
+                    # even though we never open/extract them.
+                    if norm_url in self._pagination_seen_urls:
+                        already_seen_this_run += 1
+                    self._pagination_seen_urls.add(norm_url)
                     continue
 
+                if norm_url in self._pagination_seen_urls:
+                    already_seen_this_run += 1
                 if norm_url in self.scraped_urls:
                     scraper_log(f"\t\tSkipping job {i + 1} ({job_url}), already scraped this run")
+                    self._pagination_seen_urls.add(norm_url)
                     continue
+                self._pagination_seen_urls.add(norm_url)
                 self.scraped_urls.add(norm_url)
+                newly_scraped += 1
 
                 listing_data = self.get_listing_data(item) or {}
                 # Crucially, set listing_url from the listing item as it's the unique ID
@@ -535,6 +575,7 @@ class BaseScraper:
                         job_page.close()
                     except Exception:
                         pass
+        return newly_scraped, newly_skipped, already_seen_this_run
 
     def _iter_items(self, items):
         # Supports Playwright Locator or a list of Locators
@@ -611,14 +652,12 @@ class BaseScraper:
         """Return False if the --headed flag was set via SCRAPER_HEADED env var."""
         return False if os.environ.get("SCRAPER_HEADED") == "1" else headless
 
-    def start_browser(self, headless=True, viewport=None, use_proxy=False, use_real_chrome=True, use_stealth=True):
+    def start_browser(self, headless=True, viewport=None, use_real_chrome=True, use_stealth=True):
         """Launch browser and return the main page.
 
         use_real_chrome: use installed Chrome instead of bundled Chromium (default: True).
             Bypasses TLS fingerprint blocks that headless Chromium triggers.
             Falls back to Chromium if Chrome isn't installed.
-        use_proxy: route traffic through PROXY_SERVER when explicitly enabled
-            with ``use_proxy=True``; it is not automatically enabled in CI.
         use_stealth: apply playwright-stealth to the browser context (default: True).
             Disable for sites where stealth causes rendering issues (e.g. Acuspire widgets).
         """
@@ -629,12 +668,9 @@ class BaseScraper:
         self.playwright = sync_playwright().start()
         self.browser = self._launch_browser(headless, v, use_real_chrome)
         base_headers, user_agent = self._build_context_headers(use_real_chrome)
-        raw_proxy = self._build_proxy_config(use_proxy)
         optional_kwargs = {}
         if user_agent is not None:
             optional_kwargs["user_agent"] = user_agent
-        if raw_proxy is not None:
-            optional_kwargs["proxy"] = raw_proxy
         self.context = self.browser.new_context(
             viewport=v,
             locale="en-CA",
@@ -646,8 +682,6 @@ class BaseScraper:
         )
         if use_stealth:
             _get_stealth().apply_stealth_sync(self.context)
-        if raw_proxy:
-            _block_heavy_resources(self.context)
         assert self.context is not None
         self.page = self.context.new_page()
         self.page.set_default_navigation_timeout(60_000)
@@ -698,19 +732,7 @@ class BaseScraper:
         })
         return base_headers, user_agent
 
-    def _build_proxy_config(self, use_proxy: bool) -> "ProxySettings | None":
-        """Return proxy config if PROXY_SERVER is set and use_proxy=True, else None."""
-        from playwright.sync_api import ProxySettings
-        proxy_server = os.environ.get("PROXY_SERVER")
-        if not proxy_server or not use_proxy:
-            return None
-        config: ProxySettings = {"server": proxy_server}
-        if user := os.environ.get("PROXY_USERNAME"):
-            config["username"] = user
-        if pwd := os.environ.get("PROXY_PASSWORD"):
-            config["password"] = pwd
-        scraper_log(f"Using proxy: {proxy_server}")
-        return config
+
 
     def close_browser(self):
         resources = [

@@ -1,6 +1,6 @@
 import re
 
-from scrapers.base import BaseScraper, _is_ci
+from scrapers.base import BaseScraper
 from utils.extractors import extract_salary_from_text
 from utils.log import scraper_log
 
@@ -193,7 +193,3 @@ class MaCommunauteScraper(BaseScraper):
         except Exception:
             pass
         return None
-
-    def start_browser(self, headless=True, viewport=None):
-        """Launch browser with proxy in CI (needed for Cloudflare bypass)."""
-        return super().start_browser(headless=headless, viewport=viewport, use_proxy=_is_ci())
