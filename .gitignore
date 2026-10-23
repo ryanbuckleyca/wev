@@ -77,3 +77,6 @@ trunk_results.txt
 
 # Trunk / local tooling caches
 .trunk-cache/
+
+# Local halfvec evaluation sandbox (prod copy). Never commit.
+/halfvec-eval/

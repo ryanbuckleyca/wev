@@ -6,7 +6,7 @@
 
 begin;
 
-select plan(12);
+select plan(14);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -218,14 +218,63 @@ select ok(
   'async job recalc: summary/description UPDATE does not enqueue recalc'
 );
 
+-- ─── Test 7: weighted path + job outside the skill candidate set ─────────────
+-- Regression for the null-shared_skills prod failure. The weighted path (ranked
+-- values_rated) read ts.shared_skills without COALESCE, so any job with no row
+-- in _temp_skill_scores inserted NULL and violated job_matches.shared_skills.
+-- Here the profile has skills (so skill scoring runs), but the value-only job
+-- has no job_skills and no embeddings, so it never enters _temp_skill_scores.
+
+\set weighted_user_id '''00000000-0000-0000-0000-000000000005'''
+\set value_only_job_id '''00000000-0000-0000-0000-000000000006'''
+
+-- Value-only job: matchable on values, but absent from every skill candidate set.
+insert into public.jobs (
+  id, source_id, job_title, organization, listing_url, values
+) values (
+  :value_only_job_id, :test_source_id, 'pgTAP Value-Only Job', 'Test Org',
+  'https://example.com/pgtap-value-only-job',
+  array['community']
+) on conflict (id) do nothing;
+
+-- Weighted profile: ranked values_rated flips v_use_weighted on; a real skill
+-- makes the skill-scoring branch run so the value-only job is a true miss.
+insert into public.profiles (id, skills, values, values_rated)
+values (
+  :weighted_user_id,
+  array['pgtap-skill-exact'],
+  array['community'],
+  '[{"value": "community", "rank": 1}]'::jsonb
+) on conflict (id) do nothing;
+
+insert into public.profile_skills (user_id, skill_id, score, source)
+values (:weighted_user_id, 'pgtap-skill-exact', 1.0, 'pgtap')
+on conflict (user_id, skill_id) do update set score = excluded.score;
+
+select recalculate_matches_for_user(:weighted_user_id);
+
+select ok(
+  exists(
+    select 1 from public.job_matches
+     where user_id = :weighted_user_id and job_id = :value_only_job_id
+  ),
+  'weighted path: value-only job outside skill candidate set still inserts a match'
+);
+
+select ok(
+  (select shared_skills is not null from public.job_matches
+   where user_id = :weighted_user_id and job_id = :value_only_job_id),
+  'weighted path: shared_skills is coalesced, never null'
+);
+
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
 
 delete from public.job_match_recalc_queue where job_id in (:test_job_id, :test_job_id_2);
-delete from public.job_matches where user_id = :test_user_id;
-delete from public.profile_skills where user_id = :test_user_id;
+delete from public.job_matches where user_id in (:test_user_id, :weighted_user_id);
+delete from public.profile_skills where user_id in (:test_user_id, :weighted_user_id);
 delete from public.job_skills where job_id in (:test_job_id, :test_job_id_2);
-delete from public.profiles    where id = :test_user_id;
-delete from public.jobs        where id in (:test_job_id, :test_job_id_2);
+delete from public.profiles    where id in (:test_user_id, :weighted_user_id);
+delete from public.jobs        where id in (:test_job_id, :test_job_id_2, :value_only_job_id);
 delete from public.sources     where id = :test_source_id;
 delete from public.esco_skills where concept_uri like 'pgtap-%';
 
