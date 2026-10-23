@@ -30,6 +30,8 @@ exclude = [
   "^https://www.linkedin.com",
   "^https://twitter.com",
   "^https://x.com",
+  # ESCO API serves a bot/WAF wall (403 → sorry.ec.europa.eu) to automated checkers
+  "^https://ec\\.europa\\.eu/esco/api",
 ]
 
 # Exclude private IPs / loopback
