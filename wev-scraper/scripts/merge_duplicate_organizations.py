@@ -31,22 +31,24 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Callable
 
 # --prod must load .env.production and confirm before utils.db is imported.
 from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
 
+# Only the CLI announces the target. Imported mid-scrape this stays silent so an
+# import does not print to the scrape log; the DB target is already chosen.
+_RUN_AS_SCRIPT = __name__ == "__main__"
+
 if "--prod" in sys.argv[1:]:
     confirm_prod_run(full_prod=True)
     bootstrap_prod_from_argv(sys.argv[1:], Path(__file__))
-    print("Using PRODUCTION database")
-else:
+    if _RUN_AS_SCRIPT:
+        print("Using PRODUCTION database")
+elif _RUN_AS_SCRIPT:
     from utils.env import is_truthy_env
 
-    # Imported mid-scrape, argv has no --prod, but the scraper already selected prod.
-    if is_truthy_env("USE_PROD_DB"):
-        print("Using PRODUCTION database")
-    else:
-        print("Using TEST database")
+    print("Using PRODUCTION database" if is_truthy_env("USE_PROD_DB") else "Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 from utils.organization_cache import employer_apex, evidence_domain, extract_domain  # noqa: E402
@@ -451,24 +453,31 @@ def _cluster_organizations(orgs: list[dict]) -> list[tuple[str, list[dict], bool
     return result
 
 
-def build_decisions(*, limit: int | None = None) -> list[ClusterDecision]:
-    print("Fetching organizations...")
+def build_decisions(
+    *, limit: int | None = None, log: Callable[[str], None] = print
+) -> list[ClusterDecision]:
+    """Classify duplicate-name clusters.
+
+    *log* receives the progress lines so a caller inside the scrape can route
+    them to the scraper log instead of stdout.
+    """
+    log("Fetching organizations...")
     orgs = fetch_all_rows(
         "organizations",
         "id, name, location, website, slug, description, municipality, province, alternative_names",
     )
-    print(f"Total organizations: {len(orgs)}")
+    log(f"Total organizations: {len(orgs)}")
 
     clustered = _cluster_organizations(orgs)
-    print(f"Duplicate name clusters: {len(clustered)}")
+    log(f"Duplicate name clusters: {len(clustered)}")
 
     cluster_items = sorted(clustered, key=lambda item: item[0])
     if limit is not None:
         cluster_items = cluster_items[: max(0, limit)]
-        print(f"Limiting to first {len(cluster_items)} cluster(s) (--limit={limit})")
+        log(f"Limiting to first {len(cluster_items)} cluster(s) (--limit={limit})")
 
     all_ids = [int(o["id"]) for _, rows, _ in cluster_items for o in rows]
-    print(f"Counting jobs for {len(all_ids)} duplicate rows...")
+    log(f"Counting jobs for {len(all_ids)} duplicate rows...")
     job_counts = _job_counts_for(all_ids)
 
     decisions: list[ClusterDecision] = []
@@ -599,7 +608,7 @@ def _print_org_postings(org_id: int, job_count: int) -> None:
     """Postings already linked to this organization, so a merge decision has the source text."""
     from utils.catch_up import source_job_lines, source_jobs_for_org
 
-    jobs = source_jobs_for_org(org_id, limit=3)
+    jobs = source_jobs_for_org(org_id)
     if not jobs:
         print("         no linked postings")
         return

@@ -26,7 +26,10 @@ def _row(**kwargs) -> OrgRow:
 
 class TestDescribeDuplicateReviews:
     def test_lists_review_pairs_and_skips_auto_merge(self):
-        from scripts.merge_duplicate_organizations import ClusterDecision, describe_duplicate_reviews
+        from scripts.merge_duplicate_organizations import (
+            ClusterDecision,
+            describe_duplicate_reviews,
+        )
 
         decisions = [
             ClusterDecision(
@@ -58,7 +61,7 @@ class TestDescribeDuplicateReviews:
 
 
 def test_parked_org_review_lines_hides_ignored(monkeypatch):
-    from utils.catch_up import parked_org_review_lines
+    from utils.catch_up import review_parked_organizations
 
     class _Resp:
         data = [
@@ -87,7 +90,7 @@ def test_parked_org_review_lines_hides_ignored(monkeypatch):
         "utils.catch_up.supabase.table",
         lambda _name: _Query(),
     )
-    text = "\n".join(parked_org_review_lines())
+    text = "\n".join(review_parked_organizations(interactive=False))
     assert "Private Residence — This name is a home" in text
     assert "Hidden" not in text
     assert "not a terminal" in text
@@ -180,7 +183,11 @@ class TestLocationSuffixClustering:
         assert exact_ids == {3, 4}
 
     def test_and_and_ampersand_cluster_as_near_match(self):
-        from scripts.merge_duplicate_organizations import _cluster_organizations, classify_cluster, loose_name_key
+        from scripts.merge_duplicate_organizations import (
+            _cluster_organizations,
+            classify_cluster,
+            loose_name_key,
+        )
 
         assert loose_name_key("Massey Hall & Roy Thomson Hall") == loose_name_key(
             "Massey Hall and Roy Thomson Hall"

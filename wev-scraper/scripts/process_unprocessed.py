@@ -35,8 +35,10 @@ from utils.catch_up import (  # noqa: E402
     job_needs_skills,
     maintain_organization_duplicates,
     org_batch_limit,
-    review_parked_organizations,
     persist_org_assessment_outcome,
+    review_parked_organizations,
+)
+from utils.catch_up import (  # noqa: E402
     process_unprocessed_jobs as run_unprocessed_jobs,
 )
 from utils.db import supabase  # noqa: E402

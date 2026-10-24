@@ -251,9 +251,9 @@ def filter_assessment_update_fields(
         if "sse_details" in db_fields and isinstance(draft.get("sse_details"), dict):
             db_fields["sse_details"] = draft["sse_details"]
 
-    for field, value in db_fields.items():
-        if value is not None and _is_org_field_missing(org, field):
-            filtered[field] = value
+    for field_name, value in db_fields.items():
+        if value is not None and _is_org_field_missing(org, field_name):
+            filtered[field_name] = value
 
     # is_sse defaults to false in the DB, so the missing-predicate treats it as
     # already set. Keep the boolean locked to whatever rating this write leaves
@@ -914,7 +914,7 @@ def _parked_place(row: Dict[str, Any]) -> str | None:
     return place or row.get("location") or None
 
 
-def source_jobs_for_org(org_id: Any, *, limit: int = 2) -> List[dict]:
+def source_jobs_for_org(org_id: Any, *, limit: int = 3) -> List[dict]:
     """Jobs already linked to this organization, so a review can show where the name came from."""
     try:
         resp = (
@@ -1044,23 +1044,67 @@ def _ask_corrected_place(row: Dict[str, Any]) -> tuple[str, str] | None | str:
 
 
 def _geocode_place(city: str, province: str) -> Dict[str, Any]:
-    """Coordinates for a city the reviewer typed. Empty when the geocoder disagrees."""
-    try:
-        from utils.location_parser import _normalize_ca_province_code, parse_address_with_geocodio
+    """Coordinates for a city the reviewer typed.
 
+    When the geocoder agrees on the province, its point is used. When it does
+    not, the province centroid is kept (accuracy ``state``) so the row still has
+    coordinates rather than null lat/lng until the next geocode pass.
+    """
+    from utils.location_parser import (
+        _CA_PROVINCE_CENTROIDS,
+        _normalize_ca_province_code,
+        parse_address_with_geocodio,
+    )
+
+    try:
         geo = parse_address_with_geocodio(f"{city}, {province}") or {}
     except Exception as exc:
         _log(f"  Could not geocode {city}, {province}: {exc}")
-        return {}
+        geo = {}
     found = _normalize_ca_province_code(geo.get("province"))
-    if found != province or not geo.get("municipality"):
-        return {}
-    return geo
+    if found == province and geo.get("municipality"):
+        return geo
+
+    latlng = _CA_PROVINCE_CENTROIDS.get(province)
+    if latlng:
+        return {
+            "municipality": None,
+            "province": province,
+            "lat": latlng[0],
+            "lng": latlng[1],
+            "geocode_accuracy_type": "state",
+        }
+    return {}
+
+
+def _relocate_org_jobs(org_id: Any, old_place: Dict[str, Any], job_payload: Dict[str, Any]) -> None:
+    """Move only the jobs that shared the organization's old mismatched place.
+
+    An employer can post in more than one city, so correcting the organization's
+    place must not stamp the new city onto a posting that was somewhere else. The
+    update matches jobs for this org whose stored municipality and province equal
+    the place being corrected. Filters are only added for the parts of the old
+    place that are set: if the org had a province but no municipality, every job
+    for it in that province moves; a job that stores a *different* municipality is
+    never touched.
+    """
+    old_muni = old_place.get("municipality")
+    old_prov = old_place.get("province")
+    query = supabase.table("jobs").update(job_payload).eq("organization_id", org_id)
+    if old_prov:
+        query = query.eq("province", old_prov)
+    if old_muni:
+        query = query.eq("municipality", old_muni)
+    query.execute()
 
 
 def _correct_parked_place(row: Dict[str, Any], city: str, province: str) -> str:
-    """Write the corrected place onto the organization and its jobs, then assess once."""
+    """Write the corrected place onto the organization and its matching jobs, then assess once."""
     name = row.get("name") or "(unnamed)"
+    old_place = {
+        "municipality": row.get("municipality"),
+        "province": row.get("province"),
+    }
     geo = _geocode_place(city, province)
     if geo.get("municipality"):
         city = geo["municipality"]
@@ -1084,7 +1128,7 @@ def _correct_parked_place(row: Dict[str, Any], city: str, province: str) -> str:
         for key in ("municipality", "province", "location", "lat", "lng", "geocode_accuracy_type")
     }
     try:
-        supabase.table("jobs").update(job_payload).eq("organization_id", row["id"]).execute()
+        _relocate_org_jobs(row["id"], old_place, job_payload)
     except Exception as exc:
         _log(f"  Updated {name}, but could not update its jobs: {exc}")
 
@@ -1235,11 +1279,6 @@ def review_parked_organizations(*, interactive: bool) -> List[str]:
     return lines
 
 
-def parked_org_review_lines() -> List[str]:
-    """Parked organizations, without prompting. Used when the caller is not a terminal."""
-    return review_parked_organizations(interactive=False)
-
-
 def maintain_organization_duplicates(*, interactive: bool) -> List[str]:
     """Merge exact duplicate organizations, then surface anything a person must confirm.
 
@@ -1253,7 +1292,7 @@ def maintain_organization_duplicates(*, interactive: bool) -> List[str]:
         review_interactively,
     )
 
-    decisions = build_decisions()
+    decisions = build_decisions(log=_log)
     auto_count = sum(1 for decision in decisions if decision.bucket == "auto-merge")
     lines: List[str] = []
     if auto_count:

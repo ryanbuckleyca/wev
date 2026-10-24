@@ -14,11 +14,11 @@ from utils.catch_up import (
     SKIP_REASON_INCOMPLETE_BACKLOG,
     SKIP_REASON_NO_NEW_FIELDS,
     SKIP_REASON_PARTIAL_FILL,
+    OrgPassResult,
     filter_assessment_update_fields,
     find_missing_org_fields,
     find_unprocessed_organizations,
     org_batch_limit,
-    OrgPassResult,
     persist_org_assessment_outcome,
     process_unprocessed_organizations,
     resolve_org_skip_reason,
@@ -879,6 +879,55 @@ def test_source_job_lines_include_posting_place_and_url():
     assert "Sainte-Catherine, QC" in text
     assert "workinculture.ca" in text
     assert "St. Catharines Cultural Investment Program" in text
+
+
+def test_relocate_org_jobs_only_touches_the_old_place(monkeypatch):
+    import utils.catch_up as cu
+
+    calls = []
+
+    class _Query:
+        def __init__(self):
+            self.filters = {}
+
+        def update(self, payload):
+            calls.append(("update", payload))
+            return self
+
+        def eq(self, col, val):
+            self.filters[col] = val
+            calls.append(("eq", col, val))
+            return self
+
+        def execute(self):
+            calls.append(("execute", dict(self.filters)))
+            return type("R", (), {"data": [{"id": "j"}]})()
+
+    monkeypatch.setattr(cu.supabase, "table", lambda _name: _Query())
+
+    cu._relocate_org_jobs(
+        5,
+        {"municipality": "Sainte-Catherine", "province": "QC"},
+        {"municipality": "St. Catharines", "province": "ON", "location": "St. Catharines, ON"},
+    )
+    executed = [c for c in calls if c[0] == "execute"][0][1]
+    assert executed["organization_id"] == 5
+    assert executed["province"] == "QC"
+    assert executed["municipality"] == "Sainte-Catherine"
+
+
+def test_geocode_place_falls_back_to_province_centroid(monkeypatch):
+    import utils.catch_up as cu
+
+    monkeypatch.setattr(
+        "utils.location_parser.parse_address_with_geocodio",
+        lambda _q: {"municipality": "Elsewhere", "province": "ON"},
+    )
+    geo = cu._geocode_place("St. Catharines", "QC")
+    assert geo["province"] == "QC"
+    assert geo["municipality"] is None
+    assert geo["lat"] is not None
+    assert geo["geocode_accuracy_type"] == "state"
 
 
 def test_parked_reply_action_maps_keys():
