@@ -30,9 +30,14 @@ from utils.catch_up import (  # noqa: E402
     VALID_LANGUAGES,
     _park_org,
     find_missing_org_fields,
+    find_unprocessed_jobs,
+    job_catch_up_lines,
     job_needs_skills,
+    maintain_organization_duplicates,
     org_batch_limit,
+    review_parked_organizations,
     persist_org_assessment_outcome,
+    process_unprocessed_jobs as run_unprocessed_jobs,
 )
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log as _log  # noqa: E402
@@ -53,7 +58,8 @@ def fetch_unprocessed_jobs():
             supabase.table("jobs")
             .select(
                 "id, listing_url, summary, values, is_sse, language, "
-                "organization_id, skills, skills_raw, description, job_title, organization, scraped_at"
+                "organization_id, skills, skills_raw, description, job_title, organization, "
+                "municipality, province, location, scraped_at"
             )
             .order("scraped_at", desc=False)
             .range(page * page_size, (page + 1) * page_size - 1)
@@ -175,118 +181,14 @@ def fetch_unprocessed_orgs(include_parked=False):
 
 
 def process_unprocessed_jobs(unprocessed, skip_esco=False):
-    """Run unified post-processor on unprocessed jobs, then ESCO skills tagging."""
+    """Run catch-up job processing: org links, unified LLM fields, then ESCO."""
     if not unprocessed:
         _log("No unprocessed jobs — skipping job post-processing.")
-        return 0, 0
+        from utils.catch_up import JobCatchUpResult
 
-    job_ids = [j["id"] for j, _ in unprocessed]
-    _log(f"Processing {len(job_ids)} jobs in chunks...")
+        return JobCatchUpResult()
 
-    from llm.cooldown import DailyQuotaExhaustedError
-    from scripts.tag_esco_skills_vector import tag_esco_skills_vector
-    from scripts.unified_post_processor import (
-        ProcessingOptions,
-        process_jobs_unified,
-    )
-
-    unified_processed = 0
-    unified_errors = 0
-    esco_processed = 0
-    esco_errors = 0
-
-    chunk_size = 100
-
-    for i in range(0, len(job_ids), chunk_size):
-        chunk = job_ids[i : i + chunk_size]
-        _log(f"--- Job Chunk {i // chunk_size + 1} ({len(chunk)} jobs) ---")
-
-        # 1) Unified post-processor
-        # Split: jobs that need LLM work beyond skills go through task="all";
-        # jobs that only need skills_raw extraction go through task="skills" so
-        # _needs_processing's skills gate fires unconditionally (no force flag needed).
-        NON_SKILLS_NEEDS = {"summary", "values", "sse", "language"}
-        all_chunk = [
-            j["id"]
-            for j, needs in unprocessed[i : i + chunk_size]
-            if any(req in needs for req in NON_SKILLS_NEEDS)
-        ]
-        skills_only_chunk = [
-            j["id"]
-            for j, needs in unprocessed[i : i + chunk_size]
-            if "skills" in needs and not any(req in needs for req in NON_SKILLS_NEEDS)
-        ]
-
-        unified_chunk = all_chunk  # kept for error accounting below
-
-        if all_chunk:
-            try:
-                result = process_jobs_unified(
-                    ProcessingOptions(
-                        task="all",
-                        page_limit=None,
-                        job_ids=all_chunk,
-                        dry_run=False,
-                        verbose=False,
-                    )
-                )
-                unified_errors += result.get("errors", 0)
-                unified_processed += result.get("processed", 0)
-            except DailyQuotaExhaustedError as e:
-                _log(f"🛑 All LLM daily quotas exhausted — aborting remaining chunks: {e}")
-                raise
-            except Exception as e:
-                _log(f"✗ Unified post-processor failed for chunk: {e}")
-                unified_errors += len(all_chunk)
-
-        if skills_only_chunk:
-            try:
-                result = process_jobs_unified(
-                    ProcessingOptions(
-                        task="skills",
-                        page_limit=None,
-                        job_ids=skills_only_chunk,
-                        dry_run=False,
-                        verbose=False,
-                    )
-                )
-                unified_errors += result.get("errors", 0)
-                unified_processed += result.get("processed", 0)
-            except DailyQuotaExhaustedError as e:
-                _log(f"🛑 All LLM daily quotas exhausted — aborting remaining chunks: {e}")
-                raise
-            except Exception as e:
-                _log(f"✗ Unified post-processor (skills-only) failed for chunk: {e}")
-                unified_errors += len(skills_only_chunk)
-
-        # 2) ESCO skills tagging
-        if not skip_esco:
-            try:
-                esco_chunk = [
-                    j["id"]
-                    for j, needs in unprocessed[i : i + chunk_size]
-                    if "skills" in needs
-                ]
-
-                if esco_chunk:
-                    esco_result = tag_esco_skills_vector(job_ids=esco_chunk)
-                    esco_processed += esco_result.get("processed", 0)
-                    esco_errors += esco_result.get("errors", 0)
-
-            except Exception as e:
-                _log(f"ESCO tagging failed for chunk: {e}")
-                esco_errors += len(chunk)
-
-    _log(
-        f"Unified post-processor: "
-        f"processed={unified_processed}, errors={unified_errors}"
-    )
-    _log(
-        f"ESCO tagging: "
-        f"processed={esco_processed}, errors={esco_errors}"
-    )
-
-    return unified_processed, unified_errors
+    return run_unprocessed_jobs(unprocessed, skip_esco=skip_esco)
 
 
 def _missing_org_fields(org):
@@ -449,11 +351,46 @@ def _parse_args(argv=None):
             "This spends credits on rows a previous attempt gave up on."
         ),
     )
+    parser.add_argument(
+        "--review-only",
+        action="store_true",
+        help=(
+            "Only the manual review at the end of catch-up: exact duplicate "
+            "organizations, then each parked organization with the job posting "
+            "it came from. Does not assess organizations or call the model."
+        ),
+    )
     return parser.parse_args(argv)
+
+
+def _run_manual_review() -> None:
+    """Exact-duplicate merges, then parked organizations with their source postings."""
+    review_lines = ["Manual review"]
+    try:
+        review_lines.extend(maintain_organization_duplicates(interactive=sys.stdin.isatty()))
+    except Exception as exc:
+        _log(f"Organization duplicate check failed: {exc}")
+    try:
+        review_lines.extend(
+            review_parked_organizations(interactive=sys.stdin.isatty())
+        )
+    except Exception as exc:
+        _log(f"Could not list parked organizations: {exc}")
+    if len(review_lines) == 1:
+        review_lines.append("Manual review: nothing waiting.")
+    for line in review_lines:
+        _log(line)
 
 
 def main(argv=None):
     args = _parse_args(argv)
+    if args.review_only:
+        _log("=" * 70)
+        _log("MANUAL REVIEW ONLY (PROD)")
+        _log("=" * 70)
+        _run_manual_review()
+        return
+
     limit = org_batch_limit() if args.limit is None else args.limit
 
     _log("=" * 70)
@@ -491,17 +428,35 @@ def main(argv=None):
             f"({time.time() - t0:.1f}s)"
         )
 
+    # ── Exact duplicate orgs, then pairs that still need a person ──────────
+    _run_manual_review()
+
     # ── Process JOBS ─────────────────────────────────────────────────────────
-    job_ok, job_err = 0, 0
+    job_lines: list[str] = []
 
     if unprocessed_jobs:
         t0 = time.time()
-        job_ok, job_err = process_unprocessed_jobs(unprocessed_jobs)
+        job_result = process_unprocessed_jobs(unprocessed_jobs)
+        original_ids = {job["id"] for job, _needs in unprocessed_jobs}
+        remaining = [
+            (job, needs)
+            for job, needs in find_unprocessed_jobs()
+            if job["id"] in original_ids
+        ]
+        name_reviews: list[str] = []
+        if job_result.unresolved_org_names:
+            try:
+                from scripts.merge_duplicate_organizations import review_lines_for_names
 
-        _log(
-            f"JOBS: {job_ok} processed, {job_err} errors  "
-            f"({time.time() - t0:.1f}s)"
+                name_reviews = review_lines_for_names(job_result.unresolved_org_names)
+            except Exception as exc:
+                _log(f"  Could not list near-duplicate organization names: {exc}")
+        job_lines = job_catch_up_lines(
+            len(unprocessed_jobs), job_result, remaining, name_reviews
         )
+        job_lines[0] += f" ({time.time() - t0:.1f}s)"
+        for line in job_lines:
+            _log(line)
 
     _log("\n" + "=" * 70)
     _log("FINAL SUMMARY")
@@ -513,11 +468,11 @@ def main(argv=None):
         f"({org_err} errors)"
     )
 
-    _log(
-        f"Jobs:          "
-        f"{job_ok}/{len(unprocessed_jobs)} processed  "
-        f"({job_err} errors)"
-    )
+    if job_lines:
+        for line in job_lines:
+            _log(line)
+    else:
+        _log("Jobs: 0 unprocessed")
 
     _log("=" * 70)
 

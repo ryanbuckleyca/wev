@@ -375,20 +375,39 @@ class ScraperOrchestrator:
         _log("FINAL SUMMARY")
         _log("="*40)
         cu = self.results.catch_up or {}
-        if cu.get("orgs_total") or cu.get("jobs_total"):
+        if (
+            cu.get("org_lines")
+            or cu.get("job_lines")
+            or cu.get("review_lines")
+            or cu.get("orgs_total")
+            or cu.get("jobs_total")
+        ):
             _log("Catch-up pass (after scraping):")
-            if cu.get("orgs_total"):
+            if cu.get("org_lines"):
+                for line in cu["org_lines"]:
+                    _log(f"  {line}")
+            elif cu.get("orgs_total"):
                 o_ok = cu.get("orgs_processed", 0)
                 o_err = cu.get("orgs_errors", 0)
                 o_parked = cu.get("orgs_parked", 0)
                 _log(
-                    f"  Organizations: {o_ok}/{cu['orgs_total']} ok, "
-                    f"{o_parked} parked for review, {o_err} errors"
+                    f"  Organizations: {o_ok}/{cu['orgs_total']} completed, "
+                    f"{o_parked} parked, {o_err} errors"
                 )
-            if cu.get("jobs_total"):
+            if cu.get("review_lines"):
+                for line in cu["review_lines"]:
+                    _log(f"  {line}")
+            if cu.get("job_lines"):
+                for line in cu["job_lines"]:
+                    _log(f"  {line}")
+            elif cu.get("jobs_total"):
                 j_ok = cu.get("jobs_processed", 0)
                 j_err = cu.get("jobs_errors", 0)
-                _log(f"  Jobs:          {j_ok}/{cu['jobs_total']} processed, {j_err} errors")
+                j_still = cu.get("jobs_still", 0)
+                _log(
+                    f"  Jobs:          {j_ok}/{cu['jobs_total']} fully processed, "
+                    f"{j_still} still unprocessed, {j_err} errors"
+                )
             _log("-" * 40)
         for s in self.results.summary:
             source = s["source"]

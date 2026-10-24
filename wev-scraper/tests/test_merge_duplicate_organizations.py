@@ -24,6 +24,75 @@ def _row(**kwargs) -> OrgRow:
     return OrgRow(**defaults)
 
 
+class TestDescribeDuplicateReviews:
+    def test_lists_review_pairs_and_skips_auto_merge(self):
+        from scripts.merge_duplicate_organizations import ClusterDecision, describe_duplicate_reviews
+
+        decisions = [
+            ClusterDecision(
+                bucket="auto-merge",
+                normalized_name="ymca",
+                reason="same website",
+                survivor_id=1,
+                merge_ids=[2],
+                domains=["ymcaquebec.org"],
+                rows=[{"id": 1, "name": "Les YMCA du Québec"}, {"id": 2, "name": "Les YMCA du Québec"}],
+            ),
+            ClusterDecision(
+                bucket="review",
+                normalized_name="massey hall",
+                reason="near-match names (& / and)",
+                survivor_id=220,
+                merge_ids=[1113],
+                domains=["mhrth.com"],
+                rows=[
+                    {"id": 220, "name": "Massey Hall & Roy Thomson Hall"},
+                    {"id": 1113, "name": "Massey Hall and Roy Thomson Hall"},
+                ],
+            ),
+        ]
+        text = "\n".join(describe_duplicate_reviews(decisions))
+        assert "Les YMCA" not in text
+        assert "Massey Hall & Roy Thomson Hall / Massey Hall and Roy Thomson Hall" in text
+        assert "y merges" in text
+
+
+def test_parked_org_review_lines_hides_ignored(monkeypatch):
+    from utils.catch_up import parked_org_review_lines
+
+    class _Resp:
+        data = [
+            {"id": 1, "name": "Private Residence", "assessment_skip_reason": "private_residence"},
+            {"id": 2, "name": "Hidden", "assessment_skip_reason": "ignored"},
+        ]
+
+    class _Query:
+        def select(self, *_a, **_k):
+            return self
+
+        @property
+        def not_(self):
+            return self
+
+        def is_(self, *_a, **_k):
+            return self
+
+        def order(self, *_a, **_k):
+            return self
+
+        def execute(self):
+            return _Resp()
+
+    monkeypatch.setattr(
+        "utils.catch_up.supabase.table",
+        lambda _name: _Query(),
+    )
+    text = "\n".join(parked_org_review_lines())
+    assert "Private Residence — This name is a home" in text
+    assert "Hidden" not in text
+    assert "not a terminal" in text
+
+
 class TestNormalizeName:
     def test_strips_accents_and_case(self):
         assert normalize_name("Centraide Montréal") == normalize_name("centraide montreal")
@@ -109,6 +178,93 @@ class TestLocationSuffixClustering:
         assert near_ids == {1, 2}
         exact_ids = {r["id"] for r in exact[0][1]}
         assert exact_ids == {3, 4}
+
+    def test_and_and_ampersand_cluster_as_near_match(self):
+        from scripts.merge_duplicate_organizations import _cluster_organizations, classify_cluster, loose_name_key
+
+        assert loose_name_key("Massey Hall & Roy Thomson Hall") == loose_name_key(
+            "Massey Hall and Roy Thomson Hall"
+        )
+        orgs = [
+            {
+                "id": 220,
+                "name": "The Corporation of Massey Hall & Roy Thomson Hall",
+                "municipality": "Toronto",
+                "province": "ON",
+                "location": "Toronto",
+                "website": "https://www.mhrth.com",
+            },
+            {
+                "id": 1113,
+                "name": "The Corporation of Massey Hall and Roy Thomson Hall",
+                "municipality": "Toronto",
+                "province": "ON",
+                "location": "Toronto",
+                "website": "https://roythomsonhall.mhrth.com",
+            },
+        ]
+        clusters = _cluster_organizations(orgs)
+        assert len(clusters) == 1
+        label, rows, near = clusters[0]
+        assert near is True
+        assert {row["id"] for row in rows} == {220, 1113}
+        decision = classify_cluster(label, [
+            _row(id=row["id"], name=row["name"], website=row["website"], domain="mhrth.com", job_count=1)
+            for row in rows
+        ], near_match=True)
+        assert decision.bucket == "review"
+
+    def test_curly_and_straight_apostrophe_cluster_as_near_match(self):
+        from scripts.merge_duplicate_organizations import _cluster_organizations, loose_name_key
+
+        straight = "Office municipal d'habitation de Montréal"
+        curly = "Office municipal d\u2019habitation de Montréal"
+        assert loose_name_key(straight) == loose_name_key(curly)
+        assert loose_name_key(straight) != ""
+        orgs = [
+            {
+                "id": 21,
+                "name": curly,
+                "municipality": "Montreal",
+                "province": "QC",
+                "location": "Montreal, QC",
+                "website": "https://www.omhm.qc.ca/",
+            },
+            {
+                "id": 1844,
+                "name": straight,
+                "municipality": "Montreal",
+                "province": "QC",
+                "location": "Montreal, QC",
+                "website": "https://www.omhm.qc.ca/",
+            },
+        ]
+        clusters = _cluster_organizations(orgs)
+        assert len(clusters) == 1
+        assert clusters[0][2] is True
+
+    def test_and_ampersand_with_different_websites_stay_separate(self):
+        from scripts.merge_duplicate_organizations import _cluster_organizations
+
+        orgs = [
+            {
+                "id": 1,
+                "name": "Food and Water",
+                "municipality": "Toronto",
+                "province": "ON",
+                "location": "Toronto",
+                "website": "https://foodandwater.org",
+            },
+            {
+                "id": 2,
+                "name": "Food & Water",
+                "municipality": "Toronto",
+                "province": "ON",
+                "location": "Toronto",
+                "website": "https://other-food.example",
+            },
+        ]
+        assert _cluster_organizations(orgs) == []
 
     def test_cluster_organizations_does_not_link_different_cities(self):
         from scripts.merge_duplicate_organizations import _cluster_organizations

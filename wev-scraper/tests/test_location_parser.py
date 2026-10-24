@@ -134,6 +134,53 @@ def test_normalize_messy_location_and_aliases():
     assert is_country_only_location("Canada +") is True
 
 
+def test_ambiguous_st_catharines_uses_posting_and_employer():
+    from utils.location_parser import ambiguous_city_for
+
+    reviewers = ambiguous_city_for(
+        "Sainte-Catherine, QC",
+        "City of St. Catharines Call for Reviewers: St. Catharines Cultural Investment Program. "
+        "Be an engaged member of the arts community in Ontario.",
+    )
+    assert reviewers["municipality"] == "St. Catharines"
+    assert reviewers["province"] == "ON"
+
+    pac = ambiguous_city_for(
+        "Sainte-Catherine, QC",
+        "FirstOntario Performing Arts Centre",
+    )
+    assert pac["province"] == "ON"
+
+    quebec = ambiguous_city_for(
+        "Sainte-Catherine, QC",
+        "Clean Harbors Environmental Services, located in Ste. Catherine, QC",
+    )
+    assert quebec["municipality"] == "Sainte-Catherine"
+    assert quebec["province"] == "QC"
+
+    assert ambiguous_city_for("Toronto, ON", "offices in St. Catharines") is None
+
+
+def test_parse_address_overrides_sainte_catherine_when_posting_is_ontario():
+    from utils.location_parser import parse_address_with_geocodio
+
+    wrong = {
+        "municipality": "Sainte-Catherine",
+        "province": "QC",
+        "lat": 45.400217,
+        "lng": -73.548143,
+        "geocode_accuracy_type": "place",
+    }
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=dict(wrong)):
+        result = parse_address_with_geocodio(
+            "Sainte-Catherine, QC",
+            context="FirstOntario Performing Arts Centre",
+        )
+    assert result["municipality"] == "St. Catharines"
+    assert result["province"] == "ON"
+    assert result["lat"] != wrong["lat"]
+
+
 def test_has_repeated_location_token():
     from utils.location_parser import has_repeated_location_token
 

@@ -18,6 +18,7 @@ from utils.catch_up import (
     find_missing_org_fields,
     find_unprocessed_organizations,
     org_batch_limit,
+    OrgPassResult,
     persist_org_assessment_outcome,
     process_unprocessed_organizations,
     resolve_org_skip_reason,
@@ -142,7 +143,7 @@ def test_catch_up_caps_the_batch(monkeypatch):
     rows = [_complete_org(id=i, sector_id=None) for i in range(1, 6)]
 
     with _patch_rows(rows), patch(
-        "utils.catch_up.process_unprocessed_organizations", return_value=(2, 0, 0)
+        "utils.catch_up.process_unprocessed_organizations", return_value=OrgPassResult(2, 0, 0)
     ) as mock_process:
         from utils.catch_up import catch_up_unprocessed
 
@@ -506,7 +507,7 @@ def _run_processing(orgs, outcomes, db_fields=None):
 
 def test_failed_assessment_writes_the_reason_and_no_fields():
     org = _complete_org(id=7, sector_id=None)
-    (success, errors, parked), payloads = _run_processing(
+    (success, errors, parked, *_rest), payloads = _run_processing(
         [org], [AssessmentOutcome(None, SKIP_REASON_LOCATION_MISMATCH)]
     )
 
@@ -516,7 +517,7 @@ def test_failed_assessment_writes_the_reason_and_no_fields():
 
 def test_successful_completion_clears_the_reason_in_the_same_write():
     org = _complete_org(id=8, sector_id=None)
-    (success, errors, parked), payloads = _run_processing(
+    (success, errors, parked, *_rest), payloads = _run_processing(
         [org],
         [AssessmentOutcome({"canonical_name": "X"}, None)],
         db_fields={"sector_id": "housing"},
@@ -528,7 +529,7 @@ def test_successful_completion_clears_the_reason_in_the_same_write():
 
 def test_assessment_with_nothing_new_parks_as_no_new_fields():
     org = _complete_org(id=9, sector_id=None)
-    (success, errors, parked), payloads = _run_processing(
+    (success, errors, parked, *_rest), payloads = _run_processing(
         [org], [AssessmentOutcome({"canonical_name": "X"}, None)], db_fields={}
     )
 
@@ -539,7 +540,7 @@ def test_assessment_with_nothing_new_parks_as_no_new_fields():
 
 def test_partial_fill_writes_fields_and_parks():
     org = _complete_org(id=10, sector_id=None, type=None)
-    (success, errors, parked), payloads = _run_processing(
+    (success, errors, parked, *_rest), payloads = _run_processing(
         [org],
         [AssessmentOutcome({"canonical_name": "X"}, None)],
         db_fields={"type": "nonprofit"},
@@ -555,7 +556,7 @@ def test_unexpected_error_parks_and_keeps_going():
     orgs = [_complete_org(id=11, sector_id=None), _complete_org(id=12, sector_id=None)]
     outcomes = [RuntimeError("boom"), AssessmentOutcome(None, SKIP_REASON_LOCATION_MISMATCH)]
 
-    (success, errors, parked), payloads = _run_processing(orgs, outcomes)
+    (success, errors, parked, *_rest), payloads = _run_processing(orgs, outcomes)
 
     # First org parked via the exception path, second still processed.
     assert payloads == [
@@ -837,3 +838,218 @@ def test_process_unprocessed_jobs_routes_skills_only_to_skills_task():
         "Skills-only jobs routed through task='all' will be silently skipped."
     )
     assert calls_made[0].job_ids == ["skills-only-1"]
+
+
+def test_job_catch_up_lines_separate_fallback_from_org_links():
+    """A model fallthrough must not be presented as '13/30 processed'."""
+    from utils.catch_up import JobCatchUpResult, job_catch_up_lines
+
+    result = JobCatchUpResult(
+        llm_targeted=13,
+        llm_written=13,
+        provider_used="gemini-3.5-flash-lite",
+        fallbacks=[{"provider": "gemini-3.6-flash", "reason": "free-tier daily quota"}],
+        org_targeted=17,
+        org_linked=17,
+    )
+    text = "\n".join(job_catch_up_lines(30, result, []))
+
+    assert "LLM fields: 13/13 written via gemini-3.5-flash-lite" in text
+    assert "gemini-3.6-flash (free-tier daily quota) → gemini-3.5-flash-lite" in text
+    assert "organization_id: 17/17 linked" in text
+    assert "Still unprocessed: 0" in text
+    assert "13/30" not in text
+
+
+def test_source_job_lines_include_posting_place_and_url():
+    from utils.catch_up import source_job_lines
+
+    lines = source_job_lines(
+        {
+            "job_title": "Call for Reviewers",
+            "organization": "City of St. Catharines",
+            "municipality": "Sainte-Catherine",
+            "province": "QC",
+            "listing_url": "https://workinculture.ca/jobs-and-more/city-of-st-catharines-other-call-for-reviewers",
+            "description": "Call for Reviewers: St. Catharines Cultural Investment Program (SCCIP).",
+        }
+    )
+    text = "\n".join(lines)
+    assert "Call for Reviewers" in text
+    assert "Sainte-Catherine, QC" in text
+    assert "workinculture.ca" in text
+    assert "St. Catharines Cultural Investment Program" in text
+
+
+def test_parked_reply_action_maps_keys():
+    from utils.catch_up import parked_reply_action
+
+    assert parked_reply_action("parse_failed", "r") == "retry"
+    assert parked_reply_action("parse_failed", "i") == "ignore"
+    assert parked_reply_action("parse_failed", "") == "skip"
+    assert parked_reply_action("parse_failed", "q") == "quit"
+    assert parked_reply_action("private_residence", "r") == "again"
+    assert parked_reply_action("private_residence", "i") == "ignore"
+    assert parked_reply_action("location_mismatch", "c") == "correct"
+    assert parked_reply_action("parse_failed", "c") == "again"
+
+
+def test_parse_corrected_place_accepts_ontario_name():
+    from utils.catch_up import parse_corrected_place, suggested_city
+
+    assert parse_corrected_place("St. Catharines", "ON") == ("St. Catharines", "ON")
+    assert parse_corrected_place("St. Catharines", "Ontario") == ("St. Catharines", "ON")
+    assert parse_corrected_place("", "ON") is None
+    assert parse_corrected_place("St. Catharines", "") is None
+    assert suggested_city(
+        {"location": "St. Catharines", "municipality": "Sainte-Catherine"}
+    ) == "St. Catharines"
+    assert suggested_city({"location": "Sainte-Catherine, QC", "municipality": "Sainte-Catherine"}) == ""
+
+
+def test_job_catch_up_lines_list_punctuation_duplicates_for_confirmation():
+    from utils.catch_up import JobCatchUpResult, job_catch_up_lines
+
+    result = JobCatchUpResult(org_targeted=2, org_unresolved=2)
+    remaining = [({"id": "a"}, ["organization_id"]), ({"id": "b"}, ["organization_id"])]
+    text = "\n".join(
+        job_catch_up_lines(
+            2,
+            result,
+            remaining,
+            ["    Massey Hall & Roy / Massey Hall and Roy (ids 220, 1113)"],
+        )
+    )
+    assert "listed under Manual review" in text
+    assert "ids 220, 1113" in text
+
+
+def test_job_catch_up_lines_tell_you_to_rerun_after_quota():
+    from utils.catch_up import JobCatchUpResult, job_catch_up_lines
+
+    result = JobCatchUpResult(
+        llm_targeted=30,
+        llm_written=13,
+        llm_deferred=17,
+        quota_exhausted=True,
+        provider_used="gemini-3.5-flash-lite",
+        fallbacks=[{"provider": "gemini-3.6-flash", "reason": "free-tier daily quota"}],
+    )
+    remaining = [({"id": f"j{i}"}, ["summary"]) for i in range(17)]
+    text = "\n".join(job_catch_up_lines(30, result, remaining))
+
+    assert "17 not written" in text
+    assert "Still unprocessed: 17" in text
+    assert "17 missing summary" in text
+    assert "Re-run catch-up" in text
+
+
+def test_link_job_organizations_writes_id():
+    from utils.catch_up import link_job_organizations
+
+    job = {
+        "id": "abc-123",
+        "organization": "Habitat",
+        "job_title": "Coordinator",
+        "municipality": "Montreal",
+        "province": "QC",
+        "location": None,
+        "description": "Housing work",
+    }
+    resolver = MagicMock()
+    resolver.resolve.return_value = 42
+    table = MagicMock()
+
+    with patch("utils.organization_resolver.create_resolver", return_value=resolver), patch(
+        "utils.catch_up.supabase"
+    ) as mock_sb:
+        mock_sb.table.return_value = table
+        stats = link_job_organizations([(job, ["organization_id"])])
+
+    assert stats["linked"] == 1
+    resolver.resolve.assert_called_once()
+    table.update.assert_called_once_with({"organization_id": 42})
+    table.update.return_value.eq.assert_called_once_with("id", "abc-123")
+
+
+def test_sse_only_without_organization_is_not_sent_to_the_model():
+    from utils.catch_up import process_unprocessed_jobs
+
+    job = {
+        "id": "sse-only",
+        "summary": "Done",
+        "values": ["V"],
+        "is_sse": None,
+        "language": "en",
+        "organization_id": None,
+        "organization": "Les YMCA du Québec",
+        "skills": ["http://esco/x"],
+        "skills_raw": ["counseling"],
+        "description": "Youth work",
+        "job_title": "Advisor",
+    }
+    calls = []
+
+    def fake(opts):
+        calls.append(opts)
+        return {"processed": 1, "errors": 0, "provider_used": "gemini-3.6-flash", "fallbacks": []}
+
+    resolver = MagicMock()
+    resolver.resolve.return_value = None
+    with patch("scripts.unified_post_processor.process_jobs_unified", side_effect=fake), patch(
+        "utils.organization_resolver.create_resolver", return_value=resolver
+    ):
+        result = process_unprocessed_jobs([(job, ["sse", "organization_id"])], skip_esco=True)
+
+    assert calls == []
+    assert result.llm_targeted == 0
+    assert result.org_unresolved == 1
+
+
+def test_newly_linked_job_is_sent_for_deferred_sse():
+    from utils.catch_up import process_unprocessed_jobs
+
+    job = {
+        "id": "sse-linked",
+        "summary": "Done",
+        "values": ["V"],
+        "is_sse": None,
+        "language": "en",
+        "organization_id": None,
+        "organization": "AECOM",
+        "skills": ["http://esco/x"],
+        "skills_raw": ["sampling"],
+        "description": "Field work",
+        "job_title": "Scientist",
+    }
+    calls = []
+
+    def fake(opts):
+        calls.append(opts)
+        return {"processed": 1, "errors": 0, "provider_used": "gemini-3.6-flash", "fallbacks": []}
+
+    resolver = MagicMock()
+    resolver.resolve.return_value = 1314
+    table = MagicMock()
+    with patch("scripts.unified_post_processor.process_jobs_unified", side_effect=fake), patch(
+        "utils.organization_resolver.create_resolver", return_value=resolver
+    ), patch("utils.catch_up.supabase") as mock_sb:
+        mock_sb.table.return_value = table
+        result = process_unprocessed_jobs([(job, ["sse", "organization_id"])], skip_esco=True)
+
+    assert result.org_linked == 1
+    assert len(calls) == 1
+    assert calls[0].task == "all"
+    assert calls[0].job_ids == ["sse-linked"]
+
+
+def test_link_job_organizations_skips_blank_name_without_resolver():
+    from utils.catch_up import link_job_organizations
+
+    job = {"id": "abc-123", "organization": "  ", "job_title": "Aide"}
+    with patch("utils.organization_resolver.create_resolver") as mock_resolver:
+        stats = link_job_organizations([(job, ["organization_id"])])
+
+    assert stats["no_name"] == 1
+    assert stats["linked"] == 0
+    mock_resolver.assert_not_called()

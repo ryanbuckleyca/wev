@@ -24,6 +24,7 @@ from llm.config import should_use_grounding
 from llm.cooldown import (
     DailyQuotaExhaustedError,
     ProviderCooldownMixin,
+    fallback_reason,
     get_cooldown_minutes,
     is_daily_quota_exhausted_error,
     is_quota_exhausted_error,
@@ -122,7 +123,11 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         names = self._api_provider_names()
         return bool(names) and all(n in self._daily_quota_exhausted for n in names)
 
-    def _raise_if_all_daily_quotas_exhausted(self, cause: Exception | None = None) -> None:
+    def _raise_if_all_daily_quotas_exhausted(
+        self,
+        cause: Exception | None = None,
+        fallbacks: list[dict] | None = None,
+    ) -> None:
         if self._all_api_daily_quotas_exhausted():
             exhausted = self._api_provider_names()
             logger.error(
@@ -132,6 +137,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 ", ".join(exhausted),
             )
             err = DailyQuotaExhaustedError(exhausted, cause)
+            err.fallbacks = list(fallbacks or [])
             if cause is not None:
                 raise err from cause
             raise err
@@ -284,6 +290,12 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
 
         last_error = None
         attempted_providers = []
+        fallbacks: list[dict] = []
+
+        def _remember(name: str, reason: str) -> None:
+            note = {"provider": name, "reason": reason}
+            if note not in fallbacks:
+                fallbacks.append(note)
 
         logger.info(f"Processing {len(jobs)} jobs with unified processor")
 
@@ -293,11 +305,13 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             # Skip backends that already burned their daily/free-tier quota this run
             if provider_name in self._daily_quota_exhausted:
                 attempted_providers.append(f"{provider_name} (daily quota)")
+                _remember(provider_name, "free-tier daily quota")
                 continue
 
             # Skip providers in cooldown period after soft RPM/TPM exhaustion
             if self._is_provider_in_cooldown(provider_name):
                 attempted_providers.append(f"{provider_name} (cooldown)")
+                _remember(provider_name, "rate-limit cooldown")
                 continue
 
             attempted_providers.append(provider_name)
@@ -383,6 +397,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                     # Backward compat: real web search only when FORCE_GROUNDING / task enables it
                     "has_grounding": _gs,
                     "attempted_providers": attempted_providers,
+                    "fallbacks": list(fallbacks),
                 }
 
             except Exception as e:
@@ -393,6 +408,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 # (including Ollama). Final exhaustion check runs after the loop.
                 if is_daily_quota_exhausted_error(e):
                     self._daily_quota_exhausted.add(provider_name)
+                    _remember(provider_name, "free-tier daily quota")
                     print(
                         f"  ⚠️ Daily/free-tier quota hit on {provider_name} — trying next backend…",
                         flush=True,
@@ -400,6 +416,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                     continue
 
                 # Soft RPM/TPM: mark cooldown and try the next provider
+                _remember(provider_name, fallback_reason(e))
                 if is_quota_exhausted_error(e):
                     self._mark_provider_exhausted(provider_name)
                 elif "not available" in error_msg:
@@ -409,7 +426,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 continue
 
         # If every API backend burned daily quota while others were mid-cooldown, abort now.
-        self._raise_if_all_daily_quotas_exhausted(last_error)
+        self._raise_if_all_daily_quotas_exhausted(last_error, fallbacks)
 
         if not last_error and all(
             "(cooldown)" in p or "(daily quota)" in p for p in attempted_providers
@@ -425,6 +442,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             "count": 0,
             "provider": None,
             "attempted_providers": attempted_providers,
+            "fallbacks": list(fallbacks),
             "error": error_msg
         }
 

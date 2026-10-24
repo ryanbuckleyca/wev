@@ -4,8 +4,8 @@
 Buckets
 -------
 auto-merge  same name where every row has a compatible employer evidence domain
-review      same name but weak or ambiguous evidence (short acronym, missing domain
-            on any row, only shared/social/ATS websites, etc.)
+review      same name but weak evidence, or a near-match (& / and / apostrophe,
+            or a location suffix) that needs a person to confirm
 skip        same name with conflicting employer website domains
 
 Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge):
@@ -40,7 +40,13 @@ if "--prod" in sys.argv[1:]:
     bootstrap_prod_from_argv(sys.argv[1:], Path(__file__))
     print("Using PRODUCTION database")
 else:
-    print("Using TEST database")
+    from utils.env import is_truthy_env
+
+    # Imported mid-scrape, argv has no --prod, but the scraper already selected prod.
+    if is_truthy_env("USE_PROD_DB"):
+        print("Using PRODUCTION database")
+    else:
+        print("Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
 from utils.organization_cache import employer_apex, evidence_domain, extract_domain  # noqa: E402
@@ -74,6 +80,22 @@ class ClusterDecision:
     merge_ids: list[int]
     domains: list[str | None]
     rows: list[dict]
+
+
+_APOSTROPHES = re.compile(r"['\u2019\u2018\u02bc\u201b]")
+# Dropped only for the loose key, so "&" (already punctuation) and the word "and" compare equal.
+_CONJUNCTIONS = frozenset({"and", "et"})
+
+
+def loose_name_key(name: str | None) -> str:
+    """Name key that treats ``&`` / ``and`` / ``et`` and apostrophes as the same.
+
+    Exact ``normalize_name`` still separates these, so a match here is a
+    near-match for review, not an automatic merge.
+    """
+    glued = _APOSTROPHES.sub("", name or "")
+    words = [w for w in normalize_name(glued).split() if w not in _CONJUNCTIONS]
+    return " ".join(words)
 
 
 def normalize_name(name: str | None) -> str:
@@ -276,7 +298,7 @@ def classify_cluster(
             bucket="review",
             normalized_name=normalized,
             reason=(
-                "near-match names (punctuation/location suffix variant): "
+                "near-match names (& / and / apostrophe, or a location suffix): "
                 + " / ".join(names)
                 + f"; {domain_detail}"
             ),
@@ -392,6 +414,24 @@ def _cluster_organizations(orgs: list[dict]) -> list[tuple[str, list[dict], bool
             ):
                 uf.union(ia, ib)
 
+    # "&" / "and" / apostrophe variants. Same loose key, different exact key.
+    # Only link when websites do not conflict, and leave the cluster as a
+    # near-match so a person confirms it instead of auto-merging.
+    by_loose: dict[str, list[int]] = defaultdict(list)
+    for i, org in enumerate(orgs):
+        loose = loose_name_key(org.get("name"))
+        if loose:
+            by_loose[loose].append(i)
+    for idxs in by_loose.values():
+        if len({norms[i] for i in idxs}) < 2:
+            continue
+        domains = [evidence_domain(orgs[i].get("website")) for i in idxs]
+        compatible, _detail = _domains_compatible(domains)
+        if not compatible:
+            continue
+        for j in idxs[1:]:
+            uf.union(idxs[0], j)
+
     clusters: dict[int, list[int]] = defaultdict(list)
     for i in range(n):
         if not norms[i]:
@@ -452,6 +492,56 @@ def build_decisions(*, limit: int | None = None) -> list[ClusterDecision]:
     return decisions
 
 
+def describe_duplicate_reviews(decisions: list[ClusterDecision]) -> list[str]:
+    """Lines for pairs a person must see. Exact auto-merges are omitted."""
+    lines: list[str] = []
+    reviews = [d for d in decisions if d.bucket == "review"]
+    skips = [d for d in decisions if d.bucket == "skip"]
+    if reviews:
+        lines.append(
+            f"Confirm {len(reviews)} organization pair(s). "
+            "y merges that pair, Enter skips it, q stops:"
+        )
+        for decision in reviews:
+            names = " / ".join(dict.fromkeys(row["name"] for row in decision.rows))
+            lines.append(f"  {names}")
+            lines.append(f"    {decision.reason}")
+    if skips:
+        lines.append(f"Left unmerged ({len(skips)}). Their websites disagree:")
+        for decision in skips:
+            names = " / ".join(dict.fromkeys(row["name"] for row in decision.rows))
+            lines.append(f"  {names}")
+            lines.append(f"    {decision.reason}")
+    return lines
+
+
+def review_lines_for_names(raw_names: list[str]) -> list[str]:
+    """Return one line per near-duplicate cluster that matches an unresolved job name.
+
+    Used at the end of catch-up so punctuation variants show up for confirmation
+    instead of looking like the employer could not be found.
+    """
+    wanted = {loose_name_key(name) for name in raw_names}
+    wanted.discard("")
+    if not wanted:
+        return []
+
+    orgs = fetch_all_rows(
+        "organizations",
+        "id, name, location, website, municipality, province",
+    )
+    lines: list[str] = []
+    for _label, rows, near in _cluster_organizations(orgs):
+        if not near:
+            continue
+        if not any(loose_name_key(row.get("name")) in wanted for row in rows):
+            continue
+        shown = " / ".join(dict.fromkeys((row.get("name") or "") for row in rows))
+        ids = ", ".join(str(row["id"]) for row in sorted(rows, key=lambda row: int(row["id"])))
+        lines.append(f"    {shown} (ids {ids})")
+    return lines
+
+
 def print_report(
     decisions: list[ClusterDecision],
     *,
@@ -505,16 +595,36 @@ def print_report(
         print(f"Showing {shown} cluster(s) in buckets: {', '.join(buckets)}")
 
 
-def review_interactively(decisions: list[ClusterDecision]) -> None:
-    """Walk review/skip clusters one at a time in the terminal."""
+def _print_org_postings(org_id: int, job_count: int) -> None:
+    """Postings already linked to this organization, so a merge decision has the source text."""
+    from utils.catch_up import source_job_lines, source_jobs_for_org
+
+    jobs = source_jobs_for_org(org_id, limit=3)
+    if not jobs:
+        print("         no linked postings")
+        return
+    shown = f"{len(jobs)} of {job_count}" if job_count > len(jobs) else str(len(jobs))
+    print(f"         postings ({shown}):")
+    for job in jobs:
+        for line in source_job_lines(job):
+            print(f"       {line.strip()}")
+
+
+def review_interactively(decisions: list[ClusterDecision], *, apply: bool = False) -> None:
+    """Walk review/skip clusters one at a time in the terminal.
+
+    When *apply* is true, ``y`` merges that one cluster (jobs move to the
+    survivor, then the duplicate organization row is deleted).
+    """
     todo = [d for d in decisions if d.bucket in ("review", "skip")]
     if not todo:
         print("\nNo review/skip clusters to walk through.")
         return
 
+    confirm = "  y=merge this cluster" if apply else ""
     print(
         f"\nInteractive review: {len(todo)} cluster(s) that cannot auto-merge.\n"
-        "Press Enter for next, or q then Enter to quit.\n"
+        f"Press Enter for next,{confirm} or q then Enter to quit.\n"
     )
     for i, d in enumerate(todo, 1):
         print(f"\n{'─' * 72}")
@@ -532,28 +642,36 @@ def review_interactively(decisions: list[ClusterDecision]) -> None:
                 f"slug={r.get('slug')!r}"
             )
             print(f"         website={r.get('website')!r}")
+            _print_org_postings(r["id"], r.get("job_count") or 0)
         try:
-            reply = input("\n[Enter]=next  q=quit > ").strip().lower()
+            reply = input(f"\n[Enter]=next{confirm}  q=quit > ").strip().lower()
         except EOFError:
             print("\n(end of input)")
             break
         if reply in {"q", "quit"}:
             print(f"Stopped at {i}/{len(todo)}.")
             break
+        if reply in {"y", "yes"}:
+            if apply and d.bucket == "review":
+                apply_clusters([d])
+            elif not apply:
+                print("  Dry run — not merged. Re-run without --dry-run to confirm.")
+            else:
+                print("  Skip clusters are not merged.")
     else:
         print(f"\nDone — reviewed all {len(todo)} cluster(s).")
 
 
-def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
+def apply_clusters(decisions: list[ClusterDecision]) -> None:
+    """Move jobs onto each cluster's survivor and delete the duplicate org rows."""
     from utils.organization_cache import merge_alternative_names
 
-    autos = [d for d in decisions if d.bucket == "auto-merge"]
-    if not autos:
-        print("No auto-merge clusters to apply.")
+    if not decisions:
+        print("No clusters to apply.")
         return
 
-    print(f"\nApplying {len(autos)} auto-merge clusters...")
-    for d in autos:
+    print(f"\nApplying {len(decisions)} cluster(s)...")
+    for d in decisions:
         survivor = d.survivor_id
 
         # 1. Reassign jobs. Only orgs whose jobs moved become delete candidates.
@@ -625,6 +743,14 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
                 print(f"  ERROR deleting organization {merge_id}: {exc}")
 
 
+def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
+    autos = [d for d in decisions if d.bucket == "auto-merge"]
+    if not autos:
+        print("No auto-merge clusters to apply.")
+        return
+    apply_clusters(autos)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Classify/merge duplicate organizations by normalized name + website domain."
@@ -677,7 +803,7 @@ def main() -> None:
             f"review={len(by_bucket['review'])}  "
             f"skip={len(by_bucket['skip'])}"
         )
-        review_interactively(decisions)
+        review_interactively(decisions, apply=not args.dry_run)
     else:
         print_report(decisions, buckets=buckets)
 
