@@ -1038,7 +1038,9 @@ def test_print_parked_postings_shows_shared_blurb_once(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert "From 2 posting(s) on macommunaute.ca:" in out
     assert "Adjoint.e administratif.ive — La Salle, MB" in out
+    assert "https://macommunaute.ca/emplois/adjoint-1" in out
     assert "Soutien communautaire — La Salle, MB" in out
+    assert "https://macommunaute.ca/emplois/soutien-2" in out
     # The identical blurb appears once, not per posting.
     assert out.count("La mission des Habitations") == 1
 
@@ -1067,7 +1069,9 @@ def test_print_parked_postings_notes_multi_site_jobs(monkeypatch, capsys):
     assert "more than one city" in out
     assert "home base" in out.lower()
     assert "Edmonton, AB" in out
+    assert "https://workinnonprofits.ca/jobs/1" in out
     assert "Stony Plain, AB" in out
+    assert "https://workinnonprofits.ca/jobs/2" in out
 
 
 def test_job_catch_up_lines_list_punctuation_duplicates_for_confirmation():

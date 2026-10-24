@@ -25,10 +25,33 @@ def _row(**kwargs) -> OrgRow:
 
 
 class TestDescribeDuplicateReviews:
-    def test_lists_review_pairs_and_skips_auto_merge(self):
+    def test_lists_review_pairs_and_skips_auto_merge(self, monkeypatch):
         from scripts.merge_duplicate_organizations import (
             ClusterDecision,
             describe_duplicate_reviews,
+        )
+
+        jobs = {
+            220: [
+                {
+                    "job_title": "Front of House Manager",
+                    "municipality": "Toronto",
+                    "province": "ON",
+                    "listing_url": "https://workinculture.ca/jobs/massey-1",
+                }
+            ],
+            1113: [
+                {
+                    "job_title": "Box Office Lead",
+                    "municipality": "Toronto",
+                    "province": "ON",
+                    "listing_url": "https://workinculture.ca/jobs/massey-2",
+                }
+            ],
+        }
+        monkeypatch.setattr(
+            "utils.catch_up.source_jobs_for_org",
+            lambda org_id, **_k: jobs.get(org_id, []),
         )
 
         decisions = [
@@ -58,6 +81,8 @@ class TestDescribeDuplicateReviews:
         assert "Les YMCA" not in text
         assert "Massey Hall & Roy Thomson Hall / Massey Hall and Roy Thomson Hall" in text
         assert "y merges" in text
+        assert "https://workinculture.ca/jobs/massey-1" in text
+        assert "https://workinculture.ca/jobs/massey-2" in text
 
 
 def test_parked_org_review_lines_hides_ignored(monkeypatch):
@@ -588,6 +613,17 @@ def test_apply_auto_merges_skips_delete_when_alias_write_fails(monkeypatch):
 def test_review_interactively_stops_on_quit(monkeypatch, capsys):
     from scripts.merge_duplicate_organizations import review_interactively
 
+    monkeypatch.setattr(
+        "utils.catch_up.source_jobs_for_org",
+        lambda org_id, **_k: [
+            {
+                "job_title": f"Role at {org_id}",
+                "municipality": "Toronto",
+                "province": "ON",
+                "listing_url": f"https://example.com/jobs/{org_id}",
+            }
+        ],
+    )
     decisions = [
         classify_cluster(
             "ab",
@@ -610,3 +646,34 @@ def test_review_interactively_stops_on_quit(monkeypatch, capsys):
     review_interactively(decisions)
     out = capsys.readouterr().out
     assert "Stopped at 1/2" in out
+    assert "https://example.com/jobs/3" in out
+    assert "https://example.com/jobs/4" in out
+
+
+def test_website_note_labels_by_platform_type():
+    from scripts.merge_duplicate_organizations import _website_note
+
+    assert "applicant-tracking" in _website_note("https://ecyq.fa.em2.oraclecloud.com/hcmUI/")
+    assert "social media" in _website_note("https://facebook.com/acme-org")
+    assert _website_note("https://www.dnv.com") == ""
+    assert _website_note(None) == ""
+
+
+def test_print_org_postings_includes_listing_url(monkeypatch, capsys):
+    from scripts.merge_duplicate_organizations import _print_org_postings
+
+    monkeypatch.setattr(
+        "utils.catch_up.source_jobs_for_org",
+        lambda _id, **_k: [
+            {
+                "job_title": "Senior Wind Energy Analyst",
+                "municipality": "Calgary",
+                "province": "AB",
+                "listing_url": "https://ecoworks.eco.ca/jobs/781336028-senior-wind-energy-analyst",
+            }
+        ],
+    )
+    _print_org_postings(2573, 1)
+    out = capsys.readouterr().out
+    assert "Senior Wind Energy Analyst — Calgary, AB" in out
+    assert "https://ecoworks.eco.ca/jobs/781336028-senior-wind-energy-analyst" in out
