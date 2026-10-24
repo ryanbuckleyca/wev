@@ -964,6 +964,16 @@ def _parked_sentence(row: Dict[str, Any]) -> str:
     return sentence
 
 
+def _allows_place_correction(reason: str) -> bool:
+    """Place correction is for location mismatches and incomplete profiles (set HQ)."""
+    return reason in {
+        "location_mismatch",
+        SKIP_REASON_PARTIAL_FILL,
+        SKIP_REASON_NO_NEW_FIELDS,
+        SKIP_REASON_INCOMPLETE_BACKLOG,
+    }
+
+
 def parked_reply_action(reason: str, reply: str) -> str:
     """Map one keypress to ignore, retry, correct, skip, quit, or again."""
     reply = reply.strip().lower()
@@ -972,7 +982,7 @@ def parked_reply_action(reason: str, reply: str) -> str:
     if reply in {"i", "ignore"}:
         return "ignore"
     if reply in {"c", "correct"}:
-        if reason == "location_mismatch":
+        if _allows_place_correction(reason):
             return "correct"
         return "again"
     if reply in {"r", "retry"}:
@@ -985,9 +995,25 @@ def parked_reply_action(reason: str, reply: str) -> str:
 
 
 def suggested_city(row: Dict[str, Any]) -> str:
-    """A city already stored on the row that is not the mismatched municipality."""
+    """A genuinely different city stored on the row, not just a restatement of the saved place.
+
+    The ``location`` string often repeats the saved municipality with a province tacked
+    on (``"La Salle MB"`` for municipality ``"La Salle"``). That is not a useful
+    suggestion, so strip a trailing province token and only return a city that differs
+    from the saved municipality.
+    """
+    from utils.location_parser import _normalize_ca_province_code, is_province_like_municipality
+
     location = " ".join((row.get("location") or "").split())
     municipality = " ".join((row.get("municipality") or "").split())
+    if not location:
+        return ""
+    # Drop a trailing province token so "City, QC" / "City MB" compare as the city alone.
+    for sep in (",", " "):
+        head, found, tail = location.rpartition(sep)
+        if found and head and (_normalize_ca_province_code(tail.strip()) or is_province_like_municipality(tail.strip())):
+            location = head.strip()
+            break
     if not location or "," in location:
         return ""
     if municipality and location.casefold() == municipality.casefold():
@@ -1090,6 +1116,10 @@ def _relocate_org_jobs(org_id: Any, old_place: Dict[str, Any], job_payload: Dict
     """
     old_muni = old_place.get("municipality")
     old_prov = old_place.get("province")
+    if not old_muni and not old_prov:
+        # No old place to match on — refuse to touch any jobs rather than stamp the
+        # new place onto every posting for a multi-site employer.
+        return
     query = supabase.table("jobs").update(job_payload).eq("organization_id", org_id)
     if old_prov:
         query = query.eq("province", old_prov)
@@ -1099,8 +1129,15 @@ def _relocate_org_jobs(org_id: Any, old_place: Dict[str, Any], job_payload: Dict
 
 
 def _correct_parked_place(row: Dict[str, Any], city: str, province: str) -> str:
-    """Write the corrected place onto the organization and its matching jobs, then assess once."""
+    """Write the corrected place onto the organization and its matching jobs, then assess once.
+
+    Jobs are only relocated for a ``location_mismatch`` — there the saved place was
+    wrong and the postings that shared it should move with it. For an incomplete
+    profile the reviewer is setting the organization's home base (HQ), which is
+    independent of each job's own site, so the postings are left untouched.
+    """
     name = row.get("name") or "(unnamed)"
+    reason = row.get("assessment_skip_reason") or ""
     old_place = {
         "municipality": row.get("municipality"),
         "province": row.get("province"),
@@ -1123,14 +1160,15 @@ def _correct_parked_place(row: Dict[str, Any], city: str, province: str) -> str:
     if not resp.data:
         return f"Could not update {name}. It stays listed."
 
-    job_payload = {
-        key: payload[key]
-        for key in ("municipality", "province", "location", "lat", "lng", "geocode_accuracy_type")
-    }
-    try:
-        _relocate_org_jobs(row["id"], old_place, job_payload)
-    except Exception as exc:
-        _log(f"  Updated {name}, but could not update its jobs: {exc}")
+    if reason == "location_mismatch":
+        job_payload = {
+            key: payload[key]
+            for key in ("municipality", "province", "location", "lat", "lng", "geocode_accuracy_type")
+        }
+        try:
+            _relocate_org_jobs(row["id"], old_place, job_payload)
+        except Exception as exc:
+            _log(f"  Updated {name}, but could not update its jobs: {exc}")
 
     fresh = _reload_org(row["id"])
     if not fresh:
@@ -1165,39 +1203,145 @@ def _retry_parked_org(row: Dict[str, Any]) -> str:
     return f"Tried {name} again. Still waiting: {detail}"
 
 
+_MISSING_FIELD_LABELS = {
+    "sector_id": "sector",
+    "type": "type (nonprofit / co-op / …)",
+    "description_en": "English description",
+    "description_fr": "French description",
+    "language": "language",
+    "values_list": "values",
+}
+
+
+def _parked_missing_labels(row: Dict[str, Any]) -> List[str]:
+    """Human labels for the profile fields this parked org still lacks."""
+    return [_MISSING_FIELD_LABELS.get(f, f) for f in find_missing_org_fields(row)]
+
+
+def _parked_intro(row: Dict[str, Any]) -> str:
+    """One plain sentence saying what is uncertain and what the person is deciding."""
+    reason = row.get("assessment_skip_reason") or ""
+    if reason == "location_mismatch":
+        place = _parked_place(row) or "an unknown place"
+        return (
+            f"We saved this employer in {place}, but researching the organization did not "
+            "confirm that location — so its profile was left blank. Using the posting(s) "
+            "below, decide where it really is."
+        )
+    if reason == "private_residence":
+        return (
+            "This name looks like a private home, not an organization, so there is no "
+            "profile to fill in."
+        )
+    if reason in (
+        SKIP_REASON_PARTIAL_FILL,
+        SKIP_REASON_NO_NEW_FIELDS,
+        SKIP_REASON_INCOMPLETE_BACKLOG,
+    ):
+        missing = _parked_missing_labels(row)
+        still = (", ".join(missing) if missing else "some fields")
+        if reason == SKIP_REASON_PARTIAL_FILL:
+            return (
+                f"Assessment started but the profile is still incomplete "
+                f"(still needs: {still}). Job posting places can differ from the "
+                f"organization's home base — that is fine. Retry, set the org place, "
+                f"or set it aside."
+            )
+        return (
+            f"The profile is still incomplete (still needs: {still}). "
+            "Retry the assessment, set the org place, or set it aside."
+        )
+    return _parked_sentence(row) + " You can try the assessment again or set it aside."
+
+
+def _posting_source(url: str) -> str:
+    """The job-board domain from a listing url, e.g. 'macommunaute.ca'."""
+    from urllib.parse import urlparse
+
+    host = urlparse(url or "").netloc
+    return host[4:] if host.startswith("www.") else host
+
+
+def _job_place_set(jobs: List[dict]) -> List[str]:
+    """Distinct places stored on the linked jobs, in stable order."""
+    seen: List[str] = []
+    for job in jobs:
+        place = _parked_place(job) or job.get("location")
+        if place and place not in seen:
+            seen.append(place)
+    return seen
+
+
+def _print_parked_postings(org_id: Any, *, org_place: str | None = None) -> None:
+    """Show the distinct postings this org came from, printing shared posting text once."""
+    jobs = source_jobs_for_org(org_id)
+    if not jobs:
+        print("  No job posting is linked to this organization.")
+        return
+    source = _posting_source(jobs[0].get("listing_url", ""))
+    where = f" on {source}" if source else ""
+    print(f"  From {len(jobs)} posting(s){where}:")
+    snippets = set()
+    for job in jobs:
+        title = job.get("job_title") or "(untitled)"
+        place = _parked_place(job) or job.get("location") or "no place stored"
+        print(f"    • {title} — {place}")
+        if job.get("listing_url"):
+            print(f"      {job['listing_url']}")
+    # These postings usually repeat the same employer blurb, so show it only once.
+    for job in jobs:
+        description = " ".join((job.get("description") or "").split())
+        if not description:
+            continue
+        snippet = description[:300] + ("…" if len(description) > 300 else "")
+        if snippet in snippets:
+            continue
+        snippets.add(snippet)
+        print(f'    "{snippet}"')
+    job_places = _job_place_set(jobs)
+    if len(job_places) > 1:
+        print(
+            "  Note: these jobs are in more than one city. That is normal for a "
+            "multi-site employer — each job keeps its own place; the organization "
+            "place is the home base (HQ), not every job site."
+        )
+
+
 def _prompt_parked_org(row: Dict[str, Any]) -> str:
     reason = row.get("assessment_skip_reason") or ""
     name = row.get("name") or "(unnamed)"
+    org_place = _parked_place(row)
     print(f"\n{name}")
-    print(f"  {_parked_sentence(row)}")
-    jobs = source_jobs_for_org(row.get("id"))
-    if jobs:
-        print("  Came from this posting:")
-        for job in jobs:
-            for line in source_job_lines(job):
-                print(line)
-    else:
-        print("  No job is linked to this organization.")
+    print(f"  {_parked_intro(row)}")
+    _print_parked_postings(row.get("id"), org_place=org_place)
+    if row.get("website"):
+        print(f"  Website: {row['website']}")
+    elif reason != "private_residence":
+        print("  Website: (none)")
+    if reason != "private_residence":
+        print(f"  Organization home base on file: {org_place or '(none yet)'}")
+
+    print("\n  What do you want to do?")
     if reason == "location_mismatch":
-        print(f"  Website: {row.get('website') or 'none'}")
+        saved = org_place or "the saved place"
         suggestion = suggested_city(row)
-        if suggestion:
-            print(f"  c sets the place (suggested city: {suggestion}), updates the job, and assesses.")
-        else:
-            print("  c sets the place, updates the job, and assesses.")
-        print("  r assesses again with the saved place.")
-    if reason == "private_residence":
-        print("  i = stop listing it    Enter = ask again next scrape    q = stop")
-    elif reason == "location_mismatch":
-        print(
-            "  c = correct the place    r = assess once more now    i = stop listing it    "
-            "Enter = ask again next scrape    q = stop"
-        )
+        hint = f" (maybe {suggestion}?)" if suggestion else ""
+        print(f"    c  Saved place is wrong — type the correct city + province{hint}, then re-assess")
+        print(f"    r  {saved} is correct — just assess this organization again")
+        print("    i  Not really a place problem — stop listing it")
+    elif reason == "private_residence":
+        print("    i  Agreed, it is a private home — stop listing it")
     else:
-        print(
-            "  r = assess once more now    i = stop listing it    "
-            "Enter = ask again next scrape    q = stop"
-        )
+        if _allows_place_correction(reason):
+            if org_place:
+                print(f"    c  Set / correct the organization home base (currently {org_place}), then re-assess")
+            else:
+                print("    c  Set the organization home base (city + province), then re-assess")
+        print("    r  Try the assessment again now")
+        print("    i  Stop listing it")
+    print("    Enter  Decide later — kept for the next scrape")
+    print("    q  Stop reviewing the rest")
+
     while True:
         try:
             reply = input("> ")
@@ -1217,11 +1361,11 @@ def _prompt_parked_org(row: Dict[str, Any]) -> str:
         if action != "again":
             return action
         if reason == "private_residence" and reply.strip().lower() in {"r", "retry"}:
-            print("  Assessing this again would stop for the same reason. i takes it off the list.")
-        elif reason == "location_mismatch":
-            print("  Type c, r, i, or press Enter.")
+            print("  Assessing this again would stop for the same reason. Use i to take it off the list.")
+        elif _allows_place_correction(reason):
+            print("  Please type c, r, i, q, or press Enter.")
         else:
-            print("  Type r, i, or press Enter.")
+            print("  Please type r, i, q, or press Enter.")
 
 
 def review_parked_organizations(*, interactive: bool) -> List[str]:
@@ -1249,8 +1393,9 @@ def review_parked_organizations(*, interactive: bool) -> List[str]:
         return lines
 
     print(
-        f"\n{len(rows)} organization(s) are waiting on a decision. "
-        "The scrape continues either way. Each one is still in the database."
+        f"\n{len(rows)} organization(s) need a quick decision before their employer profile "
+        "can be filled in.\nThe jobs are already saved and nothing is deleted — this only "
+        "affects the organization profile.\nSkip any you are unsure about; they come back next scrape."
     )
     lines: List[str] = []
     for row in rows:

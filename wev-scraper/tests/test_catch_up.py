@@ -916,6 +916,34 @@ def test_relocate_org_jobs_only_touches_the_old_place(monkeypatch):
     assert executed["municipality"] == "Sainte-Catherine"
 
 
+def test_relocate_org_jobs_blank_old_place_touches_nothing(monkeypatch):
+    """A blank old place must never stamp the new place onto every job (multi-site safety)."""
+    import utils.catch_up as cu
+
+    calls = []
+
+    class _Query:
+        def update(self, payload):
+            calls.append("update")
+            return self
+
+        def eq(self, col, val):
+            return self
+
+        def execute(self):
+            calls.append("execute")
+            return type("R", (), {"data": []})()
+
+    monkeypatch.setattr(cu.supabase, "table", lambda _name: _Query())
+
+    cu._relocate_org_jobs(
+        5,
+        {"municipality": None, "province": None},
+        {"municipality": "Edmonton", "province": "AB", "location": "Edmonton, AB"},
+    )
+    assert calls == []  # no update/execute issued at all
+
+
 def test_geocode_place_falls_back_to_province_centroid(monkeypatch):
     import utils.catch_up as cu
 
@@ -940,6 +968,7 @@ def test_parked_reply_action_maps_keys():
     assert parked_reply_action("private_residence", "r") == "again"
     assert parked_reply_action("private_residence", "i") == "ignore"
     assert parked_reply_action("location_mismatch", "c") == "correct"
+    assert parked_reply_action("partial_fill", "c") == "correct"
     assert parked_reply_action("parse_failed", "c") == "again"
 
 
@@ -954,6 +983,91 @@ def test_parse_corrected_place_accepts_ontario_name():
         {"location": "St. Catharines", "municipality": "Sainte-Catherine"}
     ) == "St. Catharines"
     assert suggested_city({"location": "Sainte-Catherine, QC", "municipality": "Sainte-Catherine"}) == ""
+    # "La Salle MB" just restates the saved place, so it is not offered as a suggestion.
+    assert suggested_city({"location": "La Salle MB", "municipality": "La Salle"}) == ""
+    assert suggested_city({"location": "La Salle, MB", "municipality": "La Salle"}) == ""
+
+
+def test_parked_intro_frames_the_location_decision():
+    from utils.catch_up import _parked_intro
+
+    intro = _parked_intro(
+        {
+            "assessment_skip_reason": "location_mismatch",
+            "municipality": "La Salle",
+            "province": "MB",
+        }
+    )
+    assert "La Salle, MB" in intro
+    assert "decide where it really is" in intro.lower()
+
+
+def test_parked_intro_partial_fill_lists_missing_and_allows_multi_site():
+    from utils.catch_up import _parked_intro
+
+    intro = _parked_intro(
+        {
+            "assessment_skip_reason": "partial_fill",
+            "sector_id": "community-civic-infrastructure",
+            "language": "en",
+            "type": None,
+            "description_en": None,
+            "description_fr": None,
+            "values_list": [],
+        }
+    )
+    assert "still incomplete" in intro.lower()
+    assert "type" in intro.lower()
+    assert "home base" in intro.lower()
+
+
+def test_print_parked_postings_shows_shared_blurb_once(monkeypatch, capsys):
+    import utils.catch_up as cu
+
+    job = {
+        "job_title": "Adjoint.e administratif.ive",
+        "municipality": "La Salle",
+        "province": "MB",
+        "listing_url": "https://macommunaute.ca/emplois/adjoint-1",
+        "description": "La mission des Habitations Les Trinitaires est de créer un milieu de vie.",
+    }
+    other = dict(job, job_title="Soutien communautaire", listing_url="https://macommunaute.ca/emplois/soutien-2")
+    monkeypatch.setattr(cu, "source_jobs_for_org", lambda _id: [job, other])
+
+    cu._print_parked_postings(1)
+    out = capsys.readouterr().out
+    assert "From 2 posting(s) on macommunaute.ca:" in out
+    assert "Adjoint.e administratif.ive — La Salle, MB" in out
+    assert "Soutien communautaire — La Salle, MB" in out
+    # The identical blurb appears once, not per posting.
+    assert out.count("La mission des Habitations") == 1
+
+
+def test_print_parked_postings_notes_multi_site_jobs(monkeypatch, capsys):
+    import utils.catch_up as cu
+
+    edmonton = {
+        "job_title": "Shift Leader",
+        "municipality": "Edmonton",
+        "province": "AB",
+        "listing_url": "https://workinnonprofits.ca/jobs/1",
+        "description": "UP Community Services empowers individuals.",
+    }
+    stony = {
+        "job_title": "Child/Youth Care Worker",
+        "municipality": "Stony Plain",
+        "province": "AB",
+        "listing_url": "https://workinnonprofits.ca/jobs/2",
+        "description": "UP Community Services empowers individuals.",
+    }
+    monkeypatch.setattr(cu, "source_jobs_for_org", lambda _id: [edmonton, stony])
+
+    cu._print_parked_postings(2578, org_place=None)
+    out = capsys.readouterr().out
+    assert "more than one city" in out
+    assert "home base" in out.lower()
+    assert "Edmonton, AB" in out
+    assert "Stony Plain, AB" in out
 
 
 def test_job_catch_up_lines_list_punctuation_duplicates_for_confirmation():

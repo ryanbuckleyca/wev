@@ -181,6 +181,61 @@ def test_parse_address_overrides_sainte_catherine_when_posting_is_ontario():
     assert result["lat"] != wrong["lat"]
 
 
+def test_default_province_qualifies_bare_city():
+    """A single-province source qualifies a bare city so geocoding stays in-region."""
+    from utils.location_parser import parse_address_with_geocodio
+
+    captured = {}
+
+    def fake_geocode(query, allow_us=False):
+        captured["query"] = query
+        return {
+            "municipality": "Lasalle",
+            "province": "QC",
+            "lat": 45.434481,
+            "lng": -73.604358,
+            "geocode_accuracy_type": "place",
+        }
+
+    with patch("utils.location_parser._geocode_with_geocodio", side_effect=fake_geocode):
+        result = parse_address_with_geocodio("LaSalle", default_province="QC")
+    assert captured["query"] == "LaSalle, QC"
+    assert result["province"] == "QC"
+
+
+def test_default_province_respects_explicit_province():
+    """When the location already names a province, the source default is ignored."""
+    from utils.location_parser import parse_address_with_geocodio
+
+    captured = {}
+
+    def fake_geocode(query, allow_us=False):
+        captured["query"] = query
+        return {"municipality": "Ottawa", "province": "ON", "lat": 45.0, "lng": -75.0, "geocode_accuracy_type": "place"}
+
+    with patch("utils.location_parser._geocode_with_geocodio", side_effect=fake_geocode):
+        result = parse_address_with_geocodio("Ottawa, ON", default_province="QC")
+    assert captured["query"] == "Ottawa, ON"
+    assert result["province"] == "ON"
+
+
+def test_extract_location_ignores_province_code_inside_a_word():
+    """A 2-letter province code at the end of a longer word must not create a fake city.
+
+    Regression: descriptions like "DESCRIPTION DE L'ORGANISATION …" or
+    "… CARRIÈRE DANS …" produced "DESCRIPTI, ON" / "… DA, NS" because Pattern 0/0b
+    matched "ON"/"NS" inside "organisatiON" / "daNS".
+    """
+    from utils.location_parser import _extract_explicit_location
+
+    assert _extract_explicit_location("OPPORTUNITÉ DE CARRIÈRE DANS LE DOMAINE FUNÉRAIRE") is None
+    assert _extract_explicit_location("Succès RH se positionne à l'avant-garde de la consultation") is None
+    # Legit "City, Province" extraction still works, including inside parentheses.
+    assert _extract_explicit_location("office in Toronto, ON") == "Toronto, ON"
+    assert _extract_explicit_location("(Port Rowan, ON or elsewhere)") == "Port Rowan, ON"
+    assert _extract_explicit_location("Hybrid – based in Halifax, Nova Scotia") == "Halifax, Nova Scotia"
+
+
 def test_has_repeated_location_token():
     from utils.location_parser import has_repeated_location_token
 

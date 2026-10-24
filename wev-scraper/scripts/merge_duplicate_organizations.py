@@ -604,19 +604,35 @@ def print_report(
         print(f"Showing {shown} cluster(s) in buckets: {', '.join(buckets)}")
 
 
-def _print_org_postings(org_id: int, job_count: int) -> None:
-    """Postings already linked to this organization, so a merge decision has the source text."""
-    from utils.catch_up import source_job_lines, source_jobs_for_org
+def _website_note(website: str | None) -> str:
+    """Flag a website that is really an ATS / careers portal, not the org's own site."""
+    domain = extract_domain(website)
+    if domain and evidence_domain(website) is None:
+        return "  [applicant-tracking / careers portal — not the org's own website]"
+    return ""
+
+
+def _print_org_postings(org_id: int, job_count: int, *, indent: str = "      ") -> None:
+    """A short, de-noised sample of this org's postings: each title and the place on the job.
+
+    The raw description HTML is intentionally omitted here; for a *merge* decision the
+    useful signals are the name, the website, and where the jobs are.
+    """
+    from utils.catch_up import _parked_place, source_jobs_for_org
 
     jobs = source_jobs_for_org(org_id)
     if not jobs:
-        print("         no linked postings")
+        print(f"{indent}(no job postings linked yet)")
         return
-    shown = f"{len(jobs)} of {job_count}" if job_count > len(jobs) else str(len(jobs))
-    print(f"         postings ({shown}):")
+    if job_count and job_count > len(jobs):
+        print(f"{indent}{job_count} job postings — showing {len(jobs)}:")
+    else:
+        label = "posting" if len(jobs) == 1 else "postings"
+        print(f"{indent}{len(jobs)} job {label}:")
     for job in jobs:
-        for line in source_job_lines(job):
-            print(f"       {line.strip()}")
+        title = job.get("job_title") or "(untitled)"
+        place = _parked_place(job) or job.get("location") or "no place on posting"
+        print(f"{indent}  \u00b7 {title} \u2014 {place}")
 
 
 def review_interactively(decisions: list[ClusterDecision], *, apply: bool = False) -> None:
@@ -627,33 +643,55 @@ def review_interactively(decisions: list[ClusterDecision], *, apply: bool = Fals
     """
     todo = [d for d in decisions if d.bucket in ("review", "skip")]
     if not todo:
-        print("\nNo review/skip clusters to walk through.")
+        print("\nNo organization pairs to review.")
         return
 
-    confirm = "  y=merge this cluster" if apply else ""
+    print(f"\n{'=' * 72}")
+    print(f"ORGANIZATION DUPLICATE REVIEW — {len(todo)} pair(s) need a human decision")
+    print("=" * 72)
     print(
-        f"\nInteractive review: {len(todo)} cluster(s) that cannot auto-merge.\n"
-        f"Press Enter for next,{confirm} or q then Enter to quit.\n"
+        "\nEach item below is TWO organization records that look like the SAME\n"
+        "employer. These are ORGANIZATIONS, not jobs. \u201cMerging\u201d keeps one\n"
+        "organization record, moves the other's job postings onto it, and then\n"
+        "deletes the now-empty duplicate record. No job posting is ever deleted.\n"
     )
+    if apply:
+        print("  y      \u2192 merge this pair into a single organization")
+    else:
+        print("  y      \u2192 (dry run) show what a merge would do, but change nothing")
+    print("  Enter  \u2192 skip; leave the two records separate")
+    print("  q      \u2192 quit the review\n")
+
     for i, d in enumerate(todo, 1):
+        survivor = next((r for r in d.rows if r["id"] == d.survivor_id), None)
+        survivor_name = (survivor or {}).get("name") or d.normalized_name
+        merging = [r for r in d.rows if r["id"] in d.merge_ids]
+        moving_jobs = sum(r.get("job_count") or 0 for r in merging)
+
         print(f"\n{'─' * 72}")
-        print(f"[{i}/{len(todo)}] {d.bucket.upper()} — {d.normalized_name!r}")
-        print(f"reason: {d.reason}")
-        print(f"suggested keep={d.survivor_id}  merge={d.merge_ids}")
+        print(f"[{i}/{len(todo)}]  Possible duplicate organization: {survivor_name!r}")
+        print(f"Why this needs a human: {d.reason}")
+        print()
         for r in d.rows:
-            mark = "KEEP" if r["id"] == d.survivor_id else "merge"
-            print(
-                f"  [{mark}] id={r['id']} jobs={r['job_count']} "
-                f"name={r.get('name')!r}"
-            )
-            print(
-                f"         loc={r.get('location')!r} domain={r.get('domain')!r} "
-                f"slug={r.get('slug')!r}"
-            )
-            print(f"         website={r.get('website')!r}")
+            keep = r["id"] == d.survivor_id
+            marker = "\u25cf KEEP THIS RECORD" if keep else f"\u25cb MERGE INTO #{d.survivor_id}"
+            print(f"  {marker}  \u2014  org #{r['id']}  {r.get('name')!r}")
+            print(f"      website:  {r.get('website') or '(none)'}{_website_note(r.get('website'))}")
+            print(f"      location on file:  {r.get('location') or '(none)'}")
             _print_org_postings(r["id"], r.get("job_count") or 0)
+            print()
+
+        merge_label = ", ".join(f"#{r['id']}" for r in merging) or "(none)"
+        job_label = f"{moving_jobs} job posting{'s' if moving_jobs != 1 else ''}"
+        moves = "moves" if moving_jobs == 1 else "move"
+        print(
+            f"  If you merge: {merge_label} is deleted and its {job_label} "
+            f"{moves} onto #{d.survivor_id} ({survivor_name!r})."
+        )
+
+        merge_hint = f"y=merge into #{d.survivor_id}" if apply else "y=preview merge"
         try:
-            reply = input(f"\n[Enter]=next{confirm}  q=quit > ").strip().lower()
+            reply = input(f"\n[{i}/{len(todo)}]  Enter=skip  {merge_hint}  q=quit > ").strip().lower()
         except EOFError:
             print("\n(end of input)")
             break
@@ -663,12 +701,12 @@ def review_interactively(decisions: list[ClusterDecision], *, apply: bool = Fals
         if reply in {"y", "yes"}:
             if apply and d.bucket == "review":
                 apply_clusters([d])
-            elif not apply:
-                print("  Dry run — not merged. Re-run without --dry-run to confirm.")
+            elif apply and d.bucket == "skip":
+                print("  This pair is in the 'skip' bucket and is not merged automatically.")
             else:
-                print("  Skip clusters are not merged.")
+                print("  Dry run — not merged. Re-run without --dry-run to confirm.")
     else:
-        print(f"\nDone — reviewed all {len(todo)} cluster(s).")
+        print(f"\nDone — reviewed all {len(todo)} pair(s).")
 
 
 def apply_clusters(decisions: list[ClusterDecision]) -> None:

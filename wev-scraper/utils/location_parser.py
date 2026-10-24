@@ -525,11 +525,28 @@ def _apply_ambiguous_choice(result: dict | None, choice: dict) -> dict:
     }
 
 
-def parse_address_with_geocodio(location: Optional[str], context: str = "") -> dict:
+def _location_has_province(text: str) -> bool:
+    """True when the trailing token of *text* is a Canadian province (code or name)."""
+    for sep in (",", " "):
+        head, found, tail = text.rpartition(sep)
+        if found and head and _normalize_ca_province_code(tail.strip()):
+            return True
+    return False
+
+
+def parse_address_with_geocodio(
+    location: Optional[str], context: str = "", default_province: Optional[str] = None
+) -> dict:
     """Use Geocodio to extract municipality, province, lat, lng, and geocode_accuracy_type.
 
     *context* is employer and posting text. It only matters when *location* is a
     city name that exists in more than one province.
+
+    *default_province* is the province every posting from the calling source belongs
+    to (e.g. ``"QC"`` for a Greater-Montréal board). It qualifies a bare city name —
+    ``"LaSalle"`` becomes ``"LaSalle, QC"`` — so Geocodio stops resolving it to a
+    same-named town in another province. A location that already names a province is
+    left untouched.
     """
     _empty = {"municipality": None, "province": None, "lat": None, "lng": None, "geocode_accuracy_type": None}
     if not location or not location.strip():
@@ -597,6 +614,12 @@ def parse_address_with_geocodio(location: Optional[str], context: str = "") -> d
     except Exception:
         # Fall through to normal geocoding if checks fail
         pass
+
+    # A source that only covers one province qualifies its bare city names so Geocodio
+    # cannot drift to a same-named town elsewhere (e.g. LaSalle, QC → LaSalle, MB).
+    province_code = _normalize_ca_province_code(default_province) if default_province else None
+    if province_code and not choice and not aliased and not _location_has_province(query):
+        query = f"{query}, {province_code}"
 
     allow_us = _is_intentional_us_geocode_query(query)
 
@@ -892,8 +915,11 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         # Try to find "City, Province" inside parentheses
         for province in provinces:
             # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            # NOTE: removed re.IGNORECASE to ensure [A-Z] only matches capital letters
-            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            # NOTE: removed re.IGNORECASE to ensure [A-Z] only matches capital letters.
+            # 2-letter codes need a LEFT boundary too, or "ON" matches the tail of
+            # "organisatiON" / "NS" the tail of "daNS", inventing a city+province.
+            province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{province_pattern}'
             match = re.search(pattern, inside_parens)
             if match:
                 city = match.group(1).strip()
@@ -908,8 +934,11 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         text_before_paren = before_paren.group(1).strip()
         # Look for "City, Province" patterns (most common)
         for province in provinces:
-            # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces.
+            # 2-letter codes need a LEFT boundary too (see Pattern 0 note) so a province
+            # code at the end of a longer word cannot split that word into a fake city.
+            province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{province_pattern}'
             match = re.search(pattern, text_before_paren)
             if match:
                 city = match.group(1).strip()

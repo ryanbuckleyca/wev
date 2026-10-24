@@ -114,6 +114,10 @@ class BaseScraper:
     # backwards-compatibility and, if set, takes precedence over `language`.
     language = "en"
     date_language = None
+    # Set to an ISO province code (e.g. "QC") when every posting from the source is
+    # in one province. It qualifies a bare city name during geocoding so a
+    # same-named town in another province cannot win (LaSalle, QC vs LaSalle, MB).
+    default_province = None
 
     def __init__(self, source):
         self.source = source
@@ -872,6 +876,9 @@ class BaseScraper:
             "wage": kwargs.get("wage"),
             "website": kwargs.get("website"),
             "language": kwargs.get("language", "en"),
+            # Province every posting from this source belongs to (None for most
+            # boards). Qualifies a bare city name so geocoding stays in-region.
+            "default_province": getattr(self, "default_province", None),
         }
 
         return normalize_job_data(raw_job)

@@ -407,6 +407,33 @@ class TestClassifyCluster:
         assert decision.bucket == "auto-merge"
         assert decision.survivor_id == 2
 
+    def test_ats_career_portal_url_does_not_block_merge(self):
+        """A record whose website is an Oracle/ATS careers portal must not count as a
+        conflicting domain — it is the hiring platform, not the employer's own site.
+
+        Before the fix these landed in the report-only ``skip`` bucket ("websites
+        disagree") and were never prompted; now the only real domain is bgis.com, so
+        the pair becomes a promptable ``review`` (acronym name keeps it out of
+        auto-merge).
+        """
+        from utils.organization_cache import evidence_domain
+
+        # The careers-portal URL carries no employer evidence.
+        assert evidence_domain("https://fa-evcg-saasfaprod1.fa.ocs.oraclecloud.com") is None
+        rows = [
+            _row(id=1, name="BGIS", domain=evidence_domain("https://bgis.com"), job_count=5),
+            _row(
+                id=2,
+                name="BGIS",
+                domain=evidence_domain("https://fa-evcg-saasfaprod1.fa.ocs.oraclecloud.com"),
+                job_count=1,
+            ),
+        ]
+        decision = classify_cluster("bgis", rows)
+        assert decision.bucket == "review"
+        assert "conflicting domains" not in decision.reason
+        assert decision.survivor_id == 1
+
     def test_shared_hosts_only_go_to_review(self):
         rows = [
             _row(

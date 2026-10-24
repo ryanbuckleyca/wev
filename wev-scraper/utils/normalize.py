@@ -153,7 +153,9 @@ def normalize_job_data(job_data: dict) -> dict | None:
             )
             if part
         )
-        address = parse_address_with_geocodio(location, context=place_context)
+        address = parse_address_with_geocodio(
+            location, context=place_context, default_province=job_data.get("default_province")
+        )
         normalized["municipality"] = address.get("municipality")
         normalized["province"] = address.get("province")
         normalized["lat"] = address.get("lat")
