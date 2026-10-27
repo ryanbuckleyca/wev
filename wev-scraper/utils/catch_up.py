@@ -1,8 +1,9 @@
 """Find and process unprocessed orgs and jobs.
 
 Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocessed.py.
-- An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills
-  (skills uses the skills_raw / jobs.skills contract — see job_needs_skills)
+- An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills,
+  or organization_id. Skills uses the skills_raw / jobs.skills contract — see
+  job_needs_skills. organization_id is resolved here, not left for a separate backfill.
 - An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
   valid language, or values_list
 
@@ -16,8 +17,9 @@ from __future__ import annotations
 
 import os
 import time
-from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from collections import Counter
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, NamedTuple, Tuple
 
 from utils.db import fetch_all_rows, supabase
 from utils.log import scraper_log as _log
@@ -93,7 +95,8 @@ def find_unprocessed_jobs() -> List[Tuple[Dict[str, Any], List[str]]]:
     jobs: List[dict] = fetch_all_rows(
         "jobs",
         "id, listing_url, summary, values, is_sse, language, skills, skills_raw, "
-        "description, organization_id, job_title, organization, scraped_at",
+        "description, organization_id, job_title, organization, municipality, province, "
+        "location, scraped_at",
         order_by="scraped_at",
         desc=False,
     )
@@ -248,9 +251,9 @@ def filter_assessment_update_fields(
         if "sse_details" in db_fields and isinstance(draft.get("sse_details"), dict):
             db_fields["sse_details"] = draft["sse_details"]
 
-    for field, value in db_fields.items():
-        if value is not None and _is_org_field_missing(org, field):
-            filtered[field] = value
+    for field_name, value in db_fields.items():
+        if value is not None and _is_org_field_missing(org, field_name):
+            filtered[field_name] = value
 
     # is_sse defaults to false in the DB, so the missing-predicate treats it as
     # already set. Keep the boolean locked to whatever rating this write leaves
@@ -384,71 +387,395 @@ def org_batch_limit() -> int:
 # Processing helpers
 # ---------------------------------------------------------------------------
 
+_LLM_ID_CHUNK = 100
+_NON_SKILLS_NEEDS = frozenset({"summary", "values", "sse", "language"})
+
+
+class OrgPassResult(NamedTuple):
+    """Outcome of one organization catch-up pass."""
+
+    success: int
+    errors: int
+    parked: int
+    parked_reasons: tuple[str, ...] = ()
+    hard_errors: int = 0
+    fallbacks: tuple[dict, ...] = ()
+    provider_used: str | None = None
+
+
+@dataclass
+class JobCatchUpResult:
+    """What the job catch-up actually did, split by kind of work."""
+
+    llm_targeted: int = 0
+    llm_written: int = 0
+    llm_deferred: int = 0
+    llm_errors: int = 0
+    esco_targeted: int = 0
+    esco_written: int = 0
+    esco_errors: int = 0
+    org_targeted: int = 0
+    org_linked: int = 0
+    org_unresolved: int = 0
+    org_no_name: int = 0
+    org_errors: int = 0
+    fallbacks: list = field(default_factory=list)
+    provider_used: str | None = None
+    quota_exhausted: bool = False
+    unresolved_labels: list = field(default_factory=list)
+    unresolved_org_names: list = field(default_factory=list)
+
+
+def _merge_fallback_notes(dest: list, items) -> None:
+    for item in items or []:
+        if isinstance(item, dict) and item not in dest:
+            dest.append(item)
+
+
+def _job_label(job: Dict[str, Any]) -> str:
+    title = (job.get("job_title") or "").strip() or "(no title)"
+    org = (job.get("organization") or "").strip() or "(no organization name)"
+    return f"{str(job.get('id', ''))[:8]}… {title[:48]} ({org[:48]})"
+
+
+def _reason_counts(reasons: List[str] | tuple[str, ...]) -> str:
+    counts = Counter(reasons)
+    return ", ".join(
+        f"{n}× {reason}" if n > 1 else reason
+        for reason, n in counts.most_common()
+    )
+
+
+def org_catch_up_lines(
+    total: int,
+    ok: int,
+    parked: int,
+    reasons: List[str] | tuple[str, ...],
+    hard_errors: int,
+    fallbacks: list | tuple,
+    provider_used: str | None,
+) -> List[str]:
+    """Lines for the organization section of the catch-up summary."""
+    reason_bit = f" ({_reason_counts(reasons)})" if reasons else ""
+    line = f"Organizations: {ok}/{total} completed, {parked} parked{reason_bit}"
+    if hard_errors:
+        line += f", {hard_errors} errors"
+    lines = [line]
+    if fallbacks:
+        from llm.cooldown import format_fallback_chain
+
+        succeeded = provider_used if provider_used and "," not in provider_used else None
+        lines.append("  fallback: " + format_fallback_chain(list(fallbacks), succeeded))
+    return lines
+
+
+def job_catch_up_lines(
+    found: int,
+    result: JobCatchUpResult,
+    remaining: List[Tuple[Dict[str, Any], List[str]]],
+    name_reviews: List[str] | None = None,
+) -> List[str]:
+    """Explain which jobs were written, which fell through a model, and what is left."""
+    from llm.cooldown import format_fallback_chain
+
+    lines = [f"Jobs: {found} unprocessed"]
+    if result.llm_targeted:
+        via = f" via {result.provider_used}" if result.provider_used else ""
+        lines.append(f"  LLM fields: {result.llm_written}/{result.llm_targeted} written{via}")
+        if result.fallbacks:
+            succeeded = result.provider_used if result.provider_used and "," not in result.provider_used else None
+            lines.append("    fallback: " + format_fallback_chain(result.fallbacks, succeeded))
+        if result.llm_deferred:
+            lines.append(
+                f"    {result.llm_deferred} not written — every configured model hit a free-tier daily quota"
+            )
+        if result.llm_errors:
+            lines.append(f"    {result.llm_errors} errors")
+    else:
+        lines.append("  LLM fields: none needed")
+
+    if result.esco_targeted:
+        lines.append(f"  Skills/ESCO: {result.esco_written}/{result.esco_targeted} tagged")
+        if result.esco_errors:
+            lines.append(f"    {result.esco_errors} errors")
+    else:
+        lines.append("  Skills/ESCO: none needed")
+
+    if result.org_targeted:
+        bits = [f"{result.org_linked}/{result.org_targeted} linked"]
+        if result.org_unresolved:
+            bits.append(f"{result.org_unresolved} unresolved")
+        if result.org_no_name:
+            bits.append(f"{result.org_no_name} with no organization name")
+        if result.org_errors:
+            bits.append(f"{result.org_errors} errors")
+        lines.append("  organization_id: " + ", ".join(bits))
+        shown = result.unresolved_labels[:8]
+        for label in shown:
+            lines.append(f"    unresolved: {label}")
+        extra = len(result.unresolved_labels) - len(shown)
+        if extra > 0:
+            lines.append(f"    … and {extra} more unresolved")
+    else:
+        lines.append("  organization_id: none missing")
+
+    by_need: Dict[str, int] = {}
+    for _job, needs in remaining:
+        for need in needs:
+            by_need[need] = by_need.get(need, 0) + 1
+    still = len(remaining)
+    if still == 0:
+        lines.append("  Still unprocessed: 0 — nothing further to run")
+    else:
+        lines.append(f"  Still unprocessed: {still}")
+        for need in sorted(by_need):
+            lines.append(f"    {by_need[need]} missing {need}")
+        if result.quota_exhausted:
+            lines.append(
+                "  Re-run catch-up after updating the API key or when the quota resets. "
+                "Jobs already written are skipped."
+            )
+        elif result.org_unresolved or result.org_no_name:
+            notes: List[str] = []
+            if result.org_unresolved:
+                notes.append(
+                    "Some jobs are still unlinked because that employer name matches more than one organization. "
+                    "Exact duplicates are merged earlier in this run. Pairs that still need a yes are listed under Manual review."
+                )
+            if name_reviews:
+                notes.append(
+                    "These names differ only by punctuation or & / and:"
+                )
+            if result.org_no_name:
+                notes.append(
+                    "A job with no organization name cannot be linked until that name is filled in."
+                )
+            if by_need.get("sse"):
+                notes.append(
+                    "SSE is left unset until an employer is linked, and those jobs are not sent back to the model in the meantime."
+                )
+            lines.append("  " + " ".join(notes))
+            for review in name_reviews or []:
+                lines.append(review)
+        else:
+            lines.append("  These stay queued and are retried on the next catch-up.")
+    return lines
+
+
+def link_job_organizations(
+    unprocessed: List[Tuple[Dict[str, Any], List[str]]],
+) -> Dict[str, Any]:
+    """Resolve and write organization_id for jobs that are still unlinked.
+
+    Uses the same resolver as job insert. A null result leaves the job queued.
+    """
+    targets = [job for job, needs in unprocessed if "organization_id" in needs]
+    stats: Dict[str, Any] = {
+        "targeted": len(targets),
+        "linked": 0,
+        "unresolved": 0,
+        "no_name": 0,
+        "errors": 0,
+        "unresolved_labels": [],
+        "unresolved_org_names": [],
+    }
+    if not targets:
+        return stats
+
+    named: List[Dict[str, Any]] = []
+    for job in targets:
+        if (job.get("organization") or "").strip():
+            named.append(job)
+            continue
+        label = _job_label(job)
+        stats["no_name"] += 1
+        stats["unresolved_labels"].append(f"{label} — no organization name")
+        _log(f"  organization_id: {label} — no organization name")
+    if not named:
+        return stats
+
+    from utils.organization_resolver import create_resolver
+
+    try:
+        resolver = create_resolver()
+    except Exception as exc:
+        _log(f"❌ Organization resolver unavailable: {exc}")
+        stats["errors"] = len(named)
+        stats["unresolved_labels"].extend(
+            f"{_job_label(job)} — resolver unavailable" for job in named
+        )
+        return stats
+
+    _log(f"Linking organization_id on {len(named)} jobs...")
+    for job in named:
+        label = _job_label(job)
+        name = (job.get("organization") or "").strip()
+        try:
+            org_id = resolver.resolve(
+                raw_name=name,
+                municipality=job.get("municipality"),
+                province=job.get("province"),
+                location=job.get("location"),
+                job_title=job.get("job_title") or "",
+                description=job.get("description") or "",
+                job_id=job.get("id"),
+            )
+        except Exception as exc:
+            stats["errors"] += 1
+            stats["unresolved_labels"].append(f"{label} — {exc}")
+            _log(f"  organization_id: {label} — error: {exc}")
+            continue
+        if org_id is None:
+            stats["unresolved"] += 1
+            stats["unresolved_labels"].append(label)
+            stats["unresolved_org_names"].append(name)
+            _log(f"  organization_id: {label} — no match")
+            continue
+        try:
+            supabase.table("jobs").update({"organization_id": org_id}).eq("id", job["id"]).execute()
+        except Exception as exc:
+            stats["errors"] += 1
+            stats["unresolved_labels"].append(f"{label} — write failed: {exc}")
+            _log(f"  organization_id: {label} — write failed: {exc}")
+            continue
+        stats["linked"] += 1
+        job["organization_id"] = org_id
+        _log(f"  organization_id: {label} → {org_id}")
+    return stats
+
 
 def process_unprocessed_jobs(
     unprocessed: List[Tuple[Dict[str, Any], List[str]]],
-) -> Tuple[int, int]:
-    """Run unified post-processor + ESCO skills tagger on a list of (job, needs[]).
+    skip_esco: bool = False,
+) -> JobCatchUpResult:
+    """Link organizations, then run the unified post-processor and ESCO tagger.
 
-    Returns (processed_count, error_count).
+    Jobs that only lack organization_id are linked here. They are not sent to
+    the LLM. Jobs that need summary, values, SSE, or language go through
+    task="all". Jobs that only need skills_raw go through task="skills".
     """
+    outcome = JobCatchUpResult()
     if not unprocessed:
-        return 0, 0
+        return outcome
 
-    job_ids = [j["id"] for j, _ in unprocessed]
-    _log(f"Processing {len(job_ids)} previously-unprocessed jobs...")
+    _log(f"Processing {len(unprocessed)} previously-unprocessed jobs...")
 
-    total_errors = 0
-    total_processed = 0
+    org_stats = link_job_organizations(unprocessed)
+    outcome.org_targeted = org_stats["targeted"]
+    outcome.org_linked = org_stats["linked"]
+    outcome.org_unresolved = org_stats["unresolved"]
+    outcome.org_no_name = org_stats["no_name"]
+    outcome.org_errors = org_stats["errors"]
+    outcome.unresolved_labels = list(org_stats["unresolved_labels"])
+    outcome.unresolved_org_names = list(org_stats["unresolved_org_names"])
 
-    # 1) Unified post-processor (summary / values / SSE / language / skills extract)
-    # Jobs needing LLM work beyond skills go through task="all".
-    # Jobs that only need skills_raw extraction go through task="skills" so
-    # _needs_processing fires its skills gate without a force flag.
-    NON_SKILLS_NEEDS = {"summary", "values", "sse", "language"}
+    def _deferred_sse_until_org(job: Dict[str, Any], needs: List[str]) -> bool:
+        # is_sse cannot be stored until an employer is linked. Sending the job
+        # to the model again would spend a call and still leave is_sse null.
+        llm = [req for req in needs if req in _NON_SKILLS_NEEDS]
+        return llm == ["sse"] and job.get("organization_id") is None
+
+    def _needs_llm(job: Dict[str, Any], needs: List[str]) -> bool:
+        llm = [req for req in needs if req in _NON_SKILLS_NEEDS]
+        if _deferred_sse_until_org(job, needs):
+            return False
+        return bool(llm)
+
     all_task_ids = [
         j["id"] for j, needs in unprocessed
-        if any(req in needs for req in NON_SKILLS_NEEDS)
+        if _needs_llm(j, needs)
     ]
+    # Skills can still run when the only non-skills need is deferred SSE.
     skills_only_ids = [
         j["id"] for j, needs in unprocessed
-        if "skills" in needs and not any(req in needs for req in NON_SKILLS_NEEDS)
+        if "skills" in needs
+        and (
+            not any(req in needs for req in _NON_SKILLS_NEEDS)
+            or _deferred_sse_until_org(j, needs)
+        )
     ]
+    outcome.llm_targeted = len(all_task_ids) + len(skills_only_ids)
 
-    for task, job_ids_chunk in [("all", all_task_ids), ("skills", skills_only_ids)]:
-        if not job_ids_chunk:
-            continue
-        try:
-            from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
+    from llm.cooldown import DailyQuotaExhaustedError
+    from scripts.unified_post_processor import ProcessingOptions, process_jobs_unified
 
-            result = process_jobs_unified(
-                ProcessingOptions(task=task, page_limit=None, job_ids=job_ids_chunk, dry_run=False, verbose=False)
-            )
-            total_processed += result.get("processed", 0)
-            total_errors += result.get("errors", 0)
-        except Exception as e:
-            _log(f"❌ Unified post-processor (task={task}) failed: {e}")
-            total_errors += len(job_ids_chunk)
+    providers: List[str] = []
+    quota_hit = False
 
-    # 2) ESCO skills vector tagging
+    def _consume(task: str, ids: List[str]) -> None:
+        nonlocal quota_hit
+        if not ids:
+            return
+        if quota_hit:
+            outcome.llm_deferred += len(ids)
+            return
+        for offset in range(0, len(ids), _LLM_ID_CHUNK):
+            if quota_hit:
+                outcome.llm_deferred += len(ids) - offset
+                return
+            chunk = ids[offset:offset + _LLM_ID_CHUNK]
+            try:
+                raw = process_jobs_unified(
+                    ProcessingOptions(
+                        task=task,
+                        page_limit=None,
+                        job_ids=chunk,
+                        dry_run=False,
+                        verbose=False,
+                    )
+                )
+            except DailyQuotaExhaustedError as exc:
+                partial = getattr(exc, "partial", None) or {}
+                outcome.llm_written += partial.get("processed", 0)
+                outcome.llm_errors += partial.get("errors", 0)
+                outcome.llm_deferred += partial.get("deferred", len(chunk))
+                outcome.llm_deferred += len(ids) - (offset + len(chunk))
+                _merge_fallback_notes(outcome.fallbacks, partial.get("fallbacks"))
+                _merge_fallback_notes(outcome.fallbacks, getattr(exc, "fallbacks", None))
+                if partial.get("provider_used"):
+                    providers.append(partial["provider_used"])
+                outcome.quota_exhausted = True
+                quota_hit = True
+                _log(f"❌ Unified post-processor (task={task}) stopped: {exc}")
+                return
+            except Exception as exc:
+                _log(f"❌ Unified post-processor (task={task}) failed: {exc}")
+                outcome.llm_errors += len(chunk)
+                continue
+            outcome.llm_written += raw.get("processed", 0)
+            outcome.llm_errors += raw.get("errors", 0)
+            _merge_fallback_notes(outcome.fallbacks, raw.get("fallbacks"))
+            if raw.get("provider_used"):
+                providers.append(raw["provider_used"])
+
+    _consume("all", all_task_ids)
+    _consume("skills", skills_only_ids)
+    seen: List[str] = []
+    for name in providers:
+        if name not in seen:
+            seen.append(name)
+    outcome.provider_used = ", ".join(seen) if seen else None
+
     esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]
-    if esco_ids:
+    if not skip_esco:
+        outcome.esco_targeted = len(esco_ids)
+    if esco_ids and not skip_esco:
         try:
             from scripts.tag_esco_skills_vector import tag_esco_skills_vector
 
-            result = tag_esco_skills_vector(job_ids=esco_ids)
-            total_processed += result.get("processed", 0)
-            total_errors += result.get("errors", 0)
-        except Exception as e:
-            _log(f"❌ ESCO tagging failed: {e}")
-            total_errors += len(esco_ids)
+            esco = tag_esco_skills_vector(job_ids=esco_ids)
+            outcome.esco_written = esco.get("processed", 0)
+            outcome.esco_errors = esco.get("errors", 0)
+        except Exception as exc:
+            _log(f"❌ ESCO tagging failed: {exc}")
+            outcome.esco_errors = len(esco_ids)
 
-    return total_processed, total_errors
+    return outcome
 
 
 def process_unprocessed_organizations(
     unprocessed: List[Tuple[Dict[str, Any], List[str]]],
-) -> Tuple[int, int, int]:
+) -> OrgPassResult:
     """Assess every (org, needs[]) once and write both fields and skip reason.
 
     Every attempt writes assessment_skip_reason — NULL when the org came out
@@ -456,10 +783,12 @@ def process_unprocessed_organizations(
     previously a failed assessment wrote nothing, so the same orgs were retried
     on every scrape forever.
 
-    Returns (success_count, error_count, parked_count).
+    Returns an OrgPassResult. ``errors`` counts failed assessments (including
+    parks whose result is empty) so existing callers keep the same meaning.
+    ``hard_errors`` is only unexpected exceptions and rows that changed mid-run.
     """
     if not unprocessed:
-        return 0, 0, 0
+        return OrgPassResult(0, 0, 0)
 
     _log(f"Assessing {len(unprocessed)} previously-incomplete organizations...")
 
@@ -474,6 +803,8 @@ def process_unprocessed_organizations(
     success = 0
     errors = 0
     parked = 0
+    hard_errors = 0
+    parked_reasons: List[str] = []
     for i, (org, _needs) in enumerate(unprocessed, 1):
         name = org.get("name") or "(unnamed)"
 
@@ -501,19 +832,23 @@ def process_unprocessed_organizations(
             if not write.applied:
                 _log(f"  ⚠️  Org [{name}] skipped: row changed since read")
                 errors += 1
+                hard_errors += 1
                 continue
 
             if reason is None:
                 success += 1
             else:
                 parked += 1
+                parked_reasons.append(reason)
                 if outcome.result is None:
                     errors += 1
                 _log(f"  ⏸  Org [{name}] parked: {reason}")
         except Exception as e:
             _log(f"  Org [{name}] error: {e}")
             errors += 1
+            hard_errors += 1
             parked += 1
+            parked_reasons.append(SKIP_REASON_EXCEPTION)
             _park_org(org, SKIP_REASON_EXCEPTION)
 
         # Gentle rate limit — Gemini free tier ~15 RPM; keep well under to avoid
@@ -526,7 +861,23 @@ def process_unprocessed_organizations(
         if delay_s > 0:
             time.sleep(delay_s)
 
-    return success, errors, parked
+    provider = getattr(assessor, "provider", None)
+    fallbacks = getattr(provider, "fallback_notes", None)
+    provider_used = getattr(provider, "_last_successful", None)
+    if not isinstance(fallbacks, list):
+        fallbacks = []
+    if not isinstance(provider_used, str):
+        provider_used = None
+
+    return OrgPassResult(
+        success,
+        errors,
+        parked,
+        tuple(parked_reasons),
+        hard_errors,
+        tuple(fallbacks),
+        provider_used,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -534,7 +885,624 @@ def process_unprocessed_organizations(
 # ---------------------------------------------------------------------------
 
 
-def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) -> Dict[str, int]:
+_PARKED_PLAIN = {
+    "private_residence": "This name is a home, so there is no organization profile to fill in.",
+    "location_mismatch": (
+        "The assessment found a different place than the one saved here, "
+        "so it did not write a profile."
+    ),
+    "parse_failed": "The last assessment reply could not be read.",
+    "llm_error": "The assessment service failed before it could fill in the profile.",
+    "empty_response": "The assessment came back empty.",
+    "no_new_fields": "The assessment had nothing new to add, and the profile is still incomplete.",
+    "partial_fill": "Part of the profile was filled in. The rest is still missing.",
+    "exception": "The assessment crashed before it could finish.",
+    "incomplete_backlog": "An earlier pass left this profile incomplete.",
+}
+
+
+def _load_parked_org_rows() -> List[dict]:
+    """Organizations whose assessment_skip_reason is set, except an explicit Ignore."""
+    resp = (
+        supabase.table("organizations")
+        .select(
+            "id, name, municipality, province, location, website, assessment_skip_reason, "
+            "sector_id, type, description, description_en, description_fr, language, values_list"
+        )
+        .not_.is_("assessment_skip_reason", "null")
+        .order("id")
+        .execute()
+    )
+    return [
+        row for row in (resp.data or [])
+        if row.get("assessment_skip_reason") not in (None, "", SKIP_REASON_IGNORED)
+    ]
+
+
+def _parked_place(row: Dict[str, Any]) -> str | None:
+    place = ", ".join(
+        part for part in (row.get("municipality"), row.get("province")) if part
+    )
+    return place or row.get("location") or None
+
+
+def source_jobs_for_org(org_id: Any, *, limit: int = 3) -> List[dict]:
+    """Jobs already linked to this organization, so a review can show where the name came from."""
+    try:
+        resp = (
+            supabase.table("jobs")
+            .select(
+                "job_title,organization,municipality,province,location,listing_url,description"
+            )
+            .eq("organization_id", org_id)
+            .limit(limit)
+            .execute()
+        )
+    except Exception:
+        return []
+    return [
+        row for row in (resp.data or [])
+        if row.get("job_title") or row.get("listing_url")
+    ]
+
+
+def source_job_lines(job: Dict[str, Any]) -> List[str]:
+    """Short posting context: title, the place stored on the job, the url, and the opening text."""
+    place = _parked_place(job) or job.get("location") or "no place stored"
+    lines = [
+        f"  Job: {job.get('job_title') or '(untitled)'}",
+        f"  Employer on the posting: {job.get('organization') or '(blank)'}",
+        f"  Place stored on the job: {place}",
+    ]
+    if job.get("listing_url"):
+        lines.append(f"  {job['listing_url']}")
+    description = " ".join((job.get("description") or "").split())
+    if description:
+        snippet = description[:400]
+        if len(description) > 400:
+            snippet += "…"
+        lines.append(f"  {snippet}")
+    return lines
+
+
+def _parked_sentence(row: Dict[str, Any]) -> str:
+    reason = row.get("assessment_skip_reason") or ""
+    sentence = _PARKED_PLAIN.get(
+        reason, f"The scraper stopped on this organization ({reason})."
+    )
+    if reason == "location_mismatch":
+        place = _parked_place(row) or "none saved"
+        sentence = f"Saved place is {place}. {sentence}"
+    return sentence
+
+
+def _allows_place_correction(reason: str) -> bool:
+    """Place correction is for location mismatches and incomplete profiles (set HQ)."""
+    return reason in {
+        "location_mismatch",
+        SKIP_REASON_PARTIAL_FILL,
+        SKIP_REASON_NO_NEW_FIELDS,
+        SKIP_REASON_INCOMPLETE_BACKLOG,
+    }
+
+
+def parked_reply_action(reason: str, reply: str) -> str:
+    """Map one keypress to ignore, retry, correct, skip, quit, or again."""
+    reply = reply.strip().lower()
+    if reply in {"q", "quit"}:
+        return "quit"
+    if reply in {"i", "ignore"}:
+        return "ignore"
+    if reply in {"c", "correct"}:
+        if _allows_place_correction(reason):
+            return "correct"
+        return "again"
+    if reply in {"r", "retry"}:
+        if reason == "private_residence":
+            return "again"
+        return "retry"
+    if reply == "":
+        return "skip"
+    return "again"
+
+
+def suggested_city(row: Dict[str, Any]) -> str:
+    """A genuinely different city stored on the row, not just a restatement of the saved place.
+
+    The ``location`` string often repeats the saved municipality with a province tacked
+    on (``"La Salle MB"`` for municipality ``"La Salle"``). That is not a useful
+    suggestion, so strip a trailing province token and only return a city that differs
+    from the saved municipality.
+    """
+    from utils.location_parser import _normalize_ca_province_code, is_province_like_municipality
+
+    location = " ".join((row.get("location") or "").split())
+    municipality = " ".join((row.get("municipality") or "").split())
+    if not location:
+        return ""
+    # Drop a trailing province token so "City, QC" / "City MB" compare as the city alone.
+    for sep in (",", " "):
+        head, found, tail = location.rpartition(sep)
+        if found and head and (_normalize_ca_province_code(tail.strip()) or is_province_like_municipality(tail.strip())):
+            location = head.strip()
+            break
+    if not location or "," in location:
+        return ""
+    if municipality and location.casefold() == municipality.casefold():
+        return ""
+    return location
+
+
+def parse_corrected_place(city: str, province: str) -> tuple[str, str] | None:
+    """Return (municipality, province code) when both are a city and a Canadian province."""
+    from utils.location_parser import _normalize_ca_province_code, is_province_like_municipality
+
+    municipality = " ".join((city or "").split())
+    code = _normalize_ca_province_code(province)
+    if not municipality or not code or is_province_like_municipality(municipality):
+        return None
+    return municipality, code
+
+
+def _set_parked_reason(row: Dict[str, Any], new_reason: str | None) -> bool:
+    oid = row["id"]
+    read_reason = row.get("assessment_skip_reason")
+    query = (
+        supabase.table("organizations")
+        .update({"assessment_skip_reason": new_reason})
+        .eq("id", oid)
+    )
+    resp = _require_unchanged_reason(query, read_reason).execute()
+    return bool(resp.data)
+
+
+def _read_review_line(prompt: str) -> str | None:
+    try:
+        return input(prompt)
+    except EOFError:
+        print("\n(end of input)")
+        return None
+
+
+def _ask_corrected_place(row: Dict[str, Any]) -> tuple[str, str] | None | str:
+    """Ask for a city and province. None cancels. ``quit`` leaves the review."""
+    suggestion = suggested_city(row)
+    city_prompt = f"  City [{suggestion}]: " if suggestion else "  City: "
+    city_raw = _read_review_line(city_prompt)
+    if city_raw is None:
+        return "quit"
+    province_raw = _read_review_line("  Province (ON, QC, BC, …): ")
+    if province_raw is None:
+        return "quit"
+    parsed = parse_corrected_place(city_raw.strip() or suggestion, province_raw)
+    if parsed is None:
+        print("  Need a city and a province. The saved place was left as it is.")
+        return None
+    return parsed
+
+
+def _geocode_place(city: str, province: str) -> Dict[str, Any]:
+    """Coordinates for a city the reviewer typed.
+
+    When the geocoder agrees on the province, its point is used. When it does
+    not, the province centroid is kept (accuracy ``state``) so the row still has
+    coordinates rather than null lat/lng until the next geocode pass.
+    """
+    from utils.location_parser import (
+        _CA_PROVINCE_CENTROIDS,
+        _normalize_ca_province_code,
+        parse_address_with_geocodio,
+    )
+
+    try:
+        geo = parse_address_with_geocodio(f"{city}, {province}") or {}
+    except Exception as exc:
+        _log(f"  Could not geocode {city}, {province}: {exc}")
+        geo = {}
+    found = _normalize_ca_province_code(geo.get("province"))
+    if found == province and geo.get("municipality"):
+        return geo
+
+    latlng = _CA_PROVINCE_CENTROIDS.get(province)
+    if latlng:
+        return {
+            "municipality": None,
+            "province": province,
+            "lat": latlng[0],
+            "lng": latlng[1],
+            "geocode_accuracy_type": "state",
+        }
+    return {}
+
+
+def _relocate_org_jobs(org_id: Any, old_place: Dict[str, Any], job_payload: Dict[str, Any]) -> None:
+    """Move only the jobs that shared the organization's old mismatched place.
+
+    An employer can post in more than one city, so correcting the organization's
+    place must not stamp the new city onto a posting that was somewhere else. The
+    update matches jobs for this org whose stored municipality and province equal
+    the place being corrected. Filters are only added for the parts of the old
+    place that are set: if the org had a province but no municipality, every job
+    for it in that province moves; a job that stores a *different* municipality is
+    never touched.
+    """
+    old_muni = old_place.get("municipality")
+    old_prov = old_place.get("province")
+    if not old_muni and not old_prov:
+        # No old place to match on — refuse to touch any jobs rather than stamp the
+        # new place onto every posting for a multi-site employer.
+        return
+    query = supabase.table("jobs").update(job_payload).eq("organization_id", org_id)
+    if old_prov:
+        query = query.eq("province", old_prov)
+    if old_muni:
+        query = query.eq("municipality", old_muni)
+    query.execute()
+
+
+def _correct_parked_place(row: Dict[str, Any], city: str, province: str) -> str:
+    """Write the corrected place onto the organization and its matching jobs, then assess once.
+
+    Jobs are only relocated for a ``location_mismatch`` — there the saved place was
+    wrong and the postings that shared it should move with it. For an incomplete
+    profile the reviewer is setting the organization's home base (HQ), which is
+    independent of each job's own site, so the postings are left untouched.
+    """
+    name = row.get("name") or "(unnamed)"
+    reason = row.get("assessment_skip_reason") or ""
+    old_place = {
+        "municipality": row.get("municipality"),
+        "province": row.get("province"),
+    }
+    geo = _geocode_place(city, province)
+    if geo.get("municipality"):
+        city = geo["municipality"]
+    location = f"{city}, {province}"
+    payload: Dict[str, Any] = {
+        "municipality": city,
+        "province": province,
+        "location": location,
+        "lat": geo.get("lat"),
+        "lng": geo.get("lng"),
+        "geocode_accuracy_type": geo.get("geocode_accuracy_type"),
+        "assessment_skip_reason": None,
+    }
+    query = supabase.table("organizations").update(payload).eq("id", row["id"])
+    resp = _require_unchanged_reason(query, row.get("assessment_skip_reason")).execute()
+    if not resp.data:
+        return f"Could not update {name}. It stays listed."
+
+    if reason == "location_mismatch":
+        job_payload = {
+            key: payload[key]
+            for key in ("municipality", "province", "location", "lat", "lng", "geocode_accuracy_type")
+        }
+        try:
+            _relocate_org_jobs(row["id"], old_place, job_payload)
+        except Exception as exc:
+            _log(f"  Updated {name}, but could not update its jobs: {exc}")
+
+    fresh = _reload_org(row["id"])
+    if not fresh:
+        return f"Set {name} to {location}, but could not read it back to assess."
+    needs = find_missing_org_fields(fresh)
+    if not needs:
+        return f"Set {name} to {location}. The profile was already complete."
+    result = process_unprocessed_organizations([(fresh, needs)])
+    if result.success:
+        return f"Set {name} to {location} and filled in the profile."
+    reason = result.parked_reasons[0] if result.parked_reasons else "unknown"
+    detail = _PARKED_PLAIN.get(reason, reason)
+    return f"Set {name} to {location}. Assessment is still waiting: {detail}"
+
+
+def _retry_parked_org(row: Dict[str, Any]) -> str:
+    """Clear the flag and assess this organization once, in this run."""
+    name = row.get("name") or "(unnamed)"
+    if not _set_parked_reason(row, None):
+        return f"Could not retry {name}. It stays listed."
+    fresh = _reload_org(row["id"])
+    if not fresh:
+        return f"Cleared {name}, but could not read it back to assess."
+    needs = find_missing_org_fields(fresh)
+    if not needs:
+        return f"{name} already has a full profile."
+    result = process_unprocessed_organizations([(fresh, needs)])
+    if result.success:
+        return f"Filled in {name}."
+    reason = result.parked_reasons[0] if result.parked_reasons else "unknown"
+    detail = _PARKED_PLAIN.get(reason, reason)
+    return f"Tried {name} again. Still waiting: {detail}"
+
+
+_MISSING_FIELD_LABELS = {
+    "sector_id": "sector",
+    "type": "type (nonprofit / co-op / …)",
+    "description_en": "English description",
+    "description_fr": "French description",
+    "language": "language",
+    "values_list": "values",
+}
+
+
+def _parked_missing_labels(row: Dict[str, Any]) -> List[str]:
+    """Human labels for the profile fields this parked org still lacks."""
+    return [_MISSING_FIELD_LABELS.get(f, f) for f in find_missing_org_fields(row)]
+
+
+def _parked_intro(row: Dict[str, Any]) -> str:
+    """One plain sentence saying what is uncertain and what the person is deciding."""
+    reason = row.get("assessment_skip_reason") or ""
+    if reason == "location_mismatch":
+        place = _parked_place(row) or "an unknown place"
+        return (
+            f"We saved this employer in {place}, but researching the organization did not "
+            "confirm that location — so its profile was left blank. Using the posting(s) "
+            "below, decide where it really is."
+        )
+    if reason == "private_residence":
+        return (
+            "This name looks like a private home, not an organization, so there is no "
+            "profile to fill in."
+        )
+    if reason in (
+        SKIP_REASON_PARTIAL_FILL,
+        SKIP_REASON_NO_NEW_FIELDS,
+        SKIP_REASON_INCOMPLETE_BACKLOG,
+    ):
+        missing = _parked_missing_labels(row)
+        still = (", ".join(missing) if missing else "some fields")
+        if reason == SKIP_REASON_PARTIAL_FILL:
+            return (
+                f"Assessment started but the profile is still incomplete "
+                f"(still needs: {still}). Job posting places can differ from the "
+                f"organization's home base — that is fine. Retry, set the org place, "
+                f"or set it aside."
+            )
+        return (
+            f"The profile is still incomplete (still needs: {still}). "
+            "Retry the assessment, set the org place, or set it aside."
+        )
+    return _parked_sentence(row) + " You can try the assessment again or set it aside."
+
+
+def _posting_source(url: str) -> str:
+    """The job-board domain from a listing url, e.g. 'macommunaute.ca'."""
+    from urllib.parse import urlparse
+
+    host = urlparse(url or "").netloc
+    return host[4:] if host.startswith("www.") else host
+
+
+def _job_place_set(jobs: List[dict]) -> List[str]:
+    """Distinct places stored on the linked jobs, in stable order."""
+    seen: List[str] = []
+    for job in jobs:
+        place = _parked_place(job) or job.get("location")
+        if place and place not in seen:
+            seen.append(place)
+    return seen
+
+
+def _print_parked_postings(org_id: Any, *, org_place: str | None = None) -> None:
+    """Show the distinct postings this org came from, printing shared posting text once."""
+    jobs = source_jobs_for_org(org_id)
+    if not jobs:
+        print("  No job posting is linked to this organization.")
+        return
+    source = _posting_source(jobs[0].get("listing_url", ""))
+    where = f" on {source}" if source else ""
+    print(f"  From {len(jobs)} posting(s){where}:")
+    snippets = set()
+    for job in jobs:
+        title = job.get("job_title") or "(untitled)"
+        place = _parked_place(job) or job.get("location") or "no place stored"
+        print(f"    • {title} — {place}")
+        if job.get("listing_url"):
+            print(f"      {job['listing_url']}")
+    # These postings usually repeat the same employer blurb, so show it only once.
+    for job in jobs:
+        description = " ".join((job.get("description") or "").split())
+        if not description:
+            continue
+        snippet = description[:300] + ("…" if len(description) > 300 else "")
+        if snippet in snippets:
+            continue
+        snippets.add(snippet)
+        print(f'    "{snippet}"')
+    job_places = _job_place_set(jobs)
+    if len(job_places) > 1:
+        print(
+            "  Note: these jobs are in more than one city. That is normal for a "
+            "multi-site employer — each job keeps its own place; the organization "
+            "place is the home base (HQ), not every job site."
+        )
+
+
+def _prompt_parked_org(row: Dict[str, Any]) -> str:
+    reason = row.get("assessment_skip_reason") or ""
+    name = row.get("name") or "(unnamed)"
+    org_place = _parked_place(row)
+    print(f"\n{name}")
+    print(f"  {_parked_intro(row)}")
+    _print_parked_postings(row.get("id"), org_place=org_place)
+    if row.get("website"):
+        print(f"  Website: {row['website']}")
+    elif reason != "private_residence":
+        print("  Website: (none)")
+    if reason != "private_residence":
+        print(f"  Organization home base on file: {org_place or '(none yet)'}")
+
+    print("\n  What do you want to do?")
+    if reason == "location_mismatch":
+        saved = org_place or "the saved place"
+        suggestion = suggested_city(row)
+        hint = f" (maybe {suggestion}?)" if suggestion else ""
+        print(f"    c  Saved place is wrong — type the correct city + province{hint}, then re-assess")
+        print(f"    r  {saved} is correct — just assess this organization again")
+        print("    i  Not really a place problem — stop listing it")
+    elif reason == "private_residence":
+        print("    i  Agreed, it is a private home — stop listing it")
+    else:
+        if _allows_place_correction(reason):
+            if org_place:
+                print(f"    c  Set / correct the organization home base (currently {org_place}), then re-assess")
+            else:
+                print("    c  Set the organization home base (city + province), then re-assess")
+        print("    r  Try the assessment again now")
+        print("    i  Stop listing it")
+    print("    Enter  Decide later — kept for the next scrape")
+    print("    q  Stop reviewing the rest")
+
+    while True:
+        try:
+            reply = input("> ")
+        except EOFError:
+            print("\n(end of input)")
+            return "quit"
+        action = parked_reply_action(reason, reply)
+        if action == "correct":
+            place = _ask_corrected_place(row)
+            if place == "quit":
+                return "quit"
+            if place is None:
+                continue
+            city, province = place
+            row["_corrected_place"] = (city, province)
+            return "correct"
+        if action != "again":
+            return action
+        if reason == "private_residence" and reply.strip().lower() in {"r", "retry"}:
+            print("  Assessing this again would stop for the same reason. Use i to take it off the list.")
+        elif _allows_place_correction(reason):
+            print("  Please type c, r, i, q, or press Enter.")
+        else:
+            print("  Please type r, i, q, or press Enter.")
+
+
+def review_parked_organizations(*, interactive: bool) -> List[str]:
+    """List organizations the scraper has stopped assessing, and choose when a terminal is attached.
+
+    ``r`` clears the flag and assesses that organization once in this run.
+    ``i`` writes ``ignored`` so later runs leave it off the list.
+    Enter leaves the flag in place for the next scrape.
+    """
+    rows = _load_parked_org_rows()
+    if not rows:
+        return []
+    if not interactive:
+        lines = [
+            "Organizations the scraper will not assess again until you choose:"
+        ]
+        for row in rows:
+            lines.append(f"  {row.get('name') or '(unnamed)'} — {_parked_sentence(row)}")
+            for job in source_jobs_for_org(row.get("id")):
+                lines.extend(source_job_lines(job))
+        lines.append(
+            "This run is not a terminal, so nothing was chosen. "
+            "Re-run the scraper in a terminal: c corrects the place, r assesses once more, i stops listing it."
+        )
+        return lines
+
+    print(
+        f"\n{len(rows)} organization(s) need a quick decision before their employer profile "
+        "can be filled in.\nThe jobs are already saved and nothing is deleted — this only "
+        "affects the organization profile.\nSkip any you are unsure about; they come back next scrape."
+    )
+    lines: List[str] = []
+    for row in rows:
+        name = row.get("name") or "(unnamed)"
+        action = _prompt_parked_org(row)
+        if action == "quit":
+            lines.append(
+                "Stopped the organization review. The rest stay listed for the next scrape."
+            )
+            break
+        if action == "ignore":
+            if _set_parked_reason(row, SKIP_REASON_IGNORED):
+                lines.append(f"Stopped listing {name}.")
+            else:
+                lines.append(f"Could not update {name}. It stays listed.")
+        elif action == "retry":
+            lines.append(_retry_parked_org(row))
+        elif action == "correct":
+            city, province = row.get("_corrected_place") or (None, None)
+            if city and province:
+                lines.append(_correct_parked_place(row, city, province))
+            else:
+                lines.append(f"Left {name} for the next scrape.")
+        else:
+            lines.append(f"Left {name} for the next scrape.")
+    return lines
+
+
+def maintain_organization_duplicates(*, interactive: bool) -> List[str]:
+    """Merge exact duplicate organizations, then surface anything a person must confirm.
+
+    Exact same name and compatible website are merged here. ``&`` / ``and`` and
+    apostrophe variants are not merged until someone answers ``y`` in the terminal.
+    """
+    from scripts.merge_duplicate_organizations import (
+        apply_auto_merges,
+        build_decisions,
+        describe_duplicate_reviews,
+        review_interactively,
+    )
+
+    decisions = build_decisions(log=_log)
+    auto_count = sum(1 for decision in decisions if decision.bucket == "auto-merge")
+    lines: List[str] = []
+    if auto_count:
+        _log(
+            f"Merging {auto_count} exact duplicate organization pair(s) "
+            "(same name, same website)..."
+        )
+        apply_auto_merges(decisions)
+        lines.append(f"Merged {auto_count} exact duplicate organization pair(s).")
+
+    lines.extend(describe_duplicate_reviews(decisions))
+    reviews = [decision for decision in decisions if decision.bucket == "review"]
+    if reviews and interactive:
+        _log("These organization pairs need a yes or a skip before the jobs can link.")
+        review_interactively(decisions, apply=True)
+        lines.append("Those pairs were prompted in this run.")
+    elif reviews:
+        lines.append(
+            "This run is not a terminal, so those pairs were not prompted. "
+            "Re-run the scraper in a terminal, or: "
+            "python -m scripts.merge_duplicate_organizations --prod --needs-review --interactive"
+        )
+    return lines
+
+
+def _refresh_job_catch_up(
+    unprocessed_jobs: List[Tuple[Dict[str, Any], List[str]]],
+    started: float,
+) -> tuple[JobCatchUpResult, List[Tuple[Dict[str, Any], List[str]]], List[str]]:
+    """Run job catch-up and return the result, what's still missing, and summary lines."""
+    job_result = process_unprocessed_jobs(unprocessed_jobs)
+    original_ids = {job["id"] for job, _needs in unprocessed_jobs}
+    remaining = [
+        (job, needs)
+        for job, needs in find_unprocessed_jobs()
+        if job["id"] in original_ids
+    ]
+    name_reviews: List[str] = []
+    if job_result.unresolved_org_names:
+        try:
+            from scripts.merge_duplicate_organizations import review_lines_for_names
+
+            name_reviews = review_lines_for_names(job_result.unresolved_org_names)
+        except Exception as exc:
+            _log(f"  Could not list near-duplicate organization names: {exc}")
+    job_lines = job_catch_up_lines(
+        len(unprocessed_jobs), job_result, remaining, name_reviews
+    )
+    job_lines[0] += f" ({time.time() - started:.1f}s)"
+    return job_result, remaining, job_lines
+
+
+def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) -> Dict[str, Any]:
     """Find any unprocessed orgs/jobs in the DB and process them after scraping.
 
     Used automatically by the scraper at the end of each run. Returns a dict
@@ -543,7 +1511,7 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
     Set skip_orgs/skip_jobs to True to disable that pass (useful when you only
     want to scrape new data).
     """
-    report: Dict[str, int] = {
+    report: Dict[str, Any] = {
         "orgs_total": 0,
         "orgs_processed": 0,
         "orgs_parked": 0,
@@ -551,6 +1519,10 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
         "jobs_total": 0,
         "jobs_processed": 0,
         "jobs_errors": 0,
+        "jobs_still": 0,
+        "org_lines": [],
+        "job_lines": [],
+        "review_lines": [],
     }
 
     # Short-circuit if the feature is explicitly disabled
@@ -580,32 +1552,65 @@ def catch_up_unprocessed(*, skip_orgs: bool = False, skip_jobs: bool = False) ->
                 )
         report["orgs_total"] = len(unprocessed_orgs)
         if unprocessed_orgs:
-            ok, err, parked = process_unprocessed_organizations(unprocessed_orgs)
-            report["orgs_processed"] = ok
-            report["orgs_errors"] = err
-            report["orgs_parked"] = parked
-            _log(
-                f"Org catch-up complete: {ok}/{len(unprocessed_orgs)} ok, "
-                f"{parked} parked for review, {err} errors "
-                f"({time.time() - t0:.1f}s)"
+            org_result = process_unprocessed_organizations(unprocessed_orgs)
+            report["orgs_processed"] = org_result.success
+            report["orgs_errors"] = org_result.errors
+            report["orgs_parked"] = org_result.parked
+            org_lines = org_catch_up_lines(
+                len(unprocessed_orgs),
+                org_result.success,
+                org_result.parked,
+                org_result.parked_reasons,
+                org_result.hard_errors,
+                org_result.fallbacks,
+                org_result.provider_used,
             )
+            org_lines[0] += f" ({time.time() - t0:.1f}s)"
+            report["org_lines"] = org_lines
+            for line in org_lines:
+                _log(line)
         else:
             _log("✅ No organizations eligible for assessment.")
 
-    # ── 2. Jobs ─────────────────────────────────────────────────────────────────
+    # ── 2. Exact duplicate orgs, then anything a person still has to confirm ──
     if not skip_jobs:
+        import sys
+
+        review_lines: List[str] = []
+        try:
+            review_lines.extend(
+                maintain_organization_duplicates(interactive=sys.stdin.isatty())
+            )
+        except Exception as exc:
+            _log(f"Organization duplicate check failed: {exc}")
+        try:
+            review_lines.extend(
+                review_parked_organizations(interactive=sys.stdin.isatty())
+            )
+        except Exception as exc:
+            _log(f"Could not list parked organizations: {exc}")
+        if not any(line.strip() for line in review_lines):
+            review_lines = ["Manual review: nothing waiting."]
+        else:
+            review_lines = ["Manual review", *review_lines]
+        report["review_lines"] = review_lines
+        for line in review_lines:
+            _log(line)
+
         t0 = time.time()
         unprocessed_jobs = find_unprocessed_jobs()
         report["jobs_total"] = len(unprocessed_jobs)
         if unprocessed_jobs:
             _log(f"Found {len(unprocessed_jobs)} unprocessed jobs — processing after scraping new data")
-            ok, err = process_unprocessed_jobs(unprocessed_jobs)
-            report["jobs_processed"] = ok
-            report["jobs_errors"] = err
-            _log(
-                f"Job catch-up complete: {ok}/{len(unprocessed_jobs)} processed, {err} errors "
-                f"({time.time() - t0:.1f}s)"
+            job_result, remaining, job_lines = _refresh_job_catch_up(unprocessed_jobs, t0)
+            report["job_lines"] = job_lines
+            report["jobs_processed"] = len(unprocessed_jobs) - len(remaining)
+            report["jobs_still"] = len(remaining)
+            report["jobs_errors"] = (
+                job_result.llm_errors + job_result.esco_errors + job_result.org_errors
             )
+            for line in job_lines:
+                _log(line)
         else:
             _log("✅ All jobs already processed.")
 

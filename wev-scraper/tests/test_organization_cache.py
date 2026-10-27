@@ -188,6 +188,19 @@ class TestEvidenceDomain:
         assert evidence_domain("https://www.mindrift.ai") == "mindrift.ai"
         assert not is_shared_domain("mindrift.ai")
 
+    def test_workday_and_adp_apex_are_employer_evidence_but_recruiting_hosts_are_shared(self):
+        # Vendor corporate sites can be real employers; only recruiting hosts are shared.
+        assert evidence_domain("https://www.workday.com") == "workday.com"
+        assert evidence_domain("https://www.adp.com") == "adp.com"
+        assert not is_shared_domain("workday.com")
+        assert not is_shared_domain("adp.com")
+        assert evidence_domain("https://company.myworkdayjobs.com/en-US/careers") is None
+        assert evidence_domain("https://wd5.myworkdaysite.com/recruiting/acme") is None
+        assert evidence_domain("https://acme.myworkday.com/wday/cxs") is None
+        assert evidence_domain("https://workforcenow.adp.com/mascsr/default/jobs") is None
+        assert evidence_domain("https://myjobs.adp.com/acme") is None
+        assert evidence_domain("https://recruiting.adp.com/srccsh/RTI") is None
+
 
 class TestDomainsMatch:
     def test_subdomain_matches_apex(self):

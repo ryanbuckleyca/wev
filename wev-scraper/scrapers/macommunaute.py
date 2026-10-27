@@ -16,6 +16,10 @@ class MaCommunauteScraper(BaseScraper):
     is_chronological = True
     force_headed_on_vpn = True
     language = "fr"
+    # macommunaute.ca is a Greater-Montréal community board — every posting is in
+    # Québec. Card locations are bare city names ("LaSalle", "Lachine"), so declare
+    # the province to keep geocoding from drifting out of Québec (e.g. LaSalle, MB).
+    default_province = "QC"
     listing_selector = ".card-posts a.card-post"
     job_wait_selector = ".entry-content, .single-content, article"
 

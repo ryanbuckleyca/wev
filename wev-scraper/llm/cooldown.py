@@ -64,6 +64,38 @@ def is_daily_quota_exhausted_error(exc: Exception) -> bool:
     )
 
 
+def fallback_reason(exc: Exception) -> str:
+    """Short label for why a provider was skipped in a fallback chain."""
+    if is_daily_quota_exhausted_error(exc):
+        return "free-tier daily quota"
+    if is_quota_exhausted_error(exc):
+        return "rate limit"
+    text = str(exc).strip().splitlines()[0] if str(exc).strip() else "error"
+    if "not available" in text.lower():
+        return "unavailable"
+    if len(text) > 140:
+        return text[:137] + "..."
+    return text
+
+
+def format_fallback_chain(fallbacks: list[dict], succeeded: str | None = None) -> str:
+    """Render skipped providers and the backend that eventually succeeded.
+
+    ``fallbacks`` items are ``{"provider": name, "reason": why}``.
+    """
+    parts: list[str] = []
+    seen: set[str] = set()
+    for item in fallbacks:
+        provider = str(item.get("provider") or "unknown")
+        reason = str(item.get("reason") or "error")
+        parts.append(f"{provider} ({reason})")
+        seen.add(provider)
+    chain = " → ".join(parts)
+    if succeeded and succeeded not in seen:
+        return f"{chain} → {succeeded}" if chain else succeeded
+    return chain
+
+
 class DailyQuotaExhaustedError(Exception):
     """Raised when every API backend in the chain has hit a daily/free-tier 429."""
 

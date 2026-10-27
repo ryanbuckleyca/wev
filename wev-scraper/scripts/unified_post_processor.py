@@ -192,6 +192,13 @@ def _fetch_jobs(
     return query.execute().data
 
 
+def _merge_fallback_notes(dest: list, items) -> None:
+    """Append unique {provider, reason} notes onto dest."""
+    for item in items or []:
+        if isinstance(item, dict) and item not in dest:
+            dest.append(item)
+
+
 def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any]:
     """Process jobs using unified LLM approach.
 
@@ -209,7 +216,8 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
         "updated": {"sse": 0, "values": 0, "summary": 0, "language": 0, "skills_raw": 0},
         "skipped": 0,
         "errors": 0,
-        "provider_used": None
+        "provider_used": None,
+        "fallbacks": [],
     }
 
     print("=" * 70)
@@ -300,13 +308,28 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
 
         try:
             result = processor.process_jobs(batch)
-        except DailyQuotaExhaustedError:
+        except DailyQuotaExhaustedError as exc:
             # All API backends burned for the day — abort remaining batches.
+            # Attach what this call already wrote so catch-up can explain the gap.
+            _merge_fallback_notes(counts["fallbacks"], getattr(exc, "fallbacks", None))
+            counts["processed"] = processed_count
+            exc.partial = {
+                "processed": processed_count,
+                "errors": counts["errors"],
+                "fallbacks": list(counts["fallbacks"]),
+                "provider_used": counts["provider_used"],
+                "deferred": len(all_eligible) - i,
+            }
             raise
         except Exception as e:
             scraper_log(f"✗ Batch processing failed: {e}")
             counts["errors"] += len(batch)
             continue
+
+        if isinstance(result, dict):
+            _merge_fallback_notes(counts["fallbacks"], result.get("fallbacks"))
+            if result.get("provider"):
+                counts["provider_used"] = result.get("provider")
 
         if result is None:
             scraper_log("✗ Processing failed: processor returned None")
@@ -363,9 +386,10 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
                 print(f"  ✓ Processed job {job['id'][:8]}... ({', '.join(actions) or 'no actions'})")
 
     counts["processed"] = processed_count
-    if result:
+    if result and result.get("provider"):
         counts["provider_used"] = result.get("provider")
-        print(f"✓ Processing complete using {result.get('provider')}")
+    if counts["provider_used"]:
+        print(f"✓ Processing complete using {counts['provider_used']}")
     else:
         print("✓ Processing complete (no provider results)")
 
@@ -606,6 +630,13 @@ def main():
     print(f"Processed: {result['processed']}")
     print(f"Skipped: {result['skipped']}")
     print(f"Provider used: {result['provider_used']}")
+    if result.get("fallbacks"):
+        from llm.cooldown import format_fallback_chain
+
+        print(
+            "Fallback: "
+            + format_fallback_chain(result["fallbacks"], result.get("provider_used"))
+        )
 
     if result['updated'].get('summary', 0) > 0:
         print(f"Summaries updated: {result['updated']['summary']}")

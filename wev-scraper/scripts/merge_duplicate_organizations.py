@@ -4,8 +4,8 @@
 Buckets
 -------
 auto-merge  same name where every row has a compatible employer evidence domain
-review      same name but weak or ambiguous evidence (short acronym, missing domain
-            on any row, only shared/social/ATS websites, etc.)
+review      same name but weak evidence, or a near-match (& / and / apostrophe,
+            or a location suffix) that needs a person to confirm
 skip        same name with conflicting employer website domains
 
 Merge mechanics (when --apply-auto-merge and not --dry-run, bucket is auto-merge):
@@ -31,19 +31,32 @@ import sys
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from typing import Callable
 
 # --prod must load .env.production and confirm before utils.db is imported.
 from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
 
+# Only the CLI announces the target. Imported mid-scrape this stays silent so an
+# import does not print to the scrape log; the DB target is already chosen.
+_RUN_AS_SCRIPT = __name__ == "__main__"
+
 if "--prod" in sys.argv[1:]:
     confirm_prod_run(full_prod=True)
     bootstrap_prod_from_argv(sys.argv[1:], Path(__file__))
-    print("Using PRODUCTION database")
-else:
-    print("Using TEST database")
+    if _RUN_AS_SCRIPT:
+        print("Using PRODUCTION database")
+elif _RUN_AS_SCRIPT:
+    from utils.env import is_truthy_env
+
+    print("Using PRODUCTION database" if is_truthy_env("USE_PROD_DB") else "Using TEST database")
 
 from utils.db import fetch_all_rows, supabase  # noqa: E402
-from utils.organization_cache import employer_apex, evidence_domain, extract_domain  # noqa: E402
+from utils.organization_cache import (  # noqa: E402
+    classify_identity_type,
+    employer_apex,
+    evidence_domain,
+    extract_domain,
+)
 from utils.slug import nfkd_to_ascii  # noqa: E402
 
 # Short / acronym-like names need a human look even when websites don't conflict.
@@ -74,6 +87,22 @@ class ClusterDecision:
     merge_ids: list[int]
     domains: list[str | None]
     rows: list[dict]
+
+
+_APOSTROPHES = re.compile(r"['\u2019\u2018\u02bc\u201b]")
+# Dropped only for the loose key, so "&" (already punctuation) and the word "and" compare equal.
+_CONJUNCTIONS = frozenset({"and", "et"})
+
+
+def loose_name_key(name: str | None) -> str:
+    """Name key that treats ``&`` / ``and`` / ``et`` and apostrophes as the same.
+
+    Exact ``normalize_name`` still separates these, so a match here is a
+    near-match for review, not an automatic merge.
+    """
+    glued = _APOSTROPHES.sub("", name or "")
+    words = [w for w in normalize_name(glued).split() if w not in _CONJUNCTIONS]
+    return " ".join(words)
 
 
 def normalize_name(name: str | None) -> str:
@@ -276,7 +305,7 @@ def classify_cluster(
             bucket="review",
             normalized_name=normalized,
             reason=(
-                "near-match names (punctuation/location suffix variant): "
+                "near-match names (& / and / apostrophe, or a location suffix): "
                 + " / ".join(names)
                 + f"; {domain_detail}"
             ),
@@ -392,6 +421,24 @@ def _cluster_organizations(orgs: list[dict]) -> list[tuple[str, list[dict], bool
             ):
                 uf.union(ia, ib)
 
+    # "&" / "and" / apostrophe variants. Same loose key, different exact key.
+    # Only link when websites do not conflict, and leave the cluster as a
+    # near-match so a person confirms it instead of auto-merging.
+    by_loose: dict[str, list[int]] = defaultdict(list)
+    for i, org in enumerate(orgs):
+        loose = loose_name_key(org.get("name"))
+        if loose:
+            by_loose[loose].append(i)
+    for idxs in by_loose.values():
+        if len({norms[i] for i in idxs}) < 2:
+            continue
+        domains = [evidence_domain(orgs[i].get("website")) for i in idxs]
+        compatible, _detail = _domains_compatible(domains)
+        if not compatible:
+            continue
+        for j in idxs[1:]:
+            uf.union(idxs[0], j)
+
     clusters: dict[int, list[int]] = defaultdict(list)
     for i in range(n):
         if not norms[i]:
@@ -411,24 +458,31 @@ def _cluster_organizations(orgs: list[dict]) -> list[tuple[str, list[dict], bool
     return result
 
 
-def build_decisions(*, limit: int | None = None) -> list[ClusterDecision]:
-    print("Fetching organizations...")
+def build_decisions(
+    *, limit: int | None = None, log: Callable[[str], None] = print
+) -> list[ClusterDecision]:
+    """Classify duplicate-name clusters.
+
+    *log* receives the progress lines so a caller inside the scrape can route
+    them to the scraper log instead of stdout.
+    """
+    log("Fetching organizations...")
     orgs = fetch_all_rows(
         "organizations",
         "id, name, location, website, slug, description, municipality, province, alternative_names",
     )
-    print(f"Total organizations: {len(orgs)}")
+    log(f"Total organizations: {len(orgs)}")
 
     clustered = _cluster_organizations(orgs)
-    print(f"Duplicate name clusters: {len(clustered)}")
+    log(f"Duplicate name clusters: {len(clustered)}")
 
     cluster_items = sorted(clustered, key=lambda item: item[0])
     if limit is not None:
         cluster_items = cluster_items[: max(0, limit)]
-        print(f"Limiting to first {len(cluster_items)} cluster(s) (--limit={limit})")
+        log(f"Limiting to first {len(cluster_items)} cluster(s) (--limit={limit})")
 
     all_ids = [int(o["id"]) for _, rows, _ in cluster_items for o in rows]
-    print(f"Counting jobs for {len(all_ids)} duplicate rows...")
+    log(f"Counting jobs for {len(all_ids)} duplicate rows...")
     job_counts = _job_counts_for(all_ids)
 
     decisions: list[ClusterDecision] = []
@@ -450,6 +504,82 @@ def build_decisions(*, limit: int | None = None) -> list[ClusterDecision]:
         decisions.append(classify_cluster(name, rows, near_match=near_match))
 
     return decisions
+
+
+def _posting_link_lines(org_id: int, *, indent: str = "      ") -> list[str]:
+    """Title + live listing URL for each sample posting on an org (for logs / summaries)."""
+    from utils.catch_up import _parked_place, source_jobs_for_org
+
+    out: list[str] = []
+    for job in source_jobs_for_org(org_id):
+        title = job.get("job_title") or "(untitled)"
+        place = _parked_place(job) or job.get("location") or "no place on posting"
+        out.append(f"{indent}· {title} — {place}")
+        if job.get("listing_url"):
+            out.append(f"{indent}  {job['listing_url']}")
+    return out
+
+
+def describe_duplicate_reviews(decisions: list[ClusterDecision]) -> list[str]:
+    """Lines for pairs a person must see. Exact auto-merges are omitted.
+
+    Includes a sample of live posting links so a scrape log is enough to open
+    the source pages without waiting for the interactive prompt.
+    """
+    lines: list[str] = []
+    reviews = [d for d in decisions if d.bucket == "review"]
+    skips = [d for d in decisions if d.bucket == "skip"]
+    if reviews:
+        lines.append(
+            f"Confirm {len(reviews)} organization pair(s). "
+            "y merges that pair, Enter skips it, q stops:"
+        )
+        for decision in reviews:
+            names = " / ".join(dict.fromkeys(row["name"] for row in decision.rows))
+            lines.append(f"  {names}")
+            lines.append(f"    {decision.reason}")
+            for row in decision.rows:
+                lines.append(f"    org #{row['id']} {row.get('name')!r}:")
+                links = _posting_link_lines(row["id"], indent="      ")
+                lines.extend(links or ["      (no linked postings)"])
+    if skips:
+        lines.append(f"Left unmerged ({len(skips)}). Their websites disagree:")
+        for decision in skips:
+            names = " / ".join(dict.fromkeys(row["name"] for row in decision.rows))
+            lines.append(f"  {names}")
+            lines.append(f"    {decision.reason}")
+            for row in decision.rows:
+                lines.append(f"    org #{row['id']} {row.get('name')!r}:")
+                links = _posting_link_lines(row["id"], indent="      ")
+                lines.extend(links or ["      (no linked postings)"])
+    return lines
+
+
+def review_lines_for_names(raw_names: list[str]) -> list[str]:
+    """Return one line per near-duplicate cluster that matches an unresolved job name.
+
+    Used at the end of catch-up so punctuation variants show up for confirmation
+    instead of looking like the employer could not be found.
+    """
+    wanted = {loose_name_key(name) for name in raw_names}
+    wanted.discard("")
+    if not wanted:
+        return []
+
+    orgs = fetch_all_rows(
+        "organizations",
+        "id, name, location, website, municipality, province",
+    )
+    lines: list[str] = []
+    for _label, rows, near in _cluster_organizations(orgs):
+        if not near:
+            continue
+        if not any(loose_name_key(row.get("name")) in wanted for row in rows):
+            continue
+        shown = " / ".join(dict.fromkeys((row.get("name") or "") for row in rows))
+        ids = ", ".join(str(row["id"]) for row in sorted(rows, key=lambda row: int(row["id"])))
+        lines.append(f"    {shown} (ids {ids})")
+    return lines
 
 
 def print_report(
@@ -505,55 +635,151 @@ def print_report(
         print(f"Showing {shown} cluster(s) in buckets: {', '.join(buckets)}")
 
 
-def review_interactively(decisions: list[ClusterDecision]) -> None:
-    """Walk review/skip clusters one at a time in the terminal."""
+_SHARED_WEBSITE_LABELS = {
+    "ats_board": "applicant-tracking / careers portal",
+    "social_media": "social media page",
+    "marketplace": "marketplace / site builder page",
+    "shared_hosting": "shared hosting page",
+    "invalid": "shared platform (no org identifier)",
+}
+
+
+def _website_note(website: str | None) -> str:
+    """Flag a website that is a shared host (ATS, social, marketplace), not the org's own site."""
+    domain = extract_domain(website)
+    if not domain or evidence_domain(website) is not None:
+        return ""
+    # Preserve the path so "facebook.com/acme" classifies as social, not a bare root.
+    from urllib.parse import urlparse
+
+    parsed = urlparse(website if "//" in (website or "") else f"//{website}")
+    identity = f"{domain}{parsed.path}".rstrip("/") if parsed.path.strip("/") else domain
+    label = _SHARED_WEBSITE_LABELS.get(classify_identity_type(identity), "shared platform page")
+    return f"  [{label} — not the org's own website]"
+
+
+def _print_org_postings(org_id: int, job_count: int, *, indent: str = "      ") -> None:
+    """Sample of this org's postings: title, place, and live listing URL for review."""
+    from utils.catch_up import _parked_place, source_jobs_for_org
+
+    jobs = source_jobs_for_org(org_id)
+    if not jobs:
+        print(f"{indent}(no job postings linked yet)")
+        return
+    if job_count and job_count > len(jobs):
+        print(f"{indent}{job_count} job postings — showing {len(jobs)}:")
+    else:
+        label = "posting" if len(jobs) == 1 else "postings"
+        print(f"{indent}{len(jobs)} job {label}:")
+    for job in jobs:
+        title = job.get("job_title") or "(untitled)"
+        place = _parked_place(job) or job.get("location") or "no place on posting"
+        print(f"{indent}  \u00b7 {title} \u2014 {place}")
+        if job.get("listing_url"):
+            print(f"{indent}    {job['listing_url']}")
+
+
+def review_interactively(decisions: list[ClusterDecision], *, apply: bool = False) -> None:
+    """Walk clusters one at a time in the terminal.
+
+    ``review`` pairs are mergeable: when *apply* is true, ``y`` merges that one
+    cluster (jobs move to the survivor, then the duplicate org row is deleted).
+    ``skip`` pairs (websites point to different organizations) are shown read-only
+    so a person can open the postings and check, but are never merged here.
+    """
     todo = [d for d in decisions if d.bucket in ("review", "skip")]
     if not todo:
-        print("\nNo review/skip clusters to walk through.")
+        print("\nNo organization pairs to review.")
         return
 
+    mergeable_total = sum(1 for d in todo if d.bucket == "review")
+    reference_total = len(todo) - mergeable_total
+
+    print(f"\n{'=' * 72}")
+    print(f"ORGANIZATION DUPLICATE REVIEW — {len(todo)} pair(s) to look at")
+    print("=" * 72)
     print(
-        f"\nInteractive review: {len(todo)} cluster(s) that cannot auto-merge.\n"
-        "Press Enter for next, or q then Enter to quit.\n"
+        "\nEach item below is TWO organization records with the same name. These\n"
+        "are ORGANIZATIONS, not jobs. \u201cMerging\u201d keeps one organization record,\n"
+        "moves the other's job postings onto it, then deletes the now-empty\n"
+        "duplicate record. No job posting is ever deleted.\n"
     )
+    print(f"  {mergeable_total} pair(s) can be merged (same name, compatible website).")
+    if reference_total:
+        print(
+            f"  {reference_total} pair(s) are shown for reference only — their websites\n"
+            "  point to different organizations, so they are not merged here.\n"
+        )
+
     for i, d in enumerate(todo, 1):
+        mergeable = d.bucket == "review"
+        survivor = next((r for r in d.rows if r["id"] == d.survivor_id), None)
+        survivor_name = (survivor or {}).get("name") or d.normalized_name
+        merging = [r for r in d.rows if r["id"] in d.merge_ids]
+        moving_jobs = sum(r.get("job_count") or 0 for r in merging)
+
         print(f"\n{'─' * 72}")
-        print(f"[{i}/{len(todo)}] {d.bucket.upper()} — {d.normalized_name!r}")
-        print(f"reason: {d.reason}")
-        print(f"suggested keep={d.survivor_id}  merge={d.merge_ids}")
+        heading = "Possible duplicate" if mergeable else "Same name, different websites"
+        print(f"[{i}/{len(todo)}]  {heading}: {survivor_name!r}")
+        print(f"Why: {d.reason}")
+        print()
         for r in d.rows:
-            mark = "KEEP" if r["id"] == d.survivor_id else "merge"
+            keep = r["id"] == d.survivor_id
+            if mergeable:
+                marker = "\u25cf KEEP THIS RECORD" if keep else f"\u25cb MERGE INTO #{d.survivor_id}"
+            else:
+                marker = f"\u25cb org #{r['id']}"
+            print(f"  {marker}  \u2014  org #{r['id']}  {r.get('name')!r}")
+            print(f"      website:  {r.get('website') or '(none)'}{_website_note(r.get('website'))}")
+            print(f"      location on file:  {r.get('location') or '(none)'}")
+            _print_org_postings(r["id"], r.get("job_count") or 0)
+            print()
+
+        if mergeable:
+            merge_label = ", ".join(f"#{r['id']}" for r in merging) or "(none)"
+            job_label = f"{moving_jobs} job posting{'s' if moving_jobs != 1 else ''}"
+            moves = "moves" if moving_jobs == 1 else "move"
             print(
-                f"  [{mark}] id={r['id']} jobs={r['job_count']} "
-                f"name={r.get('name')!r}"
+                f"  If you merge: {merge_label} is deleted and its {job_label} "
+                f"{moves} onto #{d.survivor_id} ({survivor_name!r})."
             )
+            merge_hint = f"y=merge into #{d.survivor_id}" if apply else "y=preview merge"
+            prompt = f"\n[{i}/{len(todo)}]  Enter=skip  {merge_hint}  q=quit > "
+        else:
             print(
-                f"         loc={r.get('location')!r} domain={r.get('domain')!r} "
-                f"slug={r.get('slug')!r}"
+                "  These are NOT merged automatically because their websites point to\n"
+                "  different organizations. Open the postings above to decide; if they\n"
+                "  really are one employer, fix a website so the domains agree."
             )
-            print(f"         website={r.get('website')!r}")
+            prompt = f"\n[{i}/{len(todo)}]  Enter=next  q=quit > "
+
         try:
-            reply = input("\n[Enter]=next  q=quit > ").strip().lower()
+            reply = input(prompt).strip().lower()
         except EOFError:
             print("\n(end of input)")
             break
         if reply in {"q", "quit"}:
             print(f"Stopped at {i}/{len(todo)}.")
             break
+        if reply in {"y", "yes"} and mergeable:
+            if apply:
+                apply_clusters([d])
+            else:
+                print("  Dry run — not merged. Re-run without --dry-run to confirm.")
     else:
-        print(f"\nDone — reviewed all {len(todo)} cluster(s).")
+        print(f"\nDone — reviewed all {len(todo)} pair(s).")
 
 
-def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
+def apply_clusters(decisions: list[ClusterDecision]) -> None:
+    """Move jobs onto each cluster's survivor and delete the duplicate org rows."""
     from utils.organization_cache import merge_alternative_names
 
-    autos = [d for d in decisions if d.bucket == "auto-merge"]
-    if not autos:
-        print("No auto-merge clusters to apply.")
+    if not decisions:
+        print("No clusters to apply.")
         return
 
-    print(f"\nApplying {len(autos)} auto-merge clusters...")
-    for d in autos:
+    print(f"\nApplying {len(decisions)} cluster(s)...")
+    for d in decisions:
         survivor = d.survivor_id
 
         # 1. Reassign jobs. Only orgs whose jobs moved become delete candidates.
@@ -625,6 +851,14 @@ def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
                 print(f"  ERROR deleting organization {merge_id}: {exc}")
 
 
+def apply_auto_merges(decisions: list[ClusterDecision]) -> None:
+    autos = [d for d in decisions if d.bucket == "auto-merge"]
+    if not autos:
+        print("No auto-merge clusters to apply.")
+        return
+    apply_clusters(autos)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Classify/merge duplicate organizations by normalized name + website domain."
@@ -677,7 +911,7 @@ def main() -> None:
             f"review={len(by_bucket['review'])}  "
             f"skip={len(by_bucket['skip'])}"
         )
-        review_interactively(decisions)
+        review_interactively(decisions, apply=not args.dry_run)
     else:
         print_report(decisions, buckets=buckets)
 
@@ -694,13 +928,25 @@ def main() -> None:
             json.dump(payload, f, indent=2, ensure_ascii=False)
         print(f"\nWrote {args.json}")
 
-    if args.dry_run or not args.apply_auto_merge:
-        print("\nDRY RUN — no rows modified. "
-              "Re-run with --apply-auto-merge (and without --dry-run) to apply auto-merges.")
+    # Interactive merges (when apply=True) already ran above. Auto-merges are
+    # separate and still require --apply-auto-merge without --dry-run.
+    if args.apply_auto_merge and not args.dry_run:
+        apply_auto_merges(decisions)
+        print("\nDone.")
         return
 
-    apply_auto_merges(decisions)
-    print("\nDone.")
+    if args.interactive and not args.dry_run:
+        print(
+            "\nInteractive merges (if any) were applied. "
+            "Auto-merges were not modified — re-run with --apply-auto-merge "
+            "(and without --dry-run) to apply them."
+        )
+        return
+
+    print(
+        "\nDRY RUN — no rows modified. "
+        "Re-run with --apply-auto-merge (and without --dry-run) to apply auto-merges."
+    )
 
 
 if __name__ == "__main__":
