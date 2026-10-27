@@ -213,9 +213,11 @@ _SHARED_DOMAIN_SUFFIXES = frozenset({
     "successfactors.eu",
     "sapsf.com",
     "sapsf.eu",
-    "myworkdaysite.com",  # Workday
-    "workday.com",
-    "adp.com",  # ADP (workforcenow.adp.com, myjobs.adp.com, recruiting.adp.com)
+    "myworkdaysite.com",  # Workday recruiting tenants
+    "myworkday.com",  # Workday recruiting tenants (not workday.com corporate)
+    "workforcenow.adp.com",  # ADP recruiting hosts (not adp.com corporate)
+    "myjobs.adp.com",
+    "recruiting.adp.com",
     "avature.net",
     "csod.com",  # Cornerstone OnDemand
     "brassring.com",  # IBM/Kenexa BrassRing
@@ -442,7 +444,8 @@ def classify_identity_type(identity: str | None) -> str:
                            "icims.com", "myworkdayjobs.com", "dayforcehcm.com",
                            "applytojob.com", "oraclecloud.com", "taleo.net",
                            "successfactors.com", "successfactors.eu", "sapsf.com",
-                           "sapsf.eu", "myworkdaysite.com", "workday.com", "adp.com",
+                           "sapsf.eu", "myworkdaysite.com", "myworkday.com",
+                           "workforcenow.adp.com", "myjobs.adp.com", "recruiting.adp.com",
                            "avature.net", "csod.com", "brassring.com",
                            "paycomonline.com", "paylocity.com", "ukg.com",
                            "ultipro.com", "recruitee.com", "ashbyhq.com",

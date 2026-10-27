@@ -669,11 +669,15 @@ def process_unprocessed_jobs(
     outcome.unresolved_labels = list(org_stats["unresolved_labels"])
     outcome.unresolved_org_names = list(org_stats["unresolved_org_names"])
 
-    def _needs_llm(job: Dict[str, Any], needs: List[str]) -> bool:
-        llm = [req for req in needs if req in _NON_SKILLS_NEEDS]
+    def _deferred_sse_until_org(job: Dict[str, Any], needs: List[str]) -> bool:
         # is_sse cannot be stored until an employer is linked. Sending the job
         # to the model again would spend a call and still leave is_sse null.
-        if llm == ["sse"] and job.get("organization_id") is None:
+        llm = [req for req in needs if req in _NON_SKILLS_NEEDS]
+        return llm == ["sse"] and job.get("organization_id") is None
+
+    def _needs_llm(job: Dict[str, Any], needs: List[str]) -> bool:
+        llm = [req for req in needs if req in _NON_SKILLS_NEEDS]
+        if _deferred_sse_until_org(job, needs):
             return False
         return bool(llm)
 
@@ -681,9 +685,14 @@ def process_unprocessed_jobs(
         j["id"] for j, needs in unprocessed
         if _needs_llm(j, needs)
     ]
+    # Skills can still run when the only non-skills need is deferred SSE.
     skills_only_ids = [
         j["id"] for j, needs in unprocessed
-        if "skills" in needs and not any(req in needs for req in _NON_SKILLS_NEEDS)
+        if "skills" in needs
+        and (
+            not any(req in needs for req in _NON_SKILLS_NEEDS)
+            or _deferred_sse_until_org(j, needs)
+        )
     ]
     outcome.llm_targeted = len(all_task_ids) + len(skills_only_ids)
 
@@ -896,7 +905,10 @@ def _load_parked_org_rows() -> List[dict]:
     """Organizations whose assessment_skip_reason is set, except an explicit Ignore."""
     resp = (
         supabase.table("organizations")
-        .select("id, name, municipality, province, location, website, assessment_skip_reason")
+        .select(
+            "id, name, municipality, province, location, website, assessment_skip_reason, "
+            "sector_id, type, description, description_en, description_fr, language, values_list"
+        )
         .not_.is_("assessment_skip_reason", "null")
         .order("id")
         .execute()

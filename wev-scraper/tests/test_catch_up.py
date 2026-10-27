@@ -840,6 +840,49 @@ def test_process_unprocessed_jobs_routes_skills_only_to_skills_task():
     assert calls_made[0].job_ids == ["skills-only-1"]
 
 
+def test_process_unprocessed_jobs_runs_skills_when_sse_deferred_for_missing_org():
+    """Unresolved SSE (no organization_id) must not block skills extraction."""
+    from scripts.process_unprocessed import process_unprocessed_jobs
+
+    job = {
+        "id": "skills-sse-1",
+        "summary": "Done",
+        "values": ["V1"],
+        "is_sse": None,
+        "language": "en",
+        "organization_id": None,
+        "skills": None,
+        "skills_raw": None,
+        "description": "Full posting with skill content.",
+        "job_title": "Coordinator",
+        "organization": "Org",
+        "scraped_at": "2026-01-01",
+        "listing_url": "https://example.com/job",
+    }
+    unprocessed = [(job, ["sse", "skills"])]
+    calls_made = []
+
+    def fake_process_jobs_unified(opts):
+        calls_made.append(opts)
+        return {
+            "processed": 1,
+            "errors": 0,
+            "skipped": 0,
+            "provider_used": "groq",
+            "updated": {"summary": 0, "values": 0, "sse": 0, "language": 0, "skills_raw": 1},
+        }
+
+    with patch(
+        "scripts.unified_post_processor.process_jobs_unified",
+        side_effect=fake_process_jobs_unified,
+    ):
+        process_unprocessed_jobs(unprocessed, skip_esco=True)
+
+    assert len(calls_made) == 1
+    assert calls_made[0].task == "skills"
+    assert calls_made[0].job_ids == ["skills-sse-1"]
+
+
 def test_job_catch_up_lines_separate_fallback_from_org_links():
     """A model fallthrough must not be presented as '13/30 processed'."""
     from utils.catch_up import JobCatchUpResult, job_catch_up_lines

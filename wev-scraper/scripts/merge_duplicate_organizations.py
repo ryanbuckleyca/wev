@@ -928,13 +928,25 @@ def main() -> None:
             json.dump(payload, f, indent=2, ensure_ascii=False)
         print(f"\nWrote {args.json}")
 
-    if args.dry_run or not args.apply_auto_merge:
-        print("\nDRY RUN — no rows modified. "
-              "Re-run with --apply-auto-merge (and without --dry-run) to apply auto-merges.")
+    # Interactive merges (when apply=True) already ran above. Auto-merges are
+    # separate and still require --apply-auto-merge without --dry-run.
+    if args.apply_auto_merge and not args.dry_run:
+        apply_auto_merges(decisions)
+        print("\nDone.")
         return
 
-    apply_auto_merges(decisions)
-    print("\nDone.")
+    if args.interactive and not args.dry_run:
+        print(
+            "\nInteractive merges (if any) were applied. "
+            "Auto-merges were not modified — re-run with --apply-auto-merge "
+            "(and without --dry-run) to apply them."
+        )
+        return
+
+    print(
+        "\nDRY RUN — no rows modified. "
+        "Re-run with --apply-auto-merge (and without --dry-run) to apply auto-merges."
+    )
 
 
 if __name__ == "__main__":

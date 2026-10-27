@@ -359,7 +359,9 @@ def _parse_args(argv=None):
         help=(
             "Only the manual review at the end of catch-up: exact duplicate "
             "organizations, then each parked organization with the job posting "
-            "it came from. Does not assess organizations or call the model."
+            "it came from. Skips the batch organization and job passes; "
+            "choosing retry or correct-place on a parked org can still assess "
+            "that one organization and call the model."
         ),
     )
     return parser.parse_args(argv)
