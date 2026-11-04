@@ -71,6 +71,16 @@ class ApifyJobBankScraper:
             raise RuntimeError("APIFY_API_TOKEN is required for Apify Job Bank scrape")
         return token
 
+    def _auth_headers(self, *, json_body: bool = False) -> dict[str, str]:
+        """Bearer auth — prefer header over ``?token=`` so secrets stay out of URLs."""
+        headers = {
+            "Authorization": f"Bearer {self.get_token()}",
+            "Accept": "application/json",
+        }
+        if json_body:
+            headers["Content-Type"] = "application/json"
+        return headers
+
     def build_actor_input(self, limit: int) -> dict[str, Any]:
         """Canada-scoped actor input. Keyword/location optional via env."""
         payload: dict[str, Any] = {
@@ -144,13 +154,9 @@ class ApifyJobBankScraper:
         return [r for r in records if isinstance(r, dict)]
 
     def _run_actor(self, limit: int) -> list[dict[str, Any]]:
-        token = self.get_token()
         actor = _actor_path(self.get_actor_id())
         wait = get_int_env("APIFY_JOBBANK_WAIT_SECS") or DEFAULT_WAIT_SECS
-        run_url = (
-            f"{APIFY_API_BASE}/acts/{actor}/runs"
-            f"?token={token}&waitForFinish={wait}"
-        )
+        run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish={wait}"
         actor_input = self.build_actor_input(limit)
         scraper_log(
             f"\tStarting Apify actor {self.get_actor_id()} "
@@ -162,7 +168,7 @@ class ApifyJobBankScraper:
             with requests.post(
                 run_url,
                 json=actor_input,
-                headers={"Content-Type": "application/json"},
+                headers=self._auth_headers(json_body=True),
                 timeout=wait + self.request_timeout,
             ) as response:
                 response.raise_for_status()
@@ -180,19 +186,22 @@ class ApifyJobBankScraper:
         if not dataset_id:
             raise RuntimeError("Apify Job Bank run missing defaultDatasetId")
 
-        return self._fetch_dataset_items(dataset_id, token)
+        return self._fetch_dataset_items(dataset_id)
 
-    def _fetch_dataset_items(self, dataset_id: str, token: str) -> list[dict[str, Any]]:
+    def _fetch_dataset_items(self, dataset_id: str) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
         offset = 0
         page_size = 250
+        headers = self._auth_headers()
         while True:
             url = (
                 f"{APIFY_API_BASE}/datasets/{dataset_id}/items"
-                f"?token={token}&format=json&clean=1&offset={offset}&limit={page_size}"
+                f"?format=json&clean=1&offset={offset}&limit={page_size}"
             )
             try:
-                with requests.get(url, timeout=self.request_timeout) as response:
+                with requests.get(
+                    url, headers=headers, timeout=self.request_timeout
+                ) as response:
                     response.raise_for_status()
                     batch = response.json()
             except requests.RequestException as e:

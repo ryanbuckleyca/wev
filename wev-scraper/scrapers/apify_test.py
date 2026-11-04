@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
 from scrapers.apify import ApifyJobBankScraper, _actor_path
 
@@ -86,3 +87,63 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
 
 def test_parse_job_requires_core_fields():
     assert _scraper().parse_job({"title": "x", "employer": "y"}) is None
+
+
+class _JsonResp:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+def test_apify_requests_use_bearer_header_not_query_token(monkeypatch):
+    monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
+    monkeypatch.delenv("APIFY_JOBBANK_SAMPLE_PATH", raising=False)
+    monkeypatch.delenv("JOBBANK_SAMPLE_PATH", raising=False)
+    monkeypatch.setenv("APIFY_JOBBANK_WAIT_SECS", "1")
+    monkeypatch.setenv("WITHIN_WEEKS", "9999")
+    monkeypatch.setenv("SHOULD_GEOCODE", "0")
+
+    run_resp = _JsonResp(
+        {
+            "data": {
+                "status": "SUCCEEDED",
+                "id": "run-1",
+                "defaultDatasetId": "ds-1",
+            }
+        }
+    )
+    items_resp = _JsonResp([_sample_record()])
+
+    with (
+        patch("scrapers.apify.time.sleep"),
+        patch(
+            "scrapers.apify.requests.post", return_value=run_resp
+        ) as mock_post,
+        patch(
+            "scrapers.apify.requests.get", return_value=items_resp
+        ) as mock_get,
+    ):
+        jobs = _scraper().fetch_jobs()
+
+    assert len(jobs) == 1
+    post_url = mock_post.call_args.args[0]
+    get_url = mock_get.call_args.args[0]
+    assert "token=" not in post_url
+    assert "token=" not in get_url
+    assert mock_post.call_args.kwargs["headers"]["Authorization"] == (
+        "Bearer apify_api_SECRET"
+    )
+    assert mock_get.call_args.kwargs["headers"]["Authorization"] == (
+        "Bearer apify_api_SECRET"
+    )
