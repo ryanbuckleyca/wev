@@ -55,10 +55,46 @@ def _translate_french_date(s: str) -> str:
     return out
 
 
+_RELATIVE_POSTED = re.compile(
+    r"^\s*(?:posted\s+)?(\d+)\s*(minute|hour|day|week|month)s?\s+ago\s*$",
+    re.IGNORECASE,
+)
+
+
+def parse_relative_posted_at(
+    s: str | None,
+    *,
+    now: datetime | None = None,
+) -> datetime | None:
+    """Parse SerpApi-style strings like ``3 days ago`` into an aware UTC datetime."""
+    if not s or not str(s).strip():
+        return None
+    match = _RELATIVE_POSTED.match(str(s).strip())
+    if not match:
+        return None
+    amount = int(match.group(1))
+    unit = match.group(2).lower()
+    delta = {
+        "minute": timedelta(minutes=amount),
+        "hour": timedelta(hours=amount),
+        "day": timedelta(days=amount),
+        "week": timedelta(weeks=amount),
+        # Approximate — Google Jobs only needs coarse recency.
+        "month": timedelta(days=30 * amount),
+    }[unit]
+    base = now or datetime.now(timezone.utc)
+    if base.tzinfo is None:
+        base = base.replace(tzinfo=timezone.utc)
+    else:
+        base = base.astimezone(timezone.utc)
+    return base - delta
+
+
 def _parse_localized_date(s: str, lang: str = "en"):
     """Attempt to parse localized (French) date strings.
 
     Behavior:
+    - Relative phrases (``3 days ago``) resolve against UTC now.
     - If `dateparser` is installed, use it with `languages=['fr']`.
     - Otherwise, fall back to `dateutil.parser.parse` on the original string.
 
@@ -68,6 +104,9 @@ def _parse_localized_date(s: str, lang: str = "en"):
     """
     if not s or not str(s).strip():
         raise ValueError("Empty date string")
+    relative = parse_relative_posted_at(s)
+    if relative is not None:
+        return relative
     # Try dateparser first (supports languages param)
     if _dateparser:
         try:

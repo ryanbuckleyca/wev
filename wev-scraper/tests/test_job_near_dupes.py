@@ -265,6 +265,89 @@ def test_confident_dupe_requires_near_identical_body():
     assert not is_confident_duplicate_pair(left, right)
 
 
+def test_confident_dupe_rejects_same_body_different_city():
+    body = ("Community support worker duties include case management " * 25).strip()
+    left = {
+        "job_title": "Community Support Worker",
+        "listing_url": "https://indeed.com/viewjob?jk=aaa",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "description": body,
+    }
+    right = {
+        "job_title": "Community Support Worker",
+        "listing_url": "https://ca.linkedin.com/jobs/view/111",
+        "date_posted": "2026-11-01",
+        "municipality": "Ottawa",
+        "description": body,
+    }
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def _moderate_cross_source_bodies() -> tuple[str, str]:
+    """Shared-prefix rewrite that lands in the 0.70–0.89 confident band."""
+    paras = [
+        "Our Toronto clinic provides community mental health services to adults.",
+        "The Registered Social Worker completes assessments and develops care plans.",
+        "You will collaborate with nurses, physicians, and peer support workers.",
+        "Caseload includes clients with complex needs across the downtown catchment.",
+        "Documentation must meet college standards and program quality frameworks.",
+        "This is a permanent full-time role with evening clinic coverage twice monthly.",
+        "Candidates require registration with the Ontario College of Social Workers.",
+        "We offer supervision, professional development funds, and extended benefits.",
+    ]
+    body = " ".join(paras * 3)
+    cut = int(len(body) * 0.80)
+    rewritten = body[:cut] + (
+        " Evening shifts rotate among the clinical team each month. "
+        "Applicants need active OCSWSSW membership and two years experience. "
+        "Compensation includes benefits, supervision, and a learning stipend."
+    )
+    return body, rewritten
+
+
+def test_confident_dupe_cross_source_same_city_moderate_similarity():
+    """Indeed vs Google rewrite of the same Toronto opening (~0.70–0.89 body)."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "description": rewritten,
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_cross_source_needs_city_match():
+    """Moderate similarity without a shared city stays review-only."""
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999",
+        "date_posted": "2026-11-02",
+        "description": rewritten,
+    }
+    assert not is_confident_duplicate_pair(left, right)
+
+
 def test_confident_dupe_eco_canada_multi_id_clone():
     body = (
         "Position Title: Project Manager - Renewable Energy "

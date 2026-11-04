@@ -8,6 +8,7 @@ from utils.date_utils import (
     _translate_french_date,
     get_within_weeks,
     is_recent_job,
+    parse_relative_posted_at,
 )
 
 
@@ -32,6 +33,19 @@ def test_translate_french_date():
     # Actually, let's just test that it translates the word.
     assert "february" in _translate_french_date("15 févr. 2024")
     assert _translate_french_date("mars") == "march"
+
+def test_parse_relative_posted_at():
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    assert parse_relative_posted_at("3 days ago", now=now).date().isoformat() == "2026-11-01"
+    assert parse_relative_posted_at("1 day ago", now=now).date().isoformat() == "2026-11-03"
+    assert parse_relative_posted_at("Posted 2 weeks ago", now=now).date().isoformat() == "2026-10-21"
+    assert parse_relative_posted_at("2026-11-01", now=now) is None
+
+
+def test_parse_localized_date_relative():
+    dt = _parse_localized_date("5 days ago")
+    assert (datetime.now(timezone.utc) - dt).days in (4, 5, 6)
+
 
 def test_parse_localized_date_english():
     dt = _parse_localized_date("2024-03-15")

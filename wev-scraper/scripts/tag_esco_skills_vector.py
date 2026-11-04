@@ -349,8 +349,9 @@ def tag_esco_skills_vector(
 
     # Fetch jobs
     # Include skills so we can treat skills=[] as a durable "tagged, zero hits"
-    # marker (skills is None = never tagged).
-    columns = "id, job_title, organization, summary, description, skills_raw, skills"
+    # marker (skills is None = never tagged). is_sse gates vectorize/ESCO — only
+    # social/solidarity economy roles get embeddings (same rule for web + API).
+    columns = "id, job_title, organization, summary, description, skills_raw, skills, is_sse"
     try:
         if job_ids:
             jobs = []
@@ -376,6 +377,15 @@ def tag_esco_skills_vector(
     except Exception as e:
         print(f"✗ Failed to fetch jobs: {e}")
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
+
+    before_sse = len(jobs)
+    jobs = [j for j in jobs if j.get("is_sse") is True]
+    skipped_non_sse = before_sse - len(jobs)
+    if skipped_non_sse:
+        print(
+            f"Skipping {skipped_non_sse} non-SSE job(s) "
+            "(is_sse is not true — no ESCO / vectorize)."
+        )
 
     if limit:
         jobs = jobs[:limit]

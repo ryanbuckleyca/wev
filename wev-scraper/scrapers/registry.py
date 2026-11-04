@@ -1,4 +1,6 @@
+import json
 import re
+from pathlib import Path
 from typing import Dict, Type
 
 from scrapers.centraide import CentraideScraper
@@ -12,9 +14,31 @@ from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.headcount import HeadcountLabsScraper
 from scrapers.idealist import IdealistScraper
+from scrapers.jobbank import JobBankApifyScraper
 from scrapers.macommunaute import MaCommunauteScraper
+from scrapers.serpapi_google_jobs import SerpApiGoogleJobsScraper
+from scrapers.theirstack import TheirStackScraper
+from scrapers.thejobsapi import TheJobsApiScraper
 from scrapers.winp import WinpScraper
 from scrapers.workinculture import WorkInCultureScraper
+
+# Paid / high-volume API sources — skipped on a full scrape unless passed via
+# ``--source <slug>`` / ``--apis``. Shared with scripts/list-sources.ts.
+_EXPLICIT_ONLY_PATH = Path(__file__).with_name("explicit_only_sources.json")
+EXPLICIT_ONLY_SOURCE_SLUGS: frozenset[str] = frozenset(
+    json.loads(_EXPLICIT_ONLY_PATH.read_text(encoding="utf-8"))
+)
+
+
+def is_explicit_only_source(source: dict | str | None) -> bool:
+    """True when this source must be opted into with ``--source``."""
+    if source is None:
+        return False
+    if isinstance(source, str):
+        return canonical_slug(source) in EXPLICIT_ONLY_SOURCE_SLUGS
+    slug = source_canonical_slug(source) or ""
+    return slug in EXPLICIT_ONLY_SOURCE_SLUGS
+
 
 # Canonical slug → scraper class.
 SCRAPER_MAP: Dict[str, Type] = {
@@ -35,6 +59,10 @@ SCRAPER_MAP: Dict[str, Type] = {
     "coopcan": CooperationCanadaScraper,
     "chantier": ChantierScraper,
     "headcount": HeadcountLabsScraper,
+    "jobbank": JobBankApifyScraper,
+    "serpapi": SerpApiGoogleJobsScraper,
+    "thejobsapi": TheJobsApiScraper,
+    "theirstack": TheirStackScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -97,6 +125,16 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "chantier de l economie sociale": "chantier",
     "headcount": "headcount",
     "headcount labs": "headcount",
+    "jobbank": "jobbank",
+    "job bank": "jobbank",
+    "canada job bank": "jobbank",
+    "serpapi": "serpapi",
+    "google jobs": "serpapi",
+    "serpapi google jobs": "serpapi",
+    "thejobsapi": "thejobsapi",
+    "the jobs api": "thejobsapi",
+    "tja": "thejobsapi",
+    "theirstack": "theirstack",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {

@@ -719,10 +719,72 @@ def test_job_needs_skills_empty_raw_is_done():
     assert job_needs_skills({"skills_raw": ["  ", ""], "skills": None, "description": "Full posting."}) is False
 
 
-def test_job_needs_skills_phrases_pending_tag():
+def test_job_needs_skills_phrases_pending_tag(monkeypatch):
     from utils.catch_up import job_needs_skills
 
-    assert job_needs_skills({"skills_raw": ["CRM"], "skills": None, "description": "Full posting."}) is True
+    monkeypatch.setenv("SHOULD_TAG_SKILLS", "1")
+    assert (
+        job_needs_skills(
+            {
+                "skills_raw": ["CRM"],
+                "skills": None,
+                "is_sse": True,
+                "description": "Full posting.",
+            }
+        )
+        is True
+    )
+
+
+def test_job_needs_skills_phrases_wait_while_sse_unknown(monkeypatch):
+    from utils.catch_up import job_needs_skills
+
+    monkeypatch.setenv("SHOULD_TAG_SKILLS", "1")
+    assert (
+        job_needs_skills(
+            {
+                "skills_raw": ["CRM"],
+                "skills": None,
+                "is_sse": None,
+                "description": "Full posting.",
+            }
+        )
+        is True
+    )
+
+
+def test_job_needs_skills_phrases_done_for_non_sse(monkeypatch):
+    from utils.catch_up import job_needs_skills
+
+    monkeypatch.setenv("SHOULD_TAG_SKILLS", "1")
+    assert (
+        job_needs_skills(
+            {
+                "skills_raw": ["CRM"],
+                "skills": None,
+                "is_sse": False,
+                "description": "Full posting.",
+            }
+        )
+        is False
+    )
+
+
+def test_job_needs_skills_phrases_done_when_esco_off(monkeypatch):
+    from utils.catch_up import job_needs_skills
+
+    monkeypatch.setenv("SHOULD_TAG_SKILLS", "0")
+    assert (
+        job_needs_skills(
+            {
+                "skills_raw": ["CRM"],
+                "skills": None,
+                "is_sse": True,
+                "description": "Full posting.",
+            }
+        )
+        is False
+    )
 
 
 def test_job_needs_skills_zero_match_array_is_durable():
@@ -743,15 +805,16 @@ def test_job_needs_skills_tagged_uris_are_done():
     )
 
 
-def test_find_unprocessed_jobs_respects_skills_raw_contract():
+def test_find_unprocessed_jobs_respects_skills_raw_contract(monkeypatch):
     from utils.catch_up import find_unprocessed_jobs
 
+    monkeypatch.setenv("SHOULD_TAG_SKILLS", "1")
     rows = [
         {
             "id": "a",
             "summary": "s",
             "values": ["V"],
-            "is_sse": False,
+            "is_sse": True,
             "language": "en",
             "organization_id": 1,
             "description": "Full posting with content.",
@@ -763,7 +826,7 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
             "id": "b",
             "summary": "s",
             "values": ["V"],
-            "is_sse": False,
+            "is_sse": True,
             "language": "en",
             "organization_id": 1,
             "description": "Full posting with content.",
@@ -775,13 +838,25 @@ def test_find_unprocessed_jobs_respects_skills_raw_contract():
             "id": "c",
             "summary": "s",
             "values": ["V"],
-            "is_sse": False,
+            "is_sse": True,
             "language": "en",
             "organization_id": 1,
             "description": "Full posting with content.",
             "skills_raw": ["CRM"],
             "skills": None,
             "scraped_at": "2026-01-03",
+        },
+        {
+            "id": "d",
+            "summary": "s",
+            "values": ["V"],
+            "is_sse": False,
+            "language": "en",
+            "organization_id": 1,
+            "description": "Full posting with content.",
+            "skills_raw": ["CRM"],
+            "skills": None,
+            "scraped_at": "2026-01-04",
         },
     ]
     with patch("utils.catch_up.fetch_all_rows", return_value=rows):

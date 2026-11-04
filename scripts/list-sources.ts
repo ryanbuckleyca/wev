@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import {
   envHelpLines,
@@ -5,6 +7,23 @@ import {
   parseEnvFlag,
   type ScrapeEnv,
 } from "./parse-env";
+
+function loadExplicitOnlySlugs(): Set<string> {
+  const jsonPath = path.join(
+    __dirname,
+    "..",
+    "wev-scraper",
+    "scrapers",
+    "explicit_only_sources.json",
+  );
+  const raw = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as unknown;
+  if (!Array.isArray(raw) || !raw.every((s) => typeof s === "string")) {
+    throw new Error(
+      `Expected string[] in ${jsonPath}, got ${typeof raw}`,
+    );
+  }
+  return new Set(raw);
+}
 
 async function main() {
   const argv = process.argv.slice(2);
@@ -48,12 +67,20 @@ async function main() {
     return;
   }
 
+  const explicitOnly = loadExplicitOnlySlugs();
+
   console.log(`Sources from ${url}:`);
   for (const row of data) {
     const slug = row.slug ?? "<missing slug>";
     const name = row.name ?? "Unknown Source";
-    console.log(`  - ${slug} (${name})`);
+    const optIn = explicitOnly.has(slug) ? " [explicit --source only]" : "";
+    console.log(`  - ${slug} (${name})${optIn}`);
   }
+  console.log(
+    `\nAPI sources skipped unless named: ${[...explicitOnly].sort().join(", ")}`,
+  );
+  console.log("One API:  npm run scrape:local -- --source serpapi");
+  console.log("All APIs: npm run scrape:local -- --apis");
 }
 
 main().catch((err) => {

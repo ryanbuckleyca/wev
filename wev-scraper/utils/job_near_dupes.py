@@ -165,6 +165,18 @@ def cities_conflict(left: dict, right: dict) -> bool:
     return bool(a and b and a != b)
 
 
+def cities_same(left: dict, right: dict) -> bool:
+    """True when both sides have a city and they agree."""
+    a = job_city_key(left)
+    b = job_city_key(right)
+    return bool(a and b and a == b)
+
+
+# Cross-board rewrites (Indeed vs Google vs ATS) rarely hit 0.90 similarity.
+# Same city + same role + moderately similar body is enough to auto-skip.
+_CROSS_SOURCE_DESC_MIN = 0.70
+
+
 # Multi-office copies of the same req share nearly identical bodies.
 _CITY_CONFLICT_DESC_MIN = 0.55
 
@@ -285,9 +297,12 @@ def is_confident_duplicate_pair(
     shared employer boilerplate is common across distinct reqs.
 
     Also treats same board listing id (different URL shapes) as clones when
-    title/dates align. High body similarity still refuses pairs that disagree
-    on hours or employment_type. Empty-vs-full description alone is not enough
-    without a shared board listing id — that path stays human-reviewed.
+    title/dates align. Conflicting municipalities reject the pair (multi-office
+    copies stay human-reviewed). Same city + description ratio ≥ 0.70 catches
+    cross-source rewrites that miss the 0.90 threshold. High body similarity
+    still refuses pairs that disagree on hours or employment_type.
+    Empty-vs-full description alone is not enough without a shared board
+    listing id — that path stays human-reviewed.
     """
     url_a = (left.get("listing_url") or "").strip().rstrip("/")
     url_b = (right.get("listing_url") or "").strip().rstrip("/")
@@ -304,6 +319,10 @@ def is_confident_duplicate_pair(
     if id_a and id_b and id_a == id_b:
         return True
 
+    # Different cities → different openings (unless board listing id matched above).
+    if cities_conflict(left, right):
+        return False
+
     if material_role_conflict(left, right):
         return False
 
@@ -313,7 +332,13 @@ def is_confident_duplicate_pair(
     norm_b = description_normalized(desc_b)
     if norm_a and norm_a == norm_b and len(norm_a) >= _THIN_DESC_CHARS:
         return True
-    return description_ratio(desc_a, desc_b) >= _CONFIDENT_DESC_MIN
+    ratio = description_ratio(desc_a, desc_b)
+    if ratio >= _CONFIDENT_DESC_MIN:
+        return True
+    # Cross-source: same role + same city + strong-but-not-identical body.
+    if cities_same(left, right) and ratio >= _CROSS_SOURCE_DESC_MIN:
+        return True
+    return False
 
 
 def job_quality_score(job: dict) -> tuple:

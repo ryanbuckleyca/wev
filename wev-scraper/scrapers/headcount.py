@@ -4,11 +4,16 @@ Pulls public Canadian jobs from ``GET /v1/jobs`` with bearer auth and cursor
 pagination. Headcount does not expose structured skills — description text is
 saved and the normal scrape post-processing (SSE / values / ESCO skills)
 handles enrichment like every other source.
+
+Offline / signup-blocked testing: set ``HEADCOUNTLABS_SAMPLE_PATH`` to a JSON
+file of Headcount job records (array or ``{data: [...]}``). No API key needed.
 """
 
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
@@ -91,12 +96,24 @@ class HeadcountLabsScraper:
     def get_base_url(self) -> str:
         return (os.environ.get("HEADCOUNTLABS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
+    def get_sample_path(self) -> str | None:
+        raw = (os.environ.get("HEADCOUNTLABS_SAMPLE_PATH") or "").strip()
+        return raw or None
+
+    @staticmethod
+    def is_configured() -> bool:
+        """True when a live API key or offline sample path is available."""
+        if (os.environ.get("HEADCOUNTLABS_SAMPLE_PATH") or "").strip():
+            return True
+        return bool((os.environ.get("HEADCOUNTLABS_API_KEY") or "").strip())
+
     def get_api_key(self) -> str:
         key = (os.environ.get("HEADCOUNTLABS_API_KEY") or "").strip()
         if not key:
             raise RuntimeError(
                 "HEADCOUNTLABS_API_KEY is not set. Create a key at "
-                "https://api.headcountlabs.com/data/keys and add it to .env."
+                "https://api.headcountlabs.com/data/keys and add it to .env, "
+                "or set HEADCOUNTLABS_SAMPLE_PATH to a local sample JSON file."
             )
         return key
 
@@ -126,8 +143,20 @@ class HeadcountLabsScraper:
         weeks = get_within_weeks()
         skip_on_existing = not is_truthy_env("SHOULD_OVERRIDE_EXISTING")
         compare_only = is_truthy_env("COMPARE_ONLY")
-        cursor: str | None = None
 
+        sample_path = self.get_sample_path()
+        if sample_path:
+            records = self._load_sample_records(sample_path)
+            scraper_log(f"\tHeadcount sample file: {len(records)} jobs from {sample_path}")
+            self._ingest_records(
+                records,
+                weeks=weeks,
+                skip_on_existing=skip_on_existing,
+                compare_only=compare_only,
+            )
+            return self.jobs
+
+        cursor: str | None = None
         while True:
             if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
                 scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
@@ -137,27 +166,12 @@ class HeadcountLabsScraper:
             records = page.get("data") or []
             scraper_log(f"\tHeadcount page: {len(records)} jobs")
 
-            stop = False
-            for index, record in enumerate(records):
-                if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
-                    scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
-                    stop = True
-                    break
-
-                self.total_listings_found += 1
-                job_dict, should_break = self._process_record(
-                    record,
-                    index,
-                    weeks=weeks,
-                    skip_on_existing=skip_on_existing,
-                    compare_only=compare_only,
-                )
-                if job_dict:
-                    self.jobs.append(job_dict)
-                if should_break:
-                    stop = True
-                    break
-
+            stop = self._ingest_records(
+                records,
+                weeks=weeks,
+                skip_on_existing=skip_on_existing,
+                compare_only=compare_only,
+            )
             if stop:
                 break
 
@@ -166,6 +180,57 @@ class HeadcountLabsScraper:
                 break
 
         return self.jobs
+
+    def _ingest_records(
+        self,
+        records: list[Any],
+        *,
+        weeks: int,
+        skip_on_existing: bool,
+        compare_only: bool,
+    ) -> bool:
+        """Process a list of Headcount job records. Returns True to stop paging."""
+        for index, record in enumerate(records):
+            if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
+                scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
+                return True
+            if not isinstance(record, dict):
+                continue
+
+            self.total_listings_found += 1
+            job_dict, should_break = self._process_record(
+                record,
+                index,
+                weeks=weeks,
+                skip_on_existing=skip_on_existing,
+                compare_only=compare_only,
+            )
+            if job_dict:
+                self.jobs.append(job_dict)
+            if should_break:
+                return True
+        return False
+
+    def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        path = Path(sample_path).expanduser()
+        if not path.is_file():
+            raise RuntimeError(f"HEADCOUNTLABS_SAMPLE_PATH not found: {path}")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Invalid Headcount sample JSON at {path}: {e}") from e
+
+        if isinstance(payload, list):
+            records = payload
+        elif isinstance(payload, dict):
+            records = payload.get("data") or []
+        else:
+            raise RuntimeError(
+                f"Headcount sample JSON must be a list or {{data: [...]}} object: {path}"
+            )
+        if not isinstance(records, list):
+            raise RuntimeError(f"Headcount sample `data` must be a list: {path}")
+        return [r for r in records if isinstance(r, dict)]
 
     def _fetch_page(self, cursor: str | None) -> dict[str, Any]:
         params = self.build_list_params(cursor=cursor)

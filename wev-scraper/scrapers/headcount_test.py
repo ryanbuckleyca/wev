@@ -155,10 +155,18 @@ def test_maps_core_fields(scraper_env):
 
 def test_requires_api_key(monkeypatch):
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    assert HeadcountLabsScraper.is_configured() is False
     scraper = HeadcountLabsScraper(make_source())
     with pytest.raises(RuntimeError, match="HEADCOUNTLABS_API_KEY"):
         scraper.fetch_jobs()
+
+
+def test_is_configured_with_api_key(monkeypatch):
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
+    monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
+    assert HeadcountLabsScraper.is_configured() is True
 
 
 def test_skips_missing_required_fields(scraper_env):
@@ -238,3 +246,35 @@ def test_build_list_params_canada_scoped(scraper_env):
     assert params["country"] == "CA"
     assert params["has_posting_url"] == "true"
     assert params["include"] == "company"
+
+
+def test_loads_sample_path_without_api_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    monkeypatch.setenv("WITHIN_WEEKS", "9999")
+    sample = tmp_path / "sample.json"
+    sample.write_text(json.dumps([_ca_job()]), encoding="utf-8")
+    monkeypatch.setenv("HEADCOUNTLABS_SAMPLE_PATH", str(sample))
+
+    scraper = HeadcountLabsScraper(make_source())
+    with patch("scrapers.headcount.requests.get") as mock_get:
+        jobs = scraper.fetch_jobs()
+
+    mock_get.assert_not_called()
+    assert len(jobs) == 1
+    assert jobs[0]["job_title"] == "Program Coordinator"
+
+
+def test_loads_sample_wrapped_data_envelope(monkeypatch, tmp_path):
+    monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    monkeypatch.setenv("WITHIN_WEEKS", "9999")
+    sample = tmp_path / "sample.json"
+    sample.write_text(
+        json.dumps({"data": [_ca_job()], "next_cursor": None}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HEADCOUNTLABS_SAMPLE_PATH", str(sample))
+
+    jobs = HeadcountLabsScraper(make_source()).fetch_jobs()
+    assert len(jobs) == 1
