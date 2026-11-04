@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from typing import Dict, Type
 
+from scrapers.apify import ApifyJobBankScraper
 from scrapers.centraide import CentraideScraper
 from scrapers.chantier import ChantierScraper
 from scrapers.charityvillage import CharityVillageScraper
@@ -14,7 +15,6 @@ from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.headcount import HeadcountLabsScraper
 from scrapers.idealist import IdealistScraper
-from scrapers.apify import ApifyJobBankScraper
 from scrapers.macommunaute import MaCommunauteScraper
 from scrapers.serpapi_google_jobs import SerpApiGoogleJobsScraper
 from scrapers.theirstack import TheirStackScraper
