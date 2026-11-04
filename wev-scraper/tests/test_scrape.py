@@ -358,6 +358,8 @@ def test_main_flow(mock_orch_class, mock_init):
         args.headed = True
         args.vpn = True
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -389,6 +391,8 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
         args.headed = False
         args.vpn = True
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -420,6 +424,8 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args.headed = False
         args.vpn = False
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -449,6 +455,8 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args.headed = False
         args.vpn = False
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         with pytest.raises(SystemExit) as exc:

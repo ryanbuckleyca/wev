@@ -118,6 +118,7 @@ def test_fetch_canada_details_sends_window(monkeypatch):
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
     monkeypatch.delenv("TJA_WINDOW", raising=False)
     monkeypatch.delenv("TJA_TIME_FRAME", raising=False)
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.setenv("TJA_API_KEY", "tja_live_.test")
     monkeypatch.setenv("WITHIN_WEEKS", "2")
     monkeypatch.setenv("TJA_MAX_ITEMS", "10")
@@ -139,6 +140,7 @@ def test_fetch_canada_details_sends_window(monkeypatch):
 
 def test_fetch_canada_details_follows_next_cursor(monkeypatch):
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.setenv("TJA_API_KEY", "tja_live_.test")
     monkeypatch.setenv("TJA_WINDOW", "7d")
     monkeypatch.setenv("TJA_MAX_ITEMS", "3")
@@ -177,6 +179,7 @@ def test_fetch_canada_details_follows_next_cursor(monkeypatch):
 
 def test_fetch_canada_details_stops_when_next_cursor_clears(monkeypatch):
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.setenv("TJA_API_KEY", "tja_live_.test")
     monkeypatch.setenv("TJA_WINDOW", "7d")
     monkeypatch.setenv("TJA_MAX_ITEMS", "50")

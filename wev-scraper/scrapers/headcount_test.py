@@ -129,6 +129,8 @@ def scraper_env(monkeypatch):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
+    # Offline sample path from a developer .env must not hijack API-mocked tests.
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
 
 
 def test_maps_core_fields(scraper_env):

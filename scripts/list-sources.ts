@@ -18,9 +18,7 @@ function loadExplicitOnlySlugs(): Set<string> {
   );
   const raw = JSON.parse(fs.readFileSync(jsonPath, "utf8")) as unknown;
   if (!Array.isArray(raw) || !raw.every((s) => typeof s === "string")) {
-    throw new Error(
-      `Expected string[] in ${jsonPath}, got ${typeof raw}`,
-    );
+    throw new Error(`Expected string[] in ${jsonPath}, got ${typeof raw}`);
   }
   return new Set(raw);
 }
