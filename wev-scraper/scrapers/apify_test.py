@@ -1,19 +1,19 @@
-"""Tests for Job Bank Apify scraper field mapping."""
+"""Tests for Apify Canada Job Bank scraper field mapping."""
 
 from __future__ import annotations
 
 import json
 
-from scrapers.jobbank import JobBankApifyScraper, _actor_path
+from scrapers.apify import ApifyJobBankScraper, _actor_path
 
 
-def _scraper() -> JobBankApifyScraper:
-    return JobBankApifyScraper(
+def _scraper() -> ApifyJobBankScraper:
+    return ApifyJobBankScraper(
         {
             "id": "t",
-            "name": "Canada Job Bank",
-            "url": "https://www.jobbank.gc.ca/",
-            "slug": "jobbank",
+            "name": "Apify (Canada Job Bank)",
+            "url": "https://api.apify.com/v2/acts/getascraper~jobbank-scraper",
+            "slug": "apify",
         }
     )
 
@@ -58,7 +58,7 @@ def test_parse_job_maps_getascraper_fields():
 
 
 def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
-    sample = tmp_path / "jobbank.json"
+    sample = tmp_path / "apify-jobbank.json"
     sample.write_text(
         json.dumps(
             [
@@ -75,7 +75,7 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("JOBBANK_SAMPLE_PATH", str(sample))
+    monkeypatch.setenv("APIFY_JOBBANK_SAMPLE_PATH", str(sample))
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     jobs = _scraper().fetch_jobs()

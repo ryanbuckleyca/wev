@@ -1,1 +1,6 @@
-["serpapi", "jobbank", "thejobsapi", "theirstack"]
+[
+  "serpapi",
+  "apify",
+  "thejobsapi",
+  "theirstack"
+]

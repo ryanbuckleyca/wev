@@ -1,12 +1,12 @@
-"""Canada Job Bank via Apify ``getascraper/jobbank-scraper``.
+"""Apify actor ``getascraper/jobbank-scraper`` — Canada Job Bank inventory.
 
 Runs the actor with bearer ``APIFY_API_TOKEN``, maps posting records into the
 same Wev job fields as other scrapers, then normalizes.
 
-Offline testing: set ``JOBBANK_SAMPLE_PATH`` to a JSON array (or ``{data:[...]}``)
-of getascraper records — no Apify call.
+Offline testing: set ``APIFY_JOBBANK_SAMPLE_PATH`` (or ``JOBBANK_SAMPLE_PATH``)
+to a JSON array (or ``{data:[...]}``) of getascraper records — no Apify call.
 
-Canada-only by source (jobbank.gc.ca). Prefer Job Bank ``url`` as ``listing_url``;
+Listings originate on jobbank.gc.ca; prefer that ``url`` as ``listing_url``.
 ``application_url`` is kept when present for apply routing later.
 """
 
@@ -36,8 +36,8 @@ def _actor_path(actor_id: str) -> str:
     return actor_id.strip().replace("/", "~")
 
 
-class JobBankApifyScraper:
-    """Apify-backed scraper for Job Bank Canada (getascraper actor)."""
+class ApifyJobBankScraper:
+    """Apify scraper for Canada Job Bank (getascraper/jobbank-scraper actor)."""
 
     is_chronological = False
     language = "en"
@@ -53,7 +53,11 @@ class JobBankApifyScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_sample_path(self) -> str | None:
-        raw = (os.environ.get("JOBBANK_SAMPLE_PATH") or "").strip()
+        raw = (
+            os.environ.get("APIFY_JOBBANK_SAMPLE_PATH")
+            or os.environ.get("JOBBANK_SAMPLE_PATH")
+            or ""
+        ).strip()
         return raw or None
 
     def get_actor_id(self) -> str:
@@ -64,7 +68,7 @@ class JobBankApifyScraper:
     def get_token(self) -> str:
         token = (os.environ.get("APIFY_API_TOKEN") or "").strip()
         if not token:
-            raise RuntimeError("APIFY_API_TOKEN is required for Job Bank Apify scrape")
+            raise RuntimeError("APIFY_API_TOKEN is required for Apify Job Bank scrape")
         return token
 
     def build_actor_input(self, limit: int) -> dict[str, Any]:
@@ -90,11 +94,11 @@ class JobBankApifyScraper:
         sample_path = self.get_sample_path()
         if sample_path:
             records = self._load_sample_records(sample_path)
-            scraper_log(f"\tJob Bank sample file: {len(records)} jobs from {sample_path}")
+            scraper_log(f"\tApify Job Bank sample: {len(records)} from {sample_path}")
         else:
             limit = self._max_jobs or get_int_env("APIFY_JOBBANK_MAX_ITEMS") or 50
             records = self._run_actor(limit)
-            scraper_log(f"\tJob Bank Apify returned {len(records)} jobs")
+            scraper_log(f"\tApify Job Bank returned {len(records)} jobs")
 
         self.total_listings_found = len(records)
         weeks = get_within_weeks()
@@ -121,11 +125,11 @@ class JobBankApifyScraper:
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
         path = Path(sample_path).expanduser()
         if not path.is_file():
-            raise RuntimeError(f"JOBBANK_SAMPLE_PATH not found: {path}")
+            raise RuntimeError(f"APIFY_JOBBANK_SAMPLE_PATH not found: {path}")
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"Invalid Job Bank sample JSON at {path}: {e}") from e
+            raise RuntimeError(f"Invalid Apify Job Bank sample JSON at {path}: {e}") from e
 
         if isinstance(payload, list):
             records = payload
@@ -133,10 +137,10 @@ class JobBankApifyScraper:
             records = payload.get("data") or payload.get("items") or []
         else:
             raise RuntimeError(
-                f"Job Bank sample JSON must be a list or {{data: [...]}}: {path}"
+                f"Apify Job Bank sample JSON must be a list or {{data: [...]}}: {path}"
             )
         if not isinstance(records, list):
-            raise RuntimeError(f"Job Bank sample data must be a list: {path}")
+            raise RuntimeError(f"Apify Job Bank sample data must be a list: {path}")
         return [r for r in records if isinstance(r, dict)]
 
     def _run_actor(self, limit: int) -> list[dict[str, Any]]:
@@ -164,17 +168,17 @@ class JobBankApifyScraper:
                 response.raise_for_status()
                 run = response.json().get("data") or {}
         except requests.RequestException as e:
-            raise RuntimeError(f"Failed to start Job Bank Apify run: {e}") from e
+            raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
 
         status = run.get("status")
         dataset_id = run.get("defaultDatasetId")
         if status != "SUCCEEDED":
             raise RuntimeError(
-                f"Job Bank Apify run did not succeed: status={status} "
+                f"Apify Job Bank run did not succeed: status={status} "
                 f"id={run.get('id')} message={run.get('statusMessage')}"
             )
         if not dataset_id:
-            raise RuntimeError("Job Bank Apify run missing defaultDatasetId")
+            raise RuntimeError("Apify Job Bank run missing defaultDatasetId")
 
         return self._fetch_dataset_items(dataset_id, token)
 

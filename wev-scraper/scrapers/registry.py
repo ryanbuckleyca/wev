@@ -14,7 +14,7 @@ from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
 from scrapers.headcount import HeadcountLabsScraper
 from scrapers.idealist import IdealistScraper
-from scrapers.jobbank import JobBankApifyScraper
+from scrapers.apify import ApifyJobBankScraper
 from scrapers.macommunaute import MaCommunauteScraper
 from scrapers.serpapi_google_jobs import SerpApiGoogleJobsScraper
 from scrapers.theirstack import TheirStackScraper
@@ -59,7 +59,7 @@ SCRAPER_MAP: Dict[str, Type] = {
     "coopcan": CooperationCanadaScraper,
     "chantier": ChantierScraper,
     "headcount": HeadcountLabsScraper,
-    "jobbank": JobBankApifyScraper,
+    "apify": ApifyJobBankScraper,
     "serpapi": SerpApiGoogleJobsScraper,
     "thejobsapi": TheJobsApiScraper,
     "theirstack": TheirStackScraper,
@@ -71,6 +71,8 @@ LEGACY_SLUG_ALIASES: Dict[str, str] = {
     "centraide": "cent",
     "ma_communaute": "mac",
     "ma_communaute_b": "macb",
+    # Early Canada API seeds used ``jobbank``; canonical slug is ``apify``.
+    "jobbank": "apify",
 }
 
 # Production source UUIDs — stable until prod has slug column populated.
@@ -125,9 +127,13 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "chantier de l economie sociale": "chantier",
     "headcount": "headcount",
     "headcount labs": "headcount",
-    "jobbank": "jobbank",
-    "job bank": "jobbank",
-    "canada job bank": "jobbank",
+    "apify": "apify",
+    "apify job bank": "apify",
+    "apify (canada job bank)": "apify",
+    "jobbank": "apify",
+    "job bank": "apify",
+    "canada job bank": "apify",
+    "canada job bank (apify)": "apify",
     "serpapi": "serpapi",
     "google jobs": "serpapi",
     "serpapi google jobs": "serpapi",

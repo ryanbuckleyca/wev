@@ -31,7 +31,7 @@ def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
         [
             {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
             {"id": "s2", "name": "SerpApi Google Jobs", "slug": "serpapi"},
-            {"id": "s3", "name": "Canada Job Bank", "slug": "jobbank"},
+            {"id": "s3", "name": "Apify (Canada Job Bank)", "slug": "apify"},
             {"id": "s4", "name": "The Jobs API", "slug": "thejobsapi"},
             {"id": "s5", "name": "TheirStack", "slug": "theirstack"},
         ]
@@ -105,14 +105,14 @@ def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
             {"id": "s3", "name": "The Jobs API", "slug": "thejobsapi"},
             {"id": "s1", "name": "SerpApi Google Jobs", "slug": "serpapi"},
             {"id": "s4", "name": "TheirStack", "slug": "theirstack"},
-            {"id": "s2", "name": "Canada Job Bank", "slug": "jobbank"},
+            {"id": "s2", "name": "Apify (Canada Job Bank)", "slug": "apify"},
         ]
     )
     orchestrator = ScraperOrchestrator(api_sources=True)
     sources = orchestrator._fetch_sources()
     assert [s["slug"] for s in sources] == [
         "serpapi",
-        "jobbank",
+        "apify",
         "thejobsapi",
         "theirstack",
     ]
