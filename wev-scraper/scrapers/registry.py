@@ -10,6 +10,7 @@ from scrapers.csi import CSIScraper
 from scrapers.cwc import CWCScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
+from scrapers.headcount import HeadcountLabsScraper
 from scrapers.idealist import IdealistScraper
 from scrapers.macommunaute import MaCommunauteScraper
 from scrapers.winp import WinpScraper
@@ -33,6 +34,7 @@ SCRAPER_MAP: Dict[str, Type] = {
     "idealistintern": IdealistScraper,
     "coopcan": CooperationCanadaScraper,
     "chantier": ChantierScraper,
+    "headcount": HeadcountLabsScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -93,6 +95,8 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "chantier": "chantier",
     "chantier de l'économie sociale": "chantier",
     "chantier de l economie sociale": "chantier",
+    "headcount": "headcount",
+    "headcount labs": "headcount",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {
