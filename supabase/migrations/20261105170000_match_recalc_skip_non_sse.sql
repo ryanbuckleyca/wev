@@ -1,6 +1,6 @@
--- Skip job-match recalculation for jobs classified non-SSE (is_sse = false).
--- Unresolved is_sse (NULL) stays eligible so rows can enqueue once classified.
--- Preserves existing INSERT / OLD-or-NEW values+skills qualification checks.
+-- Skip job-match recalculation unless jobs.is_sse is true.
+-- jobs.is_sse defaults to false (unclassified / non-SSE); only confirmed SSE
+-- jobs enqueue. Watch is_sse so false→true after classification enqueues too.
 
 create or replace function public.trigger_recalculate_job_matches()
 returns trigger language plpgsql security definer
@@ -15,7 +15,7 @@ begin
       (new."values" is not null and array_length(new."values", 1) is not null)
       or (new.skills is not null and array_length(new.skills, 1) is not null)
     );
-    if v_freshly_qualified and (new.is_sse is distinct from false) then
+    if v_freshly_qualified and new.is_sse is true then
       perform public.enqueue_job_match_recalc(new.id);
     end if;
     return new;
@@ -32,6 +32,7 @@ begin
       or old.municipality is distinct from new.municipality
       or old.province is distinct from new.province
       or old.geocode_accuracy_type is distinct from new.geocode_accuracy_type
+      or old.is_sse is distinct from new.is_sse
     );
     if not v_match_cols_changed then
       return new;
@@ -42,7 +43,7 @@ begin
       or (new.skills is not null and array_length(new.skills, 1) is not null)
       or (old."values" is not null and array_length(old."values", 1) is not null)
       or (old.skills is not null and array_length(old.skills, 1) is not null)
-    ) and (new.is_sse is distinct from false) then
+    ) and new.is_sse is true then
       perform public.enqueue_job_match_recalc(new.id);
     end if;
     return new;

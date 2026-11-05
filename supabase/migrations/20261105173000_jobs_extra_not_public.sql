@@ -1,12 +1,37 @@
 -- jobs.extra holds paid API provider dumps (extra.source_dump). Keep the column
 -- writable by service_role, but hide it from public PostgREST clients.
+--
+-- Table-level GRANT SELECT cannot be narrowed with REVOKE SELECT (extra) — the
+-- table privilege still covers every column. Revoke table SELECT and re-grant
+-- every column except extra.
 -- Also rebuild matched_jobs without extra so SELECT * on the view cannot leak it.
 
 comment on column public.jobs.extra is
   'Opaque scraper bag (API source_dump under extra.source_dump). '
   'SELECT revoked for anon/authenticated — service_role only.';
 
-revoke select (extra) on table public.jobs from anon, authenticated;
+do $lockdown$
+declare
+  cols text;
+begin
+  select string_agg(format('%I', c.column_name), ', ' order by c.ordinal_position)
+    into cols
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'jobs'
+    and c.column_name <> 'extra';
+
+  if cols is null or cols = '' then
+    raise exception 'jobs_extra_not_public: failed to list jobs columns';
+  end if;
+
+  revoke select on table public.jobs from anon, authenticated;
+  execute format(
+    'grant select (%s) on table public.jobs to anon, authenticated',
+    cols
+  );
+end;
+$lockdown$;
 
 -- service_role already has table-level SELECT/INSERT/UPDATE/DELETE; make the
 -- column grant explicit so a future table-level revoke cannot strand dumps.
@@ -17,7 +42,7 @@ declare
   cols text;
 begin
   select string_agg(format('j.%I', c.column_name), ', ' order by c.ordinal_position)
-  into cols
+    into cols
   from information_schema.columns c
   where c.table_schema = 'public'
     and c.table_name = 'jobs'

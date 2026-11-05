@@ -163,16 +163,22 @@ select ok(
 -- UPDATE must NOT enqueue match recalculation.
 
 \set test_job_id_2 '''00000000-0000-0000-0000-000000000004'''
+\set test_org_id 900004
+
+-- Match enqueue requires jobs.is_sse = true, which needs an SSE org.
+insert into public.organizations (id, name, slug, is_sse)
+values (:test_org_id, 'pgTAP SSE Org', 'pgtap-sse-org-900004', true)
+on conflict (id) do update set is_sse = excluded.is_sse;
 
 insert into public.jobs (
-  id, source_id, job_title, organization, listing_url,
-  skills, values, work_type, lat, lng, municipality, province
+  id, source_id, job_title, organization, organization_id, listing_url,
+  skills, values, work_type, lat, lng, municipality, province, is_sse
 ) values (
-  :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'Test Org',
+  :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'pgTAP SSE Org', :test_org_id,
   'https://example.com/pgtap-job-2',
   array['pgtap-skill-exact'],
   array['community'],
-  'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
+  'remote', 45.4215, -75.6972, 'Ottawa', 'ON', true
 ) on conflict (id) do nothing;
 
 insert into public.job_skills (job_id, skill_id, score, source)

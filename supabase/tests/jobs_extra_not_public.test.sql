@@ -19,15 +19,8 @@ select ok(
 );
 
 select ok(
-  not exists(
-    select 1
-    from information_schema.column_privileges
-    where table_schema = 'public'
-      and table_name = 'jobs'
-      and column_name = 'extra'
-      and grantee in ('anon', 'authenticated')
-      and privilege_type = 'SELECT'
-  ),
+  not has_column_privilege('anon', 'public.jobs', 'extra', 'SELECT')
+  and not has_column_privilege('authenticated', 'public.jobs', 'extra', 'SELECT'),
   'anon/authenticated cannot SELECT jobs.extra'
 );
 
