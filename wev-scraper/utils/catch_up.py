@@ -796,8 +796,9 @@ def process_unprocessed_jobs(
     elif not run_esco:
         skipped = sum(1 for _j, needs in unprocessed if "skills" in needs)
         if skipped:
+            reason = "skip_esco" if skip_esco else "SHOULD_TAG_SKILLS off"
             _log(
-                f"SHOULD_TAG_SKILLS off — skipping ESCO for {skipped} job(s); "
+                f"{reason} — skipping ESCO for {skipped} job(s); "
                 "skills_raw extract still applies."
             )
 

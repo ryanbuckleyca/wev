@@ -70,6 +70,9 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
     jobs = _scraper().fetch_jobs()
     assert len(jobs) == 1
     assert jobs[0]["job_title"] == "Registered Nurse"
+    dump = (jobs[0].get("extra") or {}).get("source_dump")
+    assert isinstance(dump, dict)
+    assert dump.get("title") == "Registered Nurse"
 
 
 def test_outdated_job_does_not_stop_later_fresh_jobs(monkeypatch, tmp_path):

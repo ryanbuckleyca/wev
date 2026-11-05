@@ -49,6 +49,39 @@ def test_normalize_job_data_blank_location_stays_none(monkeypatch):
     assert result["location"] is None
 
 
+def test_normalize_job_data_nests_source_dump_under_extra(monkeypatch):
+    _no_geocode(monkeypatch)
+    dump = {"job_id": "abc", "via": "LinkedIn", "description": "full body"}
+    result = normalize_job_data(
+        {
+            "job_title": "Coordinator",
+            "organization": "Some Org",
+            "location": "Toronto, ON",
+            "municipality": "Toronto",
+            "province": "ON",
+            "listing_url": "https://example.com/jobs/1",
+            "description": "full body",
+            "source_dump": dump,
+        }
+    )
+    assert result["extra"] == {"source_dump": dump}
+
+
+def test_normalize_job_data_omits_non_dict_source_dump(monkeypatch):
+    _no_geocode(monkeypatch)
+    result = normalize_job_data(
+        {
+            "job_title": "Coordinator",
+            "organization": "Some Org",
+            "location": "Toronto, ON",
+            "municipality": "Toronto",
+            "province": "ON",
+            "source_dump": "not-a-dict",
+        }
+    )
+    assert "extra" not in result
+
+
 def test_normalize_job_data_returns_none_for_us_only_location(monkeypatch):
     _no_geocode(monkeypatch)
     result = normalize_job_data(

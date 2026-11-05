@@ -74,27 +74,35 @@ def parse_relative_posted_at(
         return None
     amount = int(match.group(1))
     unit = match.group(2).lower()
-    delta = {
-        "minute": timedelta(minutes=amount),
-        "hour": timedelta(hours=amount),
-        "day": timedelta(days=amount),
-        "week": timedelta(weeks=amount),
-        # Approximate — Google Jobs only needs coarse recency.
-        "month": timedelta(days=30 * amount),
-    }[unit]
     base = now or datetime.now(timezone.utc)
     if base.tzinfo is None:
         base = base.replace(tzinfo=timezone.utc)
     else:
         base = base.astimezone(timezone.utc)
-    return base - delta
+    try:
+        delta = {
+            "minute": timedelta(minutes=amount),
+            "hour": timedelta(hours=amount),
+            "day": timedelta(days=amount),
+            "week": timedelta(weeks=amount),
+            # Approximate — Google Jobs only needs coarse recency.
+            "month": timedelta(days=30 * amount),
+        }[unit]
+        return base - delta
+    except OverflowError:
+        return None
 
 
-def _parse_localized_date(s: str, lang: str = "en"):
+def _parse_localized_date(
+    s: str,
+    lang: str = "en",
+    *,
+    now: datetime | None = None,
+):
     """Attempt to parse localized (French) date strings.
 
     Behavior:
-    - Relative phrases (``3 days ago``) resolve against UTC now.
+    - Relative phrases (``3 days ago``) resolve against ``now`` (UTC now by default).
     - If `dateparser` is installed, use it with `languages=['fr']`.
     - Otherwise, fall back to `dateutil.parser.parse` on the original string.
 
@@ -104,7 +112,7 @@ def _parse_localized_date(s: str, lang: str = "en"):
     """
     if not s or not str(s).strip():
         raise ValueError("Empty date string")
-    relative = parse_relative_posted_at(s)
+    relative = parse_relative_posted_at(s, now=now)
     if relative is not None:
         return relative
     # Try dateparser first (supports languages param)
@@ -148,15 +156,16 @@ def is_recent_job(date_posted_str: str | None, weeks: int = 2, lang: str | None 
 
     is_recent = False
     try:
-        # Default language is English unless caller specifies otherwise
+        # One reference time for relative parse + cutoff so inclusive edges stay stable.
+        now = datetime.now(timezone.utc)
         lang_to_use = lang or "en"
-        date_posted = _parse_localized_date(date_posted_str, lang=lang_to_use)
+        date_posted = _parse_localized_date(date_posted_str, lang=lang_to_use, now=now)
         # Normalize to aware UTC to avoid naive/aware comparison errors.
         if date_posted.tzinfo is None:
             date_posted = date_posted.replace(tzinfo=timezone.utc)
         else:
             date_posted = date_posted.astimezone(timezone.utc)
-        cutoff_date = datetime.now(timezone.utc) - timedelta(weeks=weeks)
+        cutoff_date = now - timedelta(weeks=weeks)
         is_recent = date_posted >= cutoff_date
     except (ValueError, TypeError) as e:
         print(f"\tNotice: Skipping a job posted on '{date_posted_str}' because its date could not be formatted: {e}")

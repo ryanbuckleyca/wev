@@ -50,6 +50,15 @@ def test_build_search_body_defaults_to_ca_indeed_linkedin(monkeypatch):
     assert body["posted_at_max_age_days"] == 14
 
 
+def test_build_search_body_blank_domain_override_falls_back(monkeypatch):
+    monkeypatch.setenv("THEIRSTACK_URL_DOMAIN_OR", " , , ")
+    monkeypatch.delenv("THEIRSTACK_URL_DOMAIN_NOT", raising=False)
+    monkeypatch.setenv("WITHIN_WEEKS", "2")
+    body = _scraper().build_search_body(25)
+    assert "indeed.com" in body["url_domain_or"]
+    assert "linkedin.com" in body["url_domain_or"]
+
+
 def test_parse_and_fetch_sample(monkeypatch, tmp_path):
     record = _sample_record()
     fields = _scraper().parse_job(record)
@@ -66,6 +75,9 @@ def test_parse_and_fetch_sample(monkeypatch, tmp_path):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     jobs = _scraper().fetch_jobs()
     assert len(jobs) >= 1
+    dump = (jobs[0].get("extra") or {}).get("source_dump")
+    assert isinstance(dump, dict)
+    assert dump.get("job_title") == "Community Coordinator"
 
 
 def test_default_domain_constants_partition_channels():

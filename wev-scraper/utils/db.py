@@ -117,6 +117,10 @@ def _job_row(job, source_id, *, organization_id=None):
         "language": job.get("language") or "en",
         "organization_id": organization_id,
     }
+    # Only set when present so web-scrape updates do not wipe a prior API dump.
+    extra = job.get("extra")
+    if isinstance(extra, dict) and extra:
+        row["extra"] = extra
 
     # Populate structured compensation fields via LLM extraction
     wage_text = job.get("wage")
@@ -208,16 +212,19 @@ def _find_existing_job(job):
 
 _NEAR_DUPE_CANDIDATE_COLUMNS = (
     "id, job_title, listing_url, date_posted, description, employment_type, "
-    "municipality, location, organization, organization_id"
+    "municipality, province, location, organization, organization_id, source_id"
 )
 _NEAR_DUPE_CANDIDATE_LIMIT = 40
 
 
-def _find_confident_near_duplicate(job, *, organization_id=None):
+def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None):
     """Return an existing job that is a high-confidence content clone (different URL).
 
     Used to stop board-side ID churn (e.g. Eco Canada re-listing the same req
     under new numeric IDs) from inserting duplicate rows. Raises on DB errors.
+
+    ``source_id`` is attached to the probe so cross-source evidence works when
+    two APIs land on the same listing host (e.g. LinkedIn via SerpApi vs TheirStack).
     """
     from utils.job_near_dupes import is_confident_duplicate_pair
 
@@ -244,6 +251,7 @@ def _find_confident_near_duplicate(job, *, organization_id=None):
     probe = {
         **job,
         "organization_id": organization_id if organization_id is not None else job.get("organization_id"),
+        "source_id": source_id if source_id is not None else job.get("source_id"),
     }
     for row in rows:
         if is_confident_duplicate_pair(probe, row):
@@ -346,7 +354,9 @@ def save_job(job, source_id, *, resolver=None):
     # next scrape; a duplicate insert is recoverable via unique constraints / later
     # near-dupe review.
     try:
-        near = _find_confident_near_duplicate(job, organization_id=organization_id)
+        near = _find_confident_near_duplicate(
+            job, organization_id=organization_id, source_id=source_id
+        )
     except Exception as e:
         scraper_log(f"Error checking for near-duplicate job (proceeding with insert): {e}")
         near = None

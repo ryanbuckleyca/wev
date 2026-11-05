@@ -214,18 +214,24 @@ class ScraperOrchestrator:
                 )
         elif self.api_sources:
             # Opt-in paid APIs only, in cost-waterfall order.
-            by_slug = {
-                (s.get("slug") or ""): s
-                for s in sources
-                if is_explicit_only_source(s)
-            }
-            ordered: List[Dict[str, Any]] = []
-            for slug in API_SOURCE_RUN_ORDER:
-                if slug in by_slug:
-                    ordered.append(by_slug.pop(slug))
-            # Any unexpected explicit-only slugs last (stable).
-            ordered.extend(by_slug[k] for k in sorted(by_slug))
-            sources = ordered
+            # Stable sort keeps duplicate / null-slug rows; legacy ``jobbank``
+            # ranks with canonical ``apify`` via source_canonical_slug.
+            order_index = {slug: i for i, slug in enumerate(API_SOURCE_RUN_ORDER)}
+            fallback = len(API_SOURCE_RUN_ORDER)
+
+            def _api_run_sort_key(source: Dict[str, Any]) -> tuple:
+                canon = source_canonical_slug(source) or ""
+                return (
+                    order_index.get(canon, fallback),
+                    canon,
+                    source.get("slug") or "",
+                    str(source.get("id") or ""),
+                )
+
+            sources = sorted(
+                (s for s in sources if is_explicit_only_source(s)),
+                key=_api_run_sort_key,
+            )
             if not sources:
                 raise RuntimeError(
                     "No API sources found in the database. "
@@ -666,6 +672,10 @@ def main():
         for flag in ["SHOULD_SUMMARIZE", "SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_TAG_SKILLS"]:
             if os.environ.get(flag) is None:
                 os.environ[flag] = "0"
+    if args.compare:
+        # Scrapers read COMPARE_ONLY so existing URLs stay in the job list for
+        # --compare (CLI flag alone never reached Headcount / base fetch loops).
+        os.environ["COMPARE_ONLY"] = "1"
 
     if args.list_sources:
         list_sources()

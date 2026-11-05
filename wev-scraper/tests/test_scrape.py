@@ -368,6 +368,39 @@ def test_main_flow(mock_orch_class, mock_init):
         assert os.environ["MAX_JOBS_PER_SOURCE"] == "5"
         assert os.environ["SCRAPER_HEADED"] == "1"
         assert os.environ["SCRAPER_VPN_MODE"] == "1"
+        mock_orch_class.assert_called_once()
+        kwargs = mock_orch_class.call_args.kwargs
+        assert kwargs.get("api_sources") is False
+        mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
+def test_main_forwards_apis_flag(mock_orch_class, mock_init):
+    mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
+    with patch("scrape.parse_args") as mock_args:
+        args = MagicMock()
+        args.prod = False
+        args.publish = False
+        args.staging = False
+        args.env = "local"
+        args.dry_run = True
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = False
+        args.list_sources = False
+        args.slug = None
+        args.apis = True
+        mock_args.return_value = args
+
+        main()
+
+        mock_orch_class.assert_called_once()
+        assert mock_orch_class.call_args.kwargs.get("api_sources") is True
         mock_orch.run.assert_called_once()
 
 

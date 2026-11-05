@@ -123,6 +123,12 @@ def mock_json_response(payload: dict, status_code: int = 200):
     return MockResponse()
 
 
+@pytest.fixture(autouse=True)
+def clear_compare_only(monkeypatch):
+    """Inherited COMPARE_ONLY=1 must not skip new URLs in this module's tests."""
+    monkeypatch.delenv("COMPARE_ONLY", raising=False)
+
+
 @pytest.fixture
 def scraper_env(monkeypatch):
     monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test-key-for-unit-tests")
@@ -153,6 +159,9 @@ def test_maps_core_fields(scraper_env):
     )
     assert job.get("website") == "https://examplenonprofit.ca"
     assert job["date_posted"].startswith("2026-10-20")
+    dump = (job.get("extra") or {}).get("source_dump")
+    assert isinstance(dump, dict)
+    assert dump.get("job_id") == "11111111-1111-4111-8111-111111111111"
 
 
 def test_requires_api_key(monkeypatch):

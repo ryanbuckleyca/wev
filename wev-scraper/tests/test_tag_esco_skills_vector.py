@@ -308,13 +308,11 @@ def test_non_sse_jobs_are_not_vectorized():
         patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
         patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
     ):
-        fake_svc = _make_fake_svc()
-        mock_svc_cls.return_value = fake_svc
         from scripts.tag_esco_skills_vector import tag_esco_skills_vector
 
         result = tag_esco_skills_vector(job_ids=["job-non-sse"], dry_run=False)
 
-    fake_svc.embed.assert_not_called()
+    mock_svc_cls.assert_not_called()
     mock_supabase.rpc.assert_not_called()
     mock_supabase.table.return_value.upsert.assert_not_called()
     assert result["processed"] == 0

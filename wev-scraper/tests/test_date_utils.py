@@ -36,15 +36,21 @@ def test_translate_french_date():
 
 def test_parse_relative_posted_at():
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
-    assert parse_relative_posted_at("3 days ago", now=now).date().isoformat() == "2026-11-01"
-    assert parse_relative_posted_at("1 day ago", now=now).date().isoformat() == "2026-11-03"
-    assert parse_relative_posted_at("Posted 2 weeks ago", now=now).date().isoformat() == "2026-10-21"
+    assert parse_relative_posted_at("3 days ago", now=now) == now - timedelta(days=3)
+    assert parse_relative_posted_at("1 day ago", now=now) == now - timedelta(days=1)
+    assert parse_relative_posted_at("Posted 2 weeks ago", now=now) == now - timedelta(weeks=2)
     assert parse_relative_posted_at("2026-11-01", now=now) is None
 
 
+def test_parse_relative_posted_at_overflow_returns_none():
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    assert parse_relative_posted_at(f"{10**12} days ago", now=now) is None
+
+
 def test_parse_localized_date_relative():
-    dt = _parse_localized_date("5 days ago")
-    assert (datetime.now(timezone.utc) - dt).days in (4, 5, 6)
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    dt = _parse_localized_date("5 days ago", now=now)
+    assert dt == now - timedelta(days=5)
 
 
 def test_parse_localized_date_english():

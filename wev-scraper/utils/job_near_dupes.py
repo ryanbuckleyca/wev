@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import Iterable
+from urllib.parse import urlparse
+
+from utils.location_parser import _normalize_ca_province_code
+from utils.municipality_canonical import normalize_location
 
 # Tiny function words that don't help title identity.
 _TITLE_STOP = frozenset(
@@ -149,13 +153,16 @@ def dates_within(
 
 def job_city_key(job: dict) -> str | None:
     """Best-effort city identity from municipality or location prefix."""
-    muni = (job.get("municipality") or "").strip().lower()
+    muni = (job.get("municipality") or "").strip()
     if muni:
-        return muni
+        return normalize_location(muni) or None
     loc = (job.get("location") or "").strip()
     if not loc:
         return None
-    return loc.split(",")[0].strip().lower() or None
+    prefix = loc.split(",")[0].strip()
+    if not prefix:
+        return None
+    return normalize_location(prefix) or None
 
 
 def cities_conflict(left: dict, right: dict) -> bool:
@@ -166,10 +173,46 @@ def cities_conflict(left: dict, right: dict) -> bool:
 
 
 def cities_same(left: dict, right: dict) -> bool:
-    """True when both sides have a city and they agree."""
+    """True when both sides have a city and they agree.
+
+    When both rows carry a province, same-named cities in different provinces
+    are not treated as equal (London ON vs London?).
+    """
     a = job_city_key(left)
     b = job_city_key(right)
-    return bool(a and b and a == b)
+    if not (a and b and a == b):
+        return False
+    pa = _normalize_ca_province_code(left.get("province"))
+    pb = _normalize_ca_province_code(right.get("province"))
+    if pa and pb and pa != pb:
+        return False
+    return True
+
+
+def _listing_host(url: str | None) -> str | None:
+    """Hostname for cross-source board evidence (strip leading www.)."""
+    if not url:
+        return None
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return None
+    if host.startswith("www."):
+        host = host[4:]
+    return host or None
+
+
+def is_cross_source_pair(left: dict, right: dict) -> bool:
+    """True when source_id or listing host evidence shows distinct boards."""
+    sid_a = left.get("source_id")
+    sid_b = right.get("source_id")
+    if sid_a and sid_b:
+        return sid_a != sid_b
+    host_a = _listing_host(left.get("listing_url"))
+    host_b = _listing_host(right.get("listing_url"))
+    if host_a and host_b:
+        return host_a != host_b
+    return False
 
 
 # Cross-board rewrites (Indeed vs Google vs ATS) rarely hit 0.90 similarity.
@@ -335,8 +378,13 @@ def is_confident_duplicate_pair(
     ratio = description_ratio(desc_a, desc_b)
     if ratio >= _CONFIDENT_DESC_MIN:
         return True
-    # Cross-source: same role + same city + strong-but-not-identical body.
-    if cities_same(left, right) and ratio >= _CROSS_SOURCE_DESC_MIN:
+    # Cross-source only: same role + same city + strong-but-not-identical body.
+    # Same-board moderate rewrites stay human-reviewed (distinct openings).
+    if (
+        cities_same(left, right)
+        and ratio >= _CROSS_SOURCE_DESC_MIN
+        and is_cross_source_pair(left, right)
+    ):
         return True
     return False
 

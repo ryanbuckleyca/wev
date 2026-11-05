@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -42,6 +43,7 @@ def _state_value(field: Any) -> Any:
 
 
 def _format_location(loc_value: Any) -> str | None:
+    """Format a Headcount location value dict into a display string."""
     if not isinstance(loc_value, dict):
         return None
     city = (loc_value.get("city") or "").strip()
@@ -55,6 +57,7 @@ def _format_location(loc_value: Any) -> str | None:
 
 
 def _format_wage(pay_value: Any) -> str | None:
+    """Format a Headcount pay value dict into a wage display string."""
     if not isinstance(pay_value, dict):
         return None
     currency = (pay_value.get("currency") or "").upper()
@@ -80,9 +83,11 @@ def _format_wage(pay_value: Any) -> str | None:
 class HeadcountLabsScraper:
     """JSON API scraper for Headcount Labs public jobs (Canada-scoped)."""
 
-    is_chronological = True
+    # Headcount pages are not strictly newest-first; keep scanning past stale rows.
+    is_chronological = False
     language = "en"
     request_timeout = 30
+    _FETCH_MAX_ATTEMPTS = 4
 
     def __init__(self, source: dict[str, Any]):
         self.source = source
@@ -94,9 +99,11 @@ class HeadcountLabsScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_base_url(self) -> str:
+        """Return the Headcount API base URL (env override or default)."""
         return (os.environ.get("HEADCOUNTLABS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
 
     def get_sample_path(self) -> str | None:
+        """Return offline sample path when ``HEADCOUNTLABS_SAMPLE_PATH`` is set."""
         raw = (os.environ.get("HEADCOUNTLABS_SAMPLE_PATH") or "").strip()
         return raw or None
 
@@ -108,6 +115,7 @@ class HeadcountLabsScraper:
         return bool((os.environ.get("HEADCOUNTLABS_API_KEY") or "").strip())
 
     def get_api_key(self) -> str:
+        """Return the Headcount API key or raise when unset."""
         key = (os.environ.get("HEADCOUNTLABS_API_KEY") or "").strip()
         if not key:
             raise RuntimeError(
@@ -118,6 +126,7 @@ class HeadcountLabsScraper:
         return key
 
     def get_request_headers(self) -> dict[str, str]:
+        """Bearer auth headers for Headcount list requests."""
         return {
             "Authorization": f"Bearer {self.get_api_key()}",
             "User-Agent": BROWSER_USER_AGENT,
@@ -125,6 +134,7 @@ class HeadcountLabsScraper:
         }
 
     def build_list_params(self, *, cursor: str | None = None) -> dict[str, str]:
+        """Build query params for ``GET /v1/jobs`` (Canada, has posting URL)."""
         limit = DEFAULT_PAGE_LIMIT
         if self._max_jobs is not None:
             limit = max(1, min(DEFAULT_PAGE_LIMIT, self._max_jobs))
@@ -140,6 +150,7 @@ class HeadcountLabsScraper:
         return params
 
     def fetch_jobs(self, **kwargs) -> list[dict[str, Any]]:
+        """Fetch Canada jobs from Headcount (live API or offline sample)."""
         weeks = get_within_weeks()
         skip_on_existing = not is_truthy_env("SHOULD_OVERRIDE_EXISTING")
         compare_only = is_truthy_env("COMPARE_ONLY")
@@ -157,13 +168,35 @@ class HeadcountLabsScraper:
             return self.jobs
 
         cursor: str | None = None
+        followed_cursors: set[str] = set()
         while True:
             if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
                 scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
                 break
 
-            page = self._fetch_page(cursor)
-            records = page.get("data") or []
+            try:
+                page = self._fetch_page(cursor)
+            except RuntimeError as e:
+                # Keep jobs from earlier pages so the orchestrator can still
+                # save/compare them rather than discarding the whole run.
+                if self.jobs:
+                    scraper_log(
+                        f"\tStopping Headcount pagination after fetch error "
+                        f"(keeping {len(self.jobs)} job(s)): {e}"
+                    )
+                    break
+                raise
+
+            raw_data = page.get("data")
+            if not raw_data:
+                records: list[Any] = []
+            elif not isinstance(raw_data, list):
+                raise RuntimeError(
+                    "Headcount jobs response `data` must be a list, "
+                    f"got {type(raw_data).__name__}"
+                )
+            else:
+                records = raw_data
             scraper_log(f"\tHeadcount page: {len(records)} jobs")
 
             stop = self._ingest_records(
@@ -175,9 +208,15 @@ class HeadcountLabsScraper:
             if stop:
                 break
 
-            cursor = page.get("next_cursor")
-            if not cursor:
+            next_cursor = page.get("next_cursor")
+            if not next_cursor:
                 break
+            next_s = str(next_cursor)
+            if next_s in followed_cursors:
+                scraper_log("\tRepeated next_cursor; stopping Headcount pagination")
+                break
+            followed_cursors.add(next_s)
+            cursor = next_s
 
         return self.jobs
 
@@ -212,6 +251,7 @@ class HeadcountLabsScraper:
         return False
 
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        """Load Headcount job dicts from a local JSON sample file."""
         path = Path(sample_path).expanduser()
         if not path.is_file():
             raise RuntimeError(f"HEADCOUNTLABS_SAMPLE_PATH not found: {path}")
@@ -233,23 +273,39 @@ class HeadcountLabsScraper:
         return [r for r in records if isinstance(r, dict)]
 
     def _fetch_page(self, cursor: str | None) -> dict[str, Any]:
+        """GET one Headcount jobs page; retry HTTP 429/503 with bounded backoff."""
         params = self.build_list_params(cursor=cursor)
         url = f"{self.get_base_url()}/v1/jobs?{urlencode(params)}"
         scraper_log(f"\tFetching Headcount jobs: {url.split('?')[0]}?country=CA&...")
-        try:
-            with requests.get(
-                url,
-                headers=self.get_request_headers(),
-                timeout=self.request_timeout,
-            ) as response:
-                response.raise_for_status()
-                payload = response.json()
-        except requests.RequestException as e:
-            raise RuntimeError(f"Failed to fetch Headcount jobs: {e}") from e
+        last_error: Exception | None = None
+        for attempt in range(1, self._FETCH_MAX_ATTEMPTS + 1):
+            try:
+                with requests.get(
+                    url,
+                    headers=self.get_request_headers(),
+                    timeout=self.request_timeout,
+                ) as response:
+                    if response.status_code in (429, 503):
+                        last_error = RuntimeError(
+                            f"Headcount HTTP {response.status_code}"
+                        )
+                        if attempt >= self._FETCH_MAX_ATTEMPTS:
+                            break
+                        time.sleep(min(8.0, 0.5 * (2 ** (attempt - 1))))
+                        continue
+                    response.raise_for_status()
+                    payload = response.json()
+            except requests.RequestException as e:
+                raise RuntimeError(f"Failed to fetch Headcount jobs: {e}") from e
 
-        if not isinstance(payload, dict):
-            raise RuntimeError("Headcount jobs response was not a JSON object")
-        return payload
+            if not isinstance(payload, dict):
+                raise RuntimeError("Headcount jobs response was not a JSON object")
+            return payload
+
+        raise RuntimeError(
+            f"Failed to fetch Headcount jobs after {self._FETCH_MAX_ATTEMPTS} "
+            f"retries: {last_error}"
+        )
 
     def _process_record(
         self,
@@ -260,6 +316,7 @@ class HeadcountLabsScraper:
         skip_on_existing: bool,
         compare_only: bool,
     ) -> tuple[dict[str, Any] | None, bool]:
+        """Map one Headcount record; return (job_dict|None, should_stop_paging)."""
         fields = self.parse_job(record)
         if fields is None:
             scraper_log(f"\t\tSkipping job {index + 1}: parse_job returned None")
@@ -271,7 +328,8 @@ class HeadcountLabsScraper:
             scraper_log(f"\t\tSkipping job {index + 1}: no valid URL")
             return None, False
 
-        if norm_url in self.existing_urls and skip_on_existing:
+        # During --compare, keep existing URLs so the orchestrator can diff them.
+        if norm_url in self.existing_urls and skip_on_existing and not compare_only:
             scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already in database")
             self.skipped_duplicates += 1
             return None, False
@@ -329,6 +387,7 @@ class HeadcountLabsScraper:
                 "wage": fields.get("wage"),
                 "language": fields.get("language"),
                 "website": fields.get("website") or fields.get("organization_website"),
+                "source_dump": record,
             }
         )
         return job_dict, False
@@ -368,6 +427,7 @@ class HeadcountLabsScraper:
         }
 
     def _organization_name(self, record: dict[str, Any]) -> str | None:
+        """Prefer company.name, then employer_name state field."""
         company = record.get("company")
         if isinstance(company, dict):
             name = (company.get("name") or "").strip()
@@ -379,6 +439,7 @@ class HeadcountLabsScraper:
         return None
 
     def _organization_website(self, record: dict[str, Any]) -> str | None:
+        """First non-empty company website/domain/url."""
         company = record.get("company")
         if not isinstance(company, dict):
             return None
@@ -389,11 +450,15 @@ class HeadcountLabsScraper:
         return None
 
     def _listing_url(self, record: dict[str, Any]) -> str | None:
+        """First live posting URL; skip ``no_longer_listed`` postings."""
         postings = record.get("postings") or []
         if not isinstance(postings, list):
             return None
         for posting in postings:
             if not isinstance(posting, dict):
+                continue
+            status = _state_value(posting.get("posting_status"))
+            if isinstance(status, str) and status.strip().lower() == "no_longer_listed":
                 continue
             for key in ("posting_url", "application_url"):
                 url = _state_value(posting.get(key))
@@ -402,6 +467,7 @@ class HeadcountLabsScraper:
         return None
 
     def _location_text(self, record: dict[str, Any]) -> str | None:
+        """Best-effort location string from locations[] or posting.location."""
         locations = record.get("locations") or []
         if isinstance(locations, list):
             for loc in locations:
@@ -422,6 +488,7 @@ class HeadcountLabsScraper:
         return None
 
     def _wage_text(self, record: dict[str, Any]) -> str | None:
+        """First posting pay value formatted as a wage string."""
         postings = record.get("postings") or []
         if not isinstance(postings, list):
             return None
@@ -434,6 +501,7 @@ class HeadcountLabsScraper:
         return None
 
     def _employment_type(self, record: dict[str, Any]) -> str | None:
+        """Employment type from posting source_data when present."""
         postings = record.get("postings") or []
         if not isinstance(postings, list):
             return None
@@ -448,6 +516,7 @@ class HeadcountLabsScraper:
         return None
 
     def _date_posted(self, record: dict[str, Any]) -> str | None:
+        """Prefer source_posted_at, then Headcount first-seen / updated stamps."""
         postings = record.get("postings") or []
         if isinstance(postings, list):
             for posting in postings:

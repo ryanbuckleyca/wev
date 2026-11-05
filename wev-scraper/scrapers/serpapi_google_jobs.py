@@ -290,7 +290,6 @@ class SerpApiGoogleJobsScraper:
             return None, False
         if norm_url in self.scraped_urls:
             return None, False
-        self.scraped_urls.add(norm_url)
 
         date_str = fields.get("date_posted")
         title = fields.get("job_title", "Unknown")
@@ -307,6 +306,9 @@ class SerpApiGoogleJobsScraper:
                     fields["date_posted"] = dt.date().isoformat()
                 except Exception:
                     pass
+        # Record after the date check so a stale hit does not block a later
+        # fresh listing that shares the same apply URL.
+        self.scraped_urls.add(norm_url)
         scraper_log(f"\t\tProcessing job {index + 1}: '{title}' via={fields.get('_via')}")
 
         fields["listing_url"] = norm_url
@@ -325,6 +327,7 @@ class SerpApiGoogleJobsScraper:
                 "language": self.language,
                 "is_remote": fields.get("is_remote"),
                 "work_type": fields.get("work_type"),
+                "source_dump": record,
             }
         )
         return job_dict, False

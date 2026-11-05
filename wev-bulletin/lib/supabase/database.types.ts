@@ -812,7 +812,6 @@ export type Database = {
           description: string | null
           employment_type: string | null
           external_job_id: string | null
-          extra: Json | null
           fts: unknown
           fts_en: unknown
           fts_fr: unknown

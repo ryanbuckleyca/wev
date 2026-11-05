@@ -61,14 +61,29 @@ def test_split_location_city_canada_keeps_municipality():
 
 
 def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    from utils.date_utils import parse_relative_posted_at
+
     sample = tmp_path / "serpapi.json"
     sample.write_text(json.dumps([_sample_record()]), encoding="utf-8")
     monkeypatch.setenv("SERPAPI_GOOGLE_JOBS_SAMPLE_PATH", str(sample))
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    fixed_now = datetime(2026, 11, 4, 15, 30, tzinfo=timezone.utc)
+    monkeypatch.setattr(
+        "scrapers.serpapi_google_jobs.parse_relative_posted_at",
+        lambda s, *, now=None: parse_relative_posted_at(s, now=fixed_now),
+    )
     jobs = _scraper().fetch_jobs()
     assert len(jobs) >= 1
     assert all(j.get("listing_url") for j in jobs)
     dated = [j for j in jobs if j.get("date_posted")]
     assert dated
     assert all(re.match(r"^\d{4}-\d{2}-\d{2}", j["date_posted"]) for j in dated)
+    expected = (fixed_now - timedelta(days=3)).date().isoformat()
+    assert dated[0]["date_posted"] == expected
+    dump = (jobs[0].get("extra") or {}).get("source_dump")
+    assert isinstance(dump, dict)
+    assert dump.get("company_name") == "Example Clinic"
+    assert dump.get("job_id") == "abc123"

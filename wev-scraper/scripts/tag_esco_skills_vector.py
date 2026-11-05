@@ -338,16 +338,8 @@ def tag_esco_skills_vector(
     print(f"Workers:     {workers} (match/write; embed serial)")
     print()
 
-    # Initialize embedding service
-    try:
-        svc = JinaEmbeddingService()
-        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
-        print(f"✓ JinaEmbeddingService initialized — {mode}\n")
-    except ConfigurationError as e:
-        print(f"✗ {e}")
-        return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
-
-    # Fetch jobs
+    # Fetch jobs before initializing Jina so empty / non-SSE selections return
+    # without requiring JINA_API_KEY.
     # Include skills so we can treat skills=[] as a durable "tagged, zero hits"
     # marker (skills is None = never tagged). is_sse gates vectorize/ESCO — only
     # social/solidarity economy roles get embeddings (same rule for web + API).
@@ -396,6 +388,14 @@ def tag_esco_skills_vector(
     if total == 0:
         print("Nothing to do.")
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 0}
+
+    try:
+        svc = JinaEmbeddingService()
+        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
+        print(f"✓ JinaEmbeddingService initialized — {mode}\n")
+    except ConfigurationError as e:
+        print(f"✗ {e}")
+        return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
 
     start_time = time.time()
 

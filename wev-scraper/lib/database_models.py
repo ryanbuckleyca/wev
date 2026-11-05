@@ -210,7 +210,6 @@ class MatchedJobs(BaseModel):
     date_posted: Optional[str] = None
     employment_type: Optional[str] = None
     external_job_id: Optional[str] = None
-    extra: Optional[Any] = None
     scraped_at: Optional[str] = None
     wage: Optional[str] = None
     close_date: Optional[date] = None

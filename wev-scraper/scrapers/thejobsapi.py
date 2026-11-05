@@ -186,6 +186,7 @@ class TheJobsApiScraper:
 
     def _ensure_job_details(self, jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Hydrate list rows that lack a description via GET /v1/jobs/{id}."""
+        max_attempts = 3
         details: list[dict[str, Any]] = []
         for i, job in enumerate(jobs, 1):
             if job.get("description_text") or job.get("description"):
@@ -194,17 +195,25 @@ class TheJobsApiScraper:
             jid = job.get("id")
             if jid is None:
                 continue
-            try:
-                with requests.get(
-                    f"{TJA_BASE}/v1/jobs/{jid}",
-                    headers=self._headers(),
-                    timeout=self.request_timeout,
-                ) as response:
-                    response.raise_for_status()
-                    detail = response.json()
-            except requests.RequestException as e:
-                scraper_log(f"\t\tTJA detail {jid} failed: {e}")
-                continue
+            detail = None
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    with requests.get(
+                        f"{TJA_BASE}/v1/jobs/{jid}",
+                        headers=self._headers(),
+                        timeout=self.request_timeout,
+                    ) as response:
+                        response.raise_for_status()
+                        detail = response.json()
+                    break
+                except requests.RequestException as e:
+                    if attempt >= max_attempts:
+                        scraper_log(
+                            f"\t\tTJA detail {jid} failed after {max_attempts} "
+                            f"attempts: {e}"
+                        )
+                    else:
+                        time.sleep(0.4 * attempt)
             if isinstance(detail, dict):
                 details.append(detail)
             if i % 10 == 0:
@@ -345,6 +354,7 @@ class TheJobsApiScraper:
                 "language": self.language,
                 "is_remote": fields.get("is_remote"),
                 "work_type": fields.get("work_type"),
+                "source_dump": detail,
             }
         )
         return job_dict, False

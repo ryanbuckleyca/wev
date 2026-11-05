@@ -316,6 +316,7 @@ def test_confident_dupe_cross_source_same_city_moderate_similarity():
         "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
         "date_posted": "2026-11-01",
         "municipality": "Toronto",
+        "province": "ON",
         "description": body,
     }
     right = {
@@ -323,11 +324,79 @@ def test_confident_dupe_cross_source_same_city_moderate_similarity():
         "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999",
         "date_posted": "2026-11-02",
         "municipality": "Toronto",
+        "province": "ON",
         "description": rewritten,
     }
     ratio = description_ratio(left["description"], right["description"])
     assert 0.70 <= ratio < 0.90
     assert is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_same_board_moderate_similarity_stays_review_only():
+    """0.70–0.89 body on the same board must not auto-skip distinct openings."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "description": body,
+        "source_id": "src-a",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=def456",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "description": rewritten,
+        "source_id": "src-a",
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_cross_source_same_host_via_source_id():
+    """Different source_id + same host still counts as cross-source at 0.70–0.89."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/111",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": body,
+        "source_id": "serpapi-uuid",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/222",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": rewritten,
+        "source_id": "theirstack-uuid",
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_cities_same_requires_matching_province_when_both_set():
+    from utils.job_near_dupes import cities_same
+
+    assert cities_same(
+        {"municipality": "London", "province": "ON"},
+        {"municipality": "London", "province": "ON"},
+    )
+    assert not cities_same(
+        {"municipality": "London", "province": "ON"},
+        {"municipality": "London", "province": "QC"},
+    )
 
 
 def test_confident_dupe_cross_source_needs_city_match():

@@ -83,6 +83,10 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
     assert len(jobs) == 3
     assert all(j.get("job_title") for j in jobs)
     assert all(j.get("listing_url") for j in jobs)
+    assert all(isinstance((j.get("extra") or {}).get("source_dump"), dict) for j in jobs)
+    assert jobs[0]["extra"]["source_dump"].get("employer") == (
+        "SkyPod Immigration Consulting Inc."
+    )
 
 
 def test_parse_job_requires_core_fields():

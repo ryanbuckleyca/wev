@@ -28,7 +28,10 @@ from utils.url import normalize_listing_url
 
 DEFAULT_ACTOR_ID = "getascraper/jobbank-scraper"
 APIFY_API_BASE = "https://api.apify.com/v2"
+# Apify caps waitForFinish at 60s per request; longer waits poll the run.
+_API_WAIT_FOR_FINISH_MAX = 60
 DEFAULT_WAIT_SECS = 300
+_TERMINAL_RUN_STATUSES = frozenset({"SUCCEEDED", "FAILED", "ABORTED", "TIMED-OUT"})
 
 
 def _actor_path(actor_id: str) -> str:
@@ -155,8 +158,9 @@ class ApifyJobBankScraper:
 
     def _run_actor(self, limit: int) -> list[dict[str, Any]]:
         actor = _actor_path(self.get_actor_id())
-        wait = get_int_env("APIFY_JOBBANK_WAIT_SECS") or DEFAULT_WAIT_SECS
-        run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish={wait}"
+        total_wait = get_int_env("APIFY_JOBBANK_WAIT_SECS") or DEFAULT_WAIT_SECS
+        wait_param = min(total_wait, _API_WAIT_FOR_FINISH_MAX)
+        run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish={wait_param}"
         actor_input = self.build_actor_input(limit)
         scraper_log(
             f"\tStarting Apify actor {self.get_actor_id()} "
@@ -169,13 +173,14 @@ class ApifyJobBankScraper:
                 run_url,
                 json=actor_input,
                 headers=self._auth_headers(json_body=True),
-                timeout=wait + self.request_timeout,
+                timeout=wait_param + self.request_timeout,
             ) as response:
                 response.raise_for_status()
                 run = response.json().get("data") or {}
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
 
+        run = self._wait_for_run_terminal(run, total_wait_secs=total_wait)
         status = run.get("status")
         dataset_id = run.get("defaultDatasetId")
         if status != "SUCCEEDED":
@@ -187,6 +192,43 @@ class ApifyJobBankScraper:
             raise RuntimeError("Apify Job Bank run missing defaultDatasetId")
 
         return self._fetch_dataset_items(dataset_id)
+
+    def _wait_for_run_terminal(
+        self, run: dict[str, Any], *, total_wait_secs: int
+    ) -> dict[str, Any]:
+        """Poll until the actor run reaches a terminal status or the wait budget expires."""
+        status = run.get("status")
+        if status in _TERMINAL_RUN_STATUSES:
+            return run
+        run_id = run.get("id")
+        if not run_id:
+            return run
+
+        deadline = time.monotonic() + max(0, total_wait_secs)
+        while time.monotonic() < deadline:
+            remaining = max(0, int(deadline - time.monotonic()))
+            wait_param = min(remaining, _API_WAIT_FOR_FINISH_MAX)
+            if wait_param <= 0:
+                break
+            poll_url = (
+                f"{APIFY_API_BASE}/actor-runs/{run_id}?waitForFinish={wait_param}"
+            )
+            try:
+                with requests.get(
+                    poll_url,
+                    headers=self._auth_headers(),
+                    timeout=wait_param + self.request_timeout,
+                ) as response:
+                    response.raise_for_status()
+                    run = response.json().get("data") or run
+            except requests.RequestException as e:
+                raise RuntimeError(
+                    f"Failed to poll Apify Job Bank run {run_id}: {e}"
+                ) from e
+            status = run.get("status")
+            if status in _TERMINAL_RUN_STATUSES:
+                return run
+        return run
 
     def _fetch_dataset_items(self, dataset_id: str) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
@@ -294,6 +336,7 @@ class ApifyJobBankScraper:
                 "website": fields.get("website"),
                 "is_remote": fields.get("is_remote"),
                 "work_type": fields.get("work_type"),
+                "source_dump": record,
             }
         )
         return job_dict, False

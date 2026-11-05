@@ -70,13 +70,16 @@ class TheirStackScraper:
             weeks = get_within_weeks()
             max_age = max(1, int(weeks) * 7) if weeks else 14
 
-        domain_or = [
-            d.strip()
-            for d in (
-                os.environ.get("THEIRSTACK_URL_DOMAIN_OR") or DEFAULT_DOMAIN_OR
-            ).split(",")
-            if d.strip()
-        ]
+        override_or = os.environ.get("THEIRSTACK_URL_DOMAIN_OR")
+        if override_or is None:
+            domain_or = [d.strip() for d in DEFAULT_DOMAIN_OR.split(",") if d.strip()]
+        else:
+            domain_or = [d.strip() for d in override_or.split(",") if d.strip()]
+            if not domain_or:
+                domain_or = [
+                    d.strip() for d in DEFAULT_DOMAIN_OR.split(",") if d.strip()
+                ]
+
         domain_not = [
             d.strip()
             for d in (
@@ -90,9 +93,8 @@ class TheirStackScraper:
             "posted_at_max_age_days": max_age,
             "limit": min(limit, 100),
             "page": page,
+            "url_domain_or": domain_or,
         }
-        if domain_or:
-            body["url_domain_or"] = domain_or
         if domain_not:
             body["url_domain_not"] = domain_not
         return body
@@ -310,6 +312,7 @@ class TheirStackScraper:
                 "website": fields.get("website"),
                 "is_remote": fields.get("is_remote"),
                 "work_type": fields.get("work_type"),
+                "source_dump": record,
             }
         )
         return job_dict, False

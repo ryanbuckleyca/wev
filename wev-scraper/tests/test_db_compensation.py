@@ -167,3 +167,22 @@ def test_job_row_invalid_work_type_falls_back_to_office(mock_extract):
     j["work_type"] = "onsite"
     row = _job_row(j, "src-1")
     assert row["work_type"] == "office"
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_includes_extra_when_present(mock_extract):
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    extra = {"source_dump": {"provider_id": "x", "via": "LinkedIn"}}
+    row = _job_row(_base_job(extra=extra), "src-1")
+    assert row["extra"] == extra
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_omits_extra_when_absent(mock_extract):
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    row = _job_row(_base_job(), "src-1")
+    assert "extra" not in row
