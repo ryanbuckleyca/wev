@@ -171,6 +171,7 @@ def test_job_row_invalid_work_type_falls_back_to_office(mock_extract):
 
 @patch("utils.db.extract_and_guard")
 def test_job_row_includes_extra_when_present(mock_extract):
+    """Cover job row includes extra when present."""
     mock_extract.return_value = _make_extraction()
     from utils.db import _job_row
 
@@ -181,6 +182,7 @@ def test_job_row_includes_extra_when_present(mock_extract):
 
 @patch("utils.db.extract_and_guard")
 def test_job_row_omits_extra_when_absent(mock_extract):
+    """Cover job row omits extra when absent."""
     mock_extract.return_value = _make_extraction()
     from utils.db import _job_row
 

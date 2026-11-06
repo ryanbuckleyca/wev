@@ -50,6 +50,7 @@ def test_normalize_job_data_blank_location_stays_none(monkeypatch):
 
 
 def test_normalize_job_data_nests_source_dump_under_extra(monkeypatch):
+    """Cover normalize job data nests source dump under extra."""
     _no_geocode(monkeypatch)
     dump = {"job_id": "abc", "via": "LinkedIn", "description": "full body"}
     result = normalize_job_data(
@@ -68,6 +69,7 @@ def test_normalize_job_data_nests_source_dump_under_extra(monkeypatch):
 
 
 def test_normalize_job_data_omits_non_dict_source_dump(monkeypatch):
+    """Cover normalize job data omits non dict source dump."""
     _no_geocode(monkeypatch)
     result = normalize_job_data(
         {

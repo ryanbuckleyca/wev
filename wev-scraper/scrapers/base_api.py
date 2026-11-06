@@ -56,6 +56,7 @@ class BaseApiScraper:
     auto_detect_employment_type = True
 
     def __init__(self, source: dict[str, Any]):
+        """Bind a sources-row dict and reset per-run scrape counters."""
         self.source = source
         self.existing_urls: set[str] = set()
         self.skipped_duplicates = 0

@@ -4,6 +4,7 @@ from unittest.mock import ANY, MagicMock, patch
 # ── save_job return value contract ────────────────────────────────────────────
 
 def _make_job():
+    """Test helper for make job."""
     return {
         "job_title": "Test Job",
         "organization": "Test Org",
@@ -39,6 +40,7 @@ def _mock_supabase(inserted_id="abc-123", existing=None):
 @patch("utils.db._job_row", return_value={"job_title": "Test Job"})
 @patch("utils.db.supabase")
 def test_save_job_returns_tuple_on_insert(mock_sb, mock_row, mock_find, mock_near, mock_env):
+    """Cover save job returns tuple on insert."""
     mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
         data=[{"id": "new-uuid-123"}]
     )
@@ -54,6 +56,7 @@ def test_save_job_returns_tuple_on_insert(mock_sb, mock_row, mock_find, mock_nea
 @patch("utils.db._job_row", return_value={"job_title": "Test Job"})
 @patch("utils.db.supabase")
 def test_save_job_skips_confident_near_duplicate(mock_sb, mock_row, mock_find, mock_near, mock_env):
+    """Cover save job skips confident near duplicate."""
     mock_near.return_value = {
         "id": "existing-near",
         "listing_url": "https://ecoworks.eco.ca/jobs/111",
@@ -76,6 +79,7 @@ def test_save_job_skips_confident_near_duplicate(mock_sb, mock_row, mock_find, m
 def test_save_job_fail_opens_when_near_dupe_probe_errors(
     mock_sb, mock_row, mock_find, mock_near, mock_env
 ):
+    """Cover save job fail opens when near dupe probe errors."""
     mock_sb.table.return_value.insert.return_value.execute.return_value = MagicMock(
         data=[{"id": "inserted-despite-probe-error"}]
     )
@@ -111,6 +115,7 @@ def test_save_job_inserts_when_near_dupe_probe_finds_nothing(
 @patch("utils.db._build_update_row", return_value={})
 @patch("utils.db.supabase")
 def test_save_job_returns_tuple_on_update(mock_sb, mock_build, mock_find, mock_env):
+    """Cover save job returns tuple on update."""
     mock_sb.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
     from utils.db import save_job
     status, job_id = save_job(_make_job(), "source-id")
@@ -122,6 +127,7 @@ def test_save_job_returns_tuple_on_update(mock_sb, mock_build, mock_find, mock_e
 @patch("utils.db._find_existing_job", return_value={"id": "existing-uuid-456", "listing_url": "https://example.com/jobs/test-job"})
 @patch("utils.db.supabase")
 def test_save_job_returns_none_id_on_skip(mock_sb, mock_find, mock_env):
+    """Cover save job returns none id on skip."""
     from utils.db import save_job
     status, job_id = save_job(_make_job(), "source-id")
     assert status == "skipped"
@@ -130,6 +136,7 @@ def test_save_job_returns_none_id_on_skip(mock_sb, mock_find, mock_env):
 
 @patch("utils.db.supabase")
 def test_save_job_returns_none_id_on_missing_fields(mock_sb):
+    """Cover save job returns none id on missing fields."""
     from utils.db import save_job
     status, job_id = save_job({"listing_url": "https://example.com/x"}, "source-id")
     assert status == "skipped"
@@ -138,6 +145,7 @@ def test_save_job_returns_none_id_on_missing_fields(mock_sb):
 
 @patch("utils.db.supabase")
 def test_save_job_skips_us_location(mock_sb):
+    """Cover save job skips us location."""
     from utils.db import save_job
 
     job = _make_job()

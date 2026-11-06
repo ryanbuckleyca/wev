@@ -10,6 +10,7 @@ from scrapers.thejobsapi import TheJobsApiScraper, window_for_within_weeks
 
 
 def _scraper() -> TheJobsApiScraper:
+    """Test helper for scraper."""
     return TheJobsApiScraper(
         {
             "id": "t",
@@ -21,6 +22,7 @@ def _scraper() -> TheJobsApiScraper:
 
 
 def _sample_detail(**overrides):
+    """Test helper for sample detail."""
     detail = {
         "id": 1,
         "title": "Registered Nurse",
@@ -40,6 +42,7 @@ def _sample_detail(**overrides):
 
 
 def test_window_for_within_weeks_covers_two_weeks():
+    """Cover window for within weeks covers two weeks."""
     assert window_for_within_weeks(1) == "7d"
     assert window_for_within_weeks(2) == "30d"
     assert window_for_within_weeks(4) == "30d"
@@ -47,11 +50,13 @@ def test_window_for_within_weeks_covers_two_weeks():
 
 
 def test_resolve_window_prefers_env(monkeypatch):
+    """Cover resolve window prefers env."""
     monkeypatch.setenv("TJA_WINDOW", "7d")
     assert _scraper().resolve_window(weeks=8) == "7d"
 
 
 def test_parse_job_requires_url_org_title():
+    """Cover parse job requires url org title."""
     s = _scraper()
     fields = s.parse_job(_sample_detail(url=None, apply_url="https://example.com/apply"))
     assert fields is not None
@@ -62,6 +67,7 @@ def test_parse_job_requires_url_org_title():
 
 
 def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
+    """Cover fetch jobs from sample."""
     sample = tmp_path / "tja.json"
     sample.write_text(json.dumps([_sample_detail()]), encoding="utf-8")
     monkeypatch.setenv("TJA_SAMPLE_PATH", str(sample))
@@ -101,13 +107,17 @@ def test_outdated_job_does_not_stop_later_fresh_jobs(monkeypatch, tmp_path):
 
 
 class _JsonResp:
+    """Test helper: _JsonResp."""
     def __init__(self, payload):
+        """Test helper for init  ."""
         self._payload = payload
 
     def raise_for_status(self):
+        """Helper: raise_for_status."""
         return None
 
     def json(self):
+        """Helper: json."""
         return self._payload
 
     def __enter__(self):
@@ -118,6 +128,7 @@ class _JsonResp:
 
 
 def test_fetch_canada_details_sends_window(monkeypatch):
+    """Cover fetch canada details sends window."""
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
     monkeypatch.delenv("TJA_WINDOW", raising=False)
     monkeypatch.delenv("TJA_TIME_FRAME", raising=False)
@@ -142,6 +153,7 @@ def test_fetch_canada_details_sends_window(monkeypatch):
 
 
 def test_fetch_canada_details_follows_next_cursor(monkeypatch):
+    """Cover fetch canada details follows next cursor."""
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
     monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.setenv("TJA_API_KEY", "tja_live_.test")
@@ -181,6 +193,7 @@ def test_fetch_canada_details_follows_next_cursor(monkeypatch):
 
 
 def test_fetch_canada_details_stops_when_next_cursor_clears(monkeypatch):
+    """Cover fetch canada details stops when next cursor clears."""
     monkeypatch.delenv("TJA_SAMPLE_PATH", raising=False)
     monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.setenv("TJA_API_KEY", "tja_live_.test")

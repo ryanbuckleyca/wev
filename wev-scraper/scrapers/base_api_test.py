@@ -19,6 +19,7 @@ _RECENT_PATCH = "scrapers.base_api.is_recent_job"
 
 
 def _source(**overrides) -> dict[str, Any]:
+    """Test helper for source."""
     base = {
         "id": "api-test",
         "name": "API Test",
@@ -36,6 +37,7 @@ class _ToyApiScraper(BaseApiScraper):
     sample_list_keys = ("data", "jobs")
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
+        """Helper: parse_job."""
         title = (record.get("title") or "").strip()
         org = (record.get("organization") or "").strip()
         url = (record.get("url") or "").strip()
@@ -52,16 +54,19 @@ class _ToyApiScraper(BaseApiScraper):
 
 
 def test_close_browser_is_noop():
+    """Cover close browser is noop."""
     scraper = _ToyApiScraper(_source())
     scraper.close_browser()
 
 
 def test_parse_job_required_on_base():
+    """Cover parse job required on base."""
     with pytest.raises(NotImplementedError):
         BaseApiScraper(_source()).parse_job({"title": "x"})
 
 
 def test_five_api_scrapers_subclass_base():
+    """Cover five api scrapers subclass base."""
     assert issubclass(SerpApiGoogleJobsScraper, BaseApiScraper)
     assert issubclass(ApifyJobBankScraper, BaseApiScraper)
     assert issubclass(TheJobsApiScraper, BaseApiScraper)
@@ -70,6 +75,7 @@ def test_five_api_scrapers_subclass_base():
 
 
 def test_get_sample_path_first_env_wins(monkeypatch):
+    """Cover get sample path first env wins."""
     scraper = _ToyApiScraper(_source())
     assert scraper.get_sample_path() is None
     monkeypatch.setenv("TOY_API_SAMPLE_PATH", " /tmp/toy.json ")
@@ -77,6 +83,7 @@ def test_get_sample_path_first_env_wins(monkeypatch):
 
 
 def test_load_sample_records_list_and_keyed(tmp_path):
+    """Cover load sample records list and keyed."""
     scraper = _ToyApiScraper(_source())
     bare = tmp_path / "bare.json"
     bare.write_text(
@@ -100,6 +107,7 @@ def test_load_sample_records_list_and_keyed(tmp_path):
 
 
 def test_load_sample_records_missing_file(tmp_path):
+    """Cover load sample records missing file."""
     scraper = _ToyApiScraper(_source())
     with pytest.raises(RuntimeError, match="not found"):
         scraper._load_sample_records(str(tmp_path / "missing.json"))
@@ -107,6 +115,7 @@ def test_load_sample_records_missing_file(tmp_path):
 
 @patch(_RECENT_PATCH, return_value=True)
 def test_process_record_attaches_source_dump(mock_recent, monkeypatch):
+    """Cover process record attaches source dump."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     scraper = _ToyApiScraper(_source())
     record = {
@@ -128,6 +137,7 @@ def test_process_record_attaches_source_dump(mock_recent, monkeypatch):
 
 @patch(_RECENT_PATCH, return_value=True)
 def test_process_record_skips_existing_url(mock_recent, monkeypatch):
+    """Cover process record skips existing url."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.delenv("SHOULD_OVERRIDE_EXISTING", raising=False)
     scraper = _ToyApiScraper(_source())
@@ -145,6 +155,7 @@ def test_process_record_skips_existing_url(mock_recent, monkeypatch):
 
 @patch(_RECENT_PATCH, return_value=False)
 def test_process_record_chronological_stop_on_stale(mock_recent, monkeypatch):
+    """Cover process record chronological stop on stale."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
 
     class Chrono(_ToyApiScraper):
@@ -168,6 +179,7 @@ def test_process_record_chronological_stop_on_stale(mock_recent, monkeypatch):
 
 @patch(_RECENT_PATCH, return_value=False)
 def test_defer_scraped_url_until_accepted(mock_recent, monkeypatch):
+    """Cover defer scraped url until accepted."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
 
     class Deferred(_ToyApiScraper):
@@ -193,6 +205,7 @@ def test_defer_scraped_url_until_accepted(mock_recent, monkeypatch):
 
 @patch(_RECENT_PATCH, return_value=True)
 def test_should_stop_before_accept_hook(mock_recent, monkeypatch):
+    """Cover should stop before accept hook."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
 
     class Stopping(_ToyApiScraper):

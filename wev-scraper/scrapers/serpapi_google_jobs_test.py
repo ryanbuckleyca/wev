@@ -9,6 +9,7 @@ from scrapers.serpapi_google_jobs import SerpApiGoogleJobsScraper
 
 
 def _scraper() -> SerpApiGoogleJobsScraper:
+    """Test helper for scraper."""
     return SerpApiGoogleJobsScraper(
         {
             "id": "t",
@@ -20,6 +21,7 @@ def _scraper() -> SerpApiGoogleJobsScraper:
 
 
 def _sample_record(**overrides):
+    """Test helper for sample record."""
     record = {
         "title": "Registered Social Worker",
         "company_name": "Example Clinic",
@@ -41,6 +43,7 @@ def _sample_record(**overrides):
 
 
 def test_parse_job_maps_google_jobs_fields():
+    """Cover parse job maps google jobs fields."""
     fields = _scraper().parse_job(_sample_record())
     assert fields is not None
     assert fields["job_title"] == "Registered Social Worker"
@@ -53,6 +56,7 @@ def test_parse_job_maps_google_jobs_fields():
 
 
 def test_split_location_city_canada_keeps_municipality():
+    """Cover split location city canada keeps municipality."""
     s = _scraper()
     assert s._split_location("Toronto, Canada") == ("Toronto", None)
     assert s._split_location("Toronto, ON, Canada") == ("Toronto", "ON")
@@ -61,6 +65,7 @@ def test_split_location_city_canada_keeps_municipality():
 
 
 def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
+    """Cover fetch jobs from sample."""
     from datetime import datetime, timedelta, timezone
 
     from utils.date_utils import parse_relative_posted_at

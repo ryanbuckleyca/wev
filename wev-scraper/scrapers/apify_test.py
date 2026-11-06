@@ -9,6 +9,7 @@ from scrapers.apify import ApifyJobBankScraper, _actor_path
 
 
 def _scraper() -> ApifyJobBankScraper:
+    """Test helper for scraper."""
     return ApifyJobBankScraper(
         {
             "id": "t",
@@ -20,6 +21,7 @@ def _scraper() -> ApifyJobBankScraper:
 
 
 def _sample_record(**overrides):
+    """Test helper for sample record."""
     record = {
         "title": "counsellor, job",
         "employer": "SkyPod Immigration Consulting Inc.",
@@ -40,11 +42,13 @@ def _sample_record(**overrides):
 
 
 def test_actor_path_slash_to_tilde():
+    """Cover actor path slash to tilde."""
     assert _actor_path("getascraper/jobbank-scraper") == "getascraper~jobbank-scraper"
     assert _actor_path("getascraper~jobbank-scraper") == "getascraper~jobbank-scraper"
 
 
 def test_parse_job_maps_getascraper_fields():
+    """Cover parse job maps getascraper fields."""
     fields = _scraper().parse_job(_sample_record())
     assert fields is not None
     assert fields["job_title"] == "counsellor, job"
@@ -59,6 +63,7 @@ def test_parse_job_maps_getascraper_fields():
 
 
 def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
+    """Cover fetch jobs from sample."""
     sample = tmp_path / "apify-jobbank.json"
     sample.write_text(
         json.dumps(
@@ -91,17 +96,22 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
 
 
 def test_parse_job_requires_core_fields():
+    """Cover parse job requires core fields."""
     assert _scraper().parse_job({"title": "x", "employer": "y"}) is None
 
 
 class _JsonResp:
+    """Test helper: _JsonResp."""
     def __init__(self, payload):
+        """Test helper for init  ."""
         self._payload = payload
 
     def raise_for_status(self):
+        """Helper: raise_for_status."""
         return None
 
     def json(self):
+        """Helper: json."""
         return self._payload
 
     def __enter__(self):
@@ -112,6 +122,7 @@ class _JsonResp:
 
 
 def test_apify_requests_use_bearer_header_not_query_token(monkeypatch):
+    """Cover apify requests use bearer header not query token."""
     monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
     monkeypatch.delenv("APIFY_JOBBANK_SAMPLE_PATH", raising=False)
     monkeypatch.delenv("JOBBANK_SAMPLE_PATH", raising=False)

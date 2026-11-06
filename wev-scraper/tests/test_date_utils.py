@@ -35,6 +35,7 @@ def test_translate_french_date():
     assert _translate_french_date("mars") == "march"
 
 def test_parse_relative_posted_at():
+    """Cover parse relative posted at."""
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
     assert parse_relative_posted_at("3 days ago", now=now) == now - timedelta(days=3)
     assert parse_relative_posted_at("1 day ago", now=now) == now - timedelta(days=1)
@@ -43,11 +44,13 @@ def test_parse_relative_posted_at():
 
 
 def test_parse_relative_posted_at_overflow_returns_none():
+    """Cover parse relative posted at overflow returns none."""
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
     assert parse_relative_posted_at(f"{10**12} days ago", now=now) is None
 
 
 def test_parse_localized_date_relative():
+    """Cover parse localized date relative."""
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
     dt = _parse_localized_date("5 days ago", now=now)
     assert dt == now - timedelta(days=5)

@@ -266,6 +266,7 @@ def test_confident_dupe_requires_near_identical_body():
 
 
 def test_confident_dupe_rejects_same_body_different_city():
+    """Cover confident dupe rejects same body different city."""
     body = ("Community support worker duties include case management " * 25).strip()
     left = {
         "job_title": "Community Support Worker",
@@ -416,6 +417,7 @@ def test_confident_dupe_same_source_id_distinct_hosts_is_cross_source():
 
 
 def test_job_city_key_skips_non_geocodeable_locations():
+    """Cover job city key skips non geocodeable locations."""
     from utils.job_near_dupes import job_city_key
 
     assert job_city_key({"municipality": "Remote"}) is None
@@ -427,6 +429,7 @@ def test_job_city_key_skips_non_geocodeable_locations():
 
 
 def test_cities_same_requires_matching_province_when_both_set():
+    """Same city name in different provinces is not cities_same."""
     from utils.job_near_dupes import cities_same
 
     assert cities_same(
@@ -437,6 +440,42 @@ def test_cities_same_requires_matching_province_when_both_set():
         {"municipality": "London", "province": "ON"},
         {"municipality": "London", "province": "QC"},
     )
+
+
+def test_listing_host_collapses_indeed_regional_subdomains():
+    """ca.indeed.com and www.indeed.com compare as one board host."""
+    from utils.job_near_dupes import _listing_host
+
+    assert _listing_host("https://www.indeed.com/viewjob?jk=1") == "indeed.com"
+    assert _listing_host("https://ca.indeed.com/viewjob?jk=1") == "indeed.com"
+    assert _listing_host("https://ca.linkedin.com/jobs/view/1") == "linkedin.com"
+    assert _listing_host("https://boards.greenhouse.io/x/jobs/1") == "boards.greenhouse.io"
+
+
+def test_confident_dupe_rejects_same_city_name_different_province():
+    """London ON vs London QC with near-identical bodies must not auto-skip."""
+    body = (
+        "Registered social worker providing community mental health support, "
+        "case management, crisis intervention, and care coordination with "
+        "local agencies and interdisciplinary clinical partners. "
+    ) * 8
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=london-on",
+        "date_posted": "2026-11-01",
+        "municipality": "London",
+        "province": "ON",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=london-qc",
+        "date_posted": "2026-11-02",
+        "municipality": "London",
+        "province": "QC",
+        "description": body,
+    }
+    assert not is_confident_duplicate_pair(left, right)
 
 
 def test_confident_dupe_cross_source_needs_city_match():

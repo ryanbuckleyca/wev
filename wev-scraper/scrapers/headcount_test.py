@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +12,7 @@ from scrapers.headcount import HeadcountLabsScraper
 
 
 def make_source():
+    """Minimal sources-row dict for HeadcountLabsScraper."""
     return {
         "id": "headcount-test",
         "url": "https://api.headcountlabs.com/v1/jobs",
@@ -19,7 +21,14 @@ def make_source():
     }
 
 
+def _recent_iso(*, hours_ago: float = 12) -> str:
+    """UTC ISO timestamp within a typical one-week recency window."""
+    when = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
+    return when.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
 def _ca_job(**overrides):
+    """Test helper for ca job."""
     job = {
         "job_id": "11111111-1111-4111-8111-111111111111",
         "currentness": "current",
@@ -98,6 +107,7 @@ def _ca_job(**overrides):
 
 
 def mock_json_response(payload: dict, status_code: int = 200):
+    """Helper: mock_json_response."""
     class MockResponse:
         def __init__(self):
             self.status_code = status_code
@@ -131,6 +141,7 @@ def clear_compare_only(monkeypatch):
 
 @pytest.fixture
 def scraper_env(monkeypatch):
+    """Helper: scraper_env."""
     monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test-key-for-unit-tests")
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
@@ -140,6 +151,7 @@ def scraper_env(monkeypatch):
 
 
 def test_maps_core_fields(scraper_env):
+    """Cover maps core fields."""
     scraper = HeadcountLabsScraper(make_source())
     page = {"data": [_ca_job()], "next_cursor": None, "snapshot_watermark": "w1"}
 
@@ -165,6 +177,7 @@ def test_maps_core_fields(scraper_env):
 
 
 def test_requires_api_key(monkeypatch):
+    """Cover requires api key."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
@@ -175,12 +188,14 @@ def test_requires_api_key(monkeypatch):
 
 
 def test_is_configured_with_api_key(monkeypatch):
+    """Cover is configured with api key."""
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
     assert HeadcountLabsScraper.is_configured() is True
 
 
 def test_skips_missing_required_fields(scraper_env):
+    """Cover skips missing required fields."""
     scraper = HeadcountLabsScraper(make_source())
     incomplete = _ca_job()
     incomplete["title"] = {"state": "source_omitted", "value": None}
@@ -193,6 +208,7 @@ def test_skips_missing_required_fields(scraper_env):
 
 
 def test_respects_max_jobs(scraper_env, monkeypatch):
+    """Cover respects max jobs."""
     monkeypatch.setenv("MAX_JOBS_PER_SOURCE", "1")
     scraper = HeadcountLabsScraper(make_source())
     second = _ca_job(
@@ -213,6 +229,7 @@ def test_respects_max_jobs(scraper_env, monkeypatch):
 
 
 def test_paginates_until_cursor_exhausted(scraper_env):
+    """Cover paginates until cursor exhausted."""
     scraper = HeadcountLabsScraper(make_source())
     page1_job = _ca_job()
     page2_job = _ca_job(
@@ -243,6 +260,7 @@ def test_paginates_until_cursor_exhausted(scraper_env):
 
 
 def test_falls_back_to_employer_name_without_company(scraper_env):
+    """Cover falls back to employer name without company."""
     scraper = HeadcountLabsScraper(make_source())
     record = _ca_job()
     record.pop("company", None)
@@ -252,6 +270,7 @@ def test_falls_back_to_employer_name_without_company(scraper_env):
 
 
 def test_build_list_params_canada_scoped(scraper_env):
+    """Cover build list params canada scoped."""
     scraper = HeadcountLabsScraper(make_source())
     params = scraper.build_list_params()
     assert params["country"] == "CA"
@@ -260,6 +279,7 @@ def test_build_list_params_canada_scoped(scraper_env):
 
 
 def test_loads_sample_path_without_api_key(monkeypatch, tmp_path):
+    """Cover loads sample path without api key."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
@@ -277,6 +297,7 @@ def test_loads_sample_path_without_api_key(monkeypatch, tmp_path):
 
 
 def test_loads_sample_wrapped_data_envelope(monkeypatch, tmp_path):
+    """Cover loads sample wrapped data envelope."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
@@ -292,13 +313,16 @@ def test_loads_sample_wrapped_data_envelope(monkeypatch, tmp_path):
 
 
 def test_stops_when_job_updated_at_outside_window(scraper_env, monkeypatch):
+    """Live updated-sort stops once job_updated_at leaves the recency window."""
     monkeypatch.setenv("WITHIN_WEEKS", "1")
     scraper = HeadcountLabsScraper(make_source())
+    fresh_updated = _recent_iso(hours_ago=12)
+    fresh_posted = _recent_iso(hours_ago=14)
     fresh = _ca_job(
-        job_updated_at="2026-11-04T12:00:00.000Z",
-        job_first_seen_at="2026-11-04T12:00:00.000Z",
+        job_updated_at=fresh_updated,
+        job_first_seen_at=fresh_updated,
     )
-    fresh["postings"][0]["source_posted_at"] = "2026-11-04T10:00:00.000Z"
+    fresh["postings"][0]["source_posted_at"] = fresh_posted
     stale = _ca_job(
         job_id="55555555-5555-4555-8555-555555555555",
         job_updated_at="2020-01-01T00:00:00.000Z",
@@ -326,13 +350,15 @@ def test_sample_path_does_not_stop_on_stale_updated_at(monkeypatch, tmp_path):
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.setenv("WITHIN_WEEKS", "1")
     monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
+    fresh_updated = _recent_iso(hours_ago=12)
+    fresh_posted = _recent_iso(hours_ago=14)
     fresh = _ca_job(
         job_id="99999999-9999-4999-8999-999999999999",
-        job_updated_at="2026-11-04T12:00:00.000Z",
-        job_first_seen_at="2026-11-04T12:00:00.000Z",
+        job_updated_at=fresh_updated,
+        job_first_seen_at=fresh_updated,
         title={"state": "known", "value": "Fresh Sample Role"},
     )
-    fresh["postings"][0]["source_posted_at"] = "2026-11-04T10:00:00.000Z"
+    fresh["postings"][0]["source_posted_at"] = fresh_posted
     fresh["postings"][0]["posting_url"] = {
         "state": "known",
         "value": "https://boards.greenhouse.io/example/jobs/4000",
@@ -358,6 +384,7 @@ def test_sample_path_does_not_stop_on_stale_updated_at(monkeypatch, tmp_path):
 
 
 def test_page_cap_bounds_unbounded_pagination(scraper_env, monkeypatch):
+    """Cover page cap bounds unbounded pagination."""
     scraper = HeadcountLabsScraper(make_source())
     monkeypatch.setattr(scraper, "_MAX_PAGES", 2)
 

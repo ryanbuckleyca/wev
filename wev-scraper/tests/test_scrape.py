@@ -27,6 +27,7 @@ def test_fetch_sources(mock_supabase):
 
 @patch("scrape.supabase")
 def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
+    """Cover fetch sources skips explicit only apis by default."""
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
             {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
@@ -43,6 +44,7 @@ def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
 
 @patch("scrape.supabase")
 def test_fetch_sources_skips_headcount_without_api_key(mock_supabase, monkeypatch):
+    """Cover fetch sources skips headcount without api key."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
@@ -58,6 +60,7 @@ def test_fetch_sources_skips_headcount_without_api_key(mock_supabase, monkeypatc
 
 @patch("scrape.supabase")
 def test_fetch_sources_keeps_headcount_with_api_key(mock_supabase, monkeypatch):
+    """Cover fetch sources keeps headcount with api key."""
     monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
@@ -73,6 +76,7 @@ def test_fetch_sources_keeps_headcount_with_api_key(mock_supabase, monkeypatch):
 
 @patch("scrape.supabase")
 def test_fetch_sources_headcount_explicit_without_key_raises(mock_supabase, monkeypatch):
+    """Cover fetch sources headcount explicit without key raises."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
@@ -85,6 +89,7 @@ def test_fetch_sources_headcount_explicit_without_key_raises(mock_supabase, monk
 
 @patch("scrape.supabase")
 def test_fetch_sources_explicit_api_slug_still_runs(mock_supabase):
+    """Cover fetch sources explicit api slug still runs."""
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
             {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
@@ -99,6 +104,7 @@ def test_fetch_sources_explicit_api_slug_still_runs(mock_supabase):
 
 @patch("scrape.supabase")
 def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
+    """Cover fetch sources apis flag runs all api sources in order."""
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
             {"id": "s0", "name": "GoodWork", "slug": "goodwork"},
@@ -120,6 +126,7 @@ def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
 
 @patch("scrape.supabase")
 def test_fetch_sources_rejects_source_and_apis_together(mock_supabase):
+    """Cover fetch sources rejects source and apis together."""
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [{"id": "s1", "name": "SerpApi", "slug": "serpapi"}]
     )
@@ -377,6 +384,7 @@ def test_main_flow(mock_orch_class, mock_init):
 @patch("scrape.initialize_runtime_env")
 @patch("scrape.ScraperOrchestrator")
 def test_main_forwards_apis_flag(mock_orch_class, mock_init):
+    """Cover main forwards apis flag."""
     mock_orch = mock_orch_class.return_value
     mock_orch.post_scrape_errors = 0
     mock_orch.had_failures.return_value = False

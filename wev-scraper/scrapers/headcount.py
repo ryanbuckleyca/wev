@@ -90,6 +90,7 @@ class HeadcountLabsScraper(BaseApiScraper):
     sample_list_keys = ("data", "jobs", "items")
 
     def __init__(self, source: dict[str, Any]):
+        """Initialize shared API state; stale-updated stop is live-path only."""
         super().__init__(source)
         self._stop_on_stale_updated = False
 

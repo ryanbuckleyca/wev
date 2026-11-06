@@ -8,6 +8,7 @@ from scrapers.theirstack import DEFAULT_DOMAIN_NOT, DEFAULT_DOMAIN_OR, TheirStac
 
 
 def _scraper() -> TheirStackScraper:
+    """Test helper for scraper."""
     return TheirStackScraper(
         {
             "id": "t",
@@ -19,6 +20,7 @@ def _scraper() -> TheirStackScraper:
 
 
 def _sample_record(**overrides):
+    """Test helper for sample record."""
     record = {
         "id": 1,
         "job_title": "Community Coordinator",
@@ -38,6 +40,7 @@ def _sample_record(**overrides):
 
 
 def test_build_search_body_defaults_to_ca_indeed_linkedin(monkeypatch):
+    """Cover build search body defaults to ca indeed linkedin."""
     monkeypatch.delenv("THEIRSTACK_URL_DOMAIN_OR", raising=False)
     monkeypatch.delenv("THEIRSTACK_URL_DOMAIN_NOT", raising=False)
     monkeypatch.delenv("THEIRSTACK_POSTED_AT_MAX_AGE_DAYS", raising=False)
@@ -51,6 +54,7 @@ def test_build_search_body_defaults_to_ca_indeed_linkedin(monkeypatch):
 
 
 def test_build_search_body_blank_domain_override_falls_back(monkeypatch):
+    """Cover build search body blank domain override falls back."""
     monkeypatch.setenv("THEIRSTACK_URL_DOMAIN_OR", " , , ")
     monkeypatch.delenv("THEIRSTACK_URL_DOMAIN_NOT", raising=False)
     monkeypatch.setenv("WITHIN_WEEKS", "2")
@@ -60,6 +64,7 @@ def test_build_search_body_blank_domain_override_falls_back(monkeypatch):
 
 
 def test_parse_and_fetch_sample(monkeypatch, tmp_path):
+    """Cover parse and fetch sample."""
     record = _sample_record()
     fields = _scraper().parse_job(record)
     assert fields is not None
@@ -81,6 +86,7 @@ def test_parse_and_fetch_sample(monkeypatch, tmp_path):
 
 
 def test_default_domain_constants_partition_channels():
+    """Cover default domain constants partition channels."""
     assert "indeed.com" in DEFAULT_DOMAIN_OR
     assert "linkedin.com" in DEFAULT_DOMAIN_OR
     assert "myworkdayjobs.com" in DEFAULT_DOMAIN_NOT

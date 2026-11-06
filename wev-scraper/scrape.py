@@ -88,6 +88,7 @@ class ScraperOrchestrator:
         *,
         api_sources: bool = False,
     ):
+        """Configure a scrape run (dry-run / compare / single source / ``--apis``)."""
         self.dry_run = dry_run
         self.compare_only = compare_only
         self.source_slug = source_slug.strip() if source_slug else None

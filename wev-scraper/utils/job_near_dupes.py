@@ -196,8 +196,13 @@ def cities_same(left: dict, right: dict) -> bool:
     return True
 
 
+# Apex hosts whose ``cc.`` regional subdomains (e.g. ca.indeed.com) are the
+# same board as the apex for cross-source evidence.
+_BOARD_APEX_HOSTS = frozenset({"indeed.com", "linkedin.com"})
+
+
 def _listing_host(url: str | None) -> str | None:
-    """Hostname for cross-source board evidence (strip leading www.)."""
+    """Hostname for cross-source board evidence (strip www / regional board CC)."""
     if not url:
         return None
     try:
@@ -206,6 +211,15 @@ def _listing_host(url: str | None) -> str | None:
         return None
     if host.startswith("www."):
         host = host[4:]
+    # ca.indeed.com / ca.linkedin.com → apex (same board as www.indeed.com).
+    parts = host.split(".")
+    if (
+        len(parts) == 3
+        and len(parts[0]) == 2
+        and parts[0].isalpha()
+        and f"{parts[1]}.{parts[2]}" in _BOARD_APEX_HOSTS
+    ):
+        host = f"{parts[1]}.{parts[2]}"
     return host or None
 
 
@@ -369,8 +383,10 @@ def is_confident_duplicate_pair(
     if id_a and id_b and id_a == id_b:
         return True
 
-    # Different cities → different openings (unless board listing id matched above).
-    if cities_conflict(left, right):
+    # Both cities known but not the same place (name or province) → different
+    # openings. Missing city on either side stays eligible (board-id path above
+    # already returned; otherwise description gates apply).
+    if job_city_key(left) and job_city_key(right) and not cities_same(left, right):
         return False
 
     if material_role_conflict(left, right):
