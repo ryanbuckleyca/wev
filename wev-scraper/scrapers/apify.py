@@ -349,6 +349,9 @@ class ApifyJobBankScraper:
         )
         return job_dict, False
 
+    def close_browser(self) -> None:
+        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""
+
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
         """Map one getascraper Job Bank record to Wev fields. Return None to skip."""
         title = (record.get("title") or record.get("original_title") or "").strip()

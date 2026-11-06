@@ -320,6 +320,43 @@ def test_stops_when_job_updated_at_outside_window(scraper_env, monkeypatch):
     assert mock_get.call_count == 2
 
 
+def test_sample_path_does_not_stop_on_stale_updated_at(monkeypatch, tmp_path):
+    """Offline samples are not updated-sorted; skip stale rows without stopping."""
+    monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    monkeypatch.setenv("WITHIN_WEEKS", "1")
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
+    fresh = _ca_job(
+        job_id="99999999-9999-4999-8999-999999999999",
+        job_updated_at="2026-11-04T12:00:00.000Z",
+        job_first_seen_at="2026-11-04T12:00:00.000Z",
+        title={"state": "known", "value": "Fresh Sample Role"},
+    )
+    fresh["postings"][0]["source_posted_at"] = "2026-11-04T10:00:00.000Z"
+    fresh["postings"][0]["posting_url"] = {
+        "state": "known",
+        "value": "https://boards.greenhouse.io/example/jobs/4000",
+    }
+    stale = _ca_job(
+        job_id="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        job_updated_at="2020-01-01T00:00:00.000Z",
+        title={"state": "known", "value": "Stale Sample Role"},
+    )
+    stale["postings"][0]["source_posted_at"] = "2020-01-01T00:00:00.000Z"
+    stale["postings"][0]["posting_url"] = {
+        "state": "known",
+        "value": "https://boards.greenhouse.io/example/jobs/4001",
+    }
+    sample = tmp_path / "mixed.json"
+    # Stale first — live path would stop; sample path must keep going.
+    sample.write_text(json.dumps([stale, fresh]), encoding="utf-8")
+    monkeypatch.setenv("HEADCOUNTLABS_SAMPLE_PATH", str(sample))
+
+    jobs = HeadcountLabsScraper(make_source()).fetch_jobs()
+    assert len(jobs) == 1
+    assert jobs[0]["job_title"] == "Fresh Sample Role"
+
+
 def test_page_cap_bounds_unbounded_pagination(scraper_env, monkeypatch):
     scraper = HeadcountLabsScraper(make_source())
     monkeypatch.setattr(scraper, "_MAX_PAGES", 2)

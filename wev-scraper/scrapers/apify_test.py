@@ -79,6 +79,7 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
     monkeypatch.setenv("APIFY_JOBBANK_SAMPLE_PATH", str(sample))
     monkeypatch.setenv("WITHIN_WEEKS", "9999")
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     jobs = _scraper().fetch_jobs()
     assert len(jobs) == 3
     assert all(j.get("job_title") for j in jobs)

@@ -166,6 +166,8 @@ class HeadcountLabsScraper:
                 weeks=weeks,
                 skip_on_existing=skip_on_existing,
                 compare_only=compare_only,
+                # Sample files are not guaranteed updated-sorted.
+                stop_on_stale_updated=False,
             )
             return self.jobs
 
@@ -213,6 +215,7 @@ class HeadcountLabsScraper:
                 weeks=weeks,
                 skip_on_existing=skip_on_existing,
                 compare_only=compare_only,
+                stop_on_stale_updated=True,
             )
             if stop:
                 break
@@ -236,6 +239,7 @@ class HeadcountLabsScraper:
         weeks: int,
         skip_on_existing: bool,
         compare_only: bool,
+        stop_on_stale_updated: bool = False,
     ) -> bool:
         """Process a list of Headcount job records. Returns True to stop paging."""
         for index, record in enumerate(records):
@@ -252,6 +256,7 @@ class HeadcountLabsScraper:
                 weeks=weeks,
                 skip_on_existing=skip_on_existing,
                 compare_only=compare_only,
+                stop_on_stale_updated=stop_on_stale_updated,
             )
             if job_dict:
                 self.jobs.append(job_dict)
@@ -324,6 +329,7 @@ class HeadcountLabsScraper:
         weeks: int,
         skip_on_existing: bool,
         compare_only: bool,
+        stop_on_stale_updated: bool = False,
     ) -> tuple[dict[str, Any] | None, bool]:
         """Map one Headcount record; return (job_dict|None, should_stop_paging)."""
         fields = self.parse_job(record)
@@ -352,11 +358,14 @@ class HeadcountLabsScraper:
             return None, False
         self.scraped_urls.add(norm_url)
 
-        # Updated-sort feed: once job_updated_at falls outside the window, later
-        # pages are older — stop even though is_chronological is False.
+        # Live updated-sort feed only: once job_updated_at falls outside the
+        # window, later pages are older — stop even though is_chronological is
+        # False. Offline samples are not ordered that way.
         updated_at = record.get("job_updated_at")
-        if updated_at and not is_recent_job(
-            str(updated_at), weeks=weeks, lang=self.language
+        if (
+            stop_on_stale_updated
+            and updated_at
+            and not is_recent_job(str(updated_at), weeks=weeks, lang=self.language)
         ):
             scraper_log(
                 f"\t\tStopping: job_updated_at outside recency window "

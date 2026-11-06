@@ -334,3 +334,6 @@ class TheirStackScraper:
             }
         )
         return job_dict, False
+
+    def close_browser(self) -> None:
+        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""
