@@ -14,7 +14,10 @@ from difflib import SequenceMatcher
 from typing import Iterable
 from urllib.parse import urlparse
 
-from utils.location_parser import _normalize_ca_province_code
+from utils.location_parser import (
+    _normalize_ca_province_code,
+    location_has_no_geocodeable_city,
+)
 from utils.municipality_canonical import normalize_location
 
 # Tiny function words that don't help title identity.
@@ -155,9 +158,13 @@ def job_city_key(job: dict) -> str | None:
     """Best-effort city identity from municipality or location prefix."""
     muni = (job.get("municipality") or "").strip()
     if muni:
+        if location_has_no_geocodeable_city(muni):
+            return None
         return normalize_location(muni) or None
     loc = (job.get("location") or "").strip()
     if not loc:
+        return None
+    if location_has_no_geocodeable_city(loc):
         return None
     prefix = loc.split(",")[0].strip()
     if not prefix:
@@ -206,8 +213,8 @@ def is_cross_source_pair(left: dict, right: dict) -> bool:
     """True when source_id or listing host evidence shows distinct boards."""
     sid_a = left.get("source_id")
     sid_b = right.get("source_id")
-    if sid_a and sid_b:
-        return sid_a != sid_b
+    if sid_a and sid_b and sid_a != sid_b:
+        return True
     host_a = _listing_host(left.get("listing_url"))
     host_b = _listing_host(right.get("listing_url"))
     if host_a and host_b:

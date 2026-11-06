@@ -44,6 +44,7 @@ class TheirStackScraper:
     is_chronological = False
     language = "en"
     request_timeout = 90
+    _PAGE_SIZE_CAP = 100
 
     def __init__(self, source: dict[str, Any]):
         self.source = source
@@ -55,15 +56,24 @@ class TheirStackScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_sample_path(self) -> str | None:
+        """Return offline sample path when ``THEIRSTACK_SAMPLE_PATH`` is set."""
         return (os.environ.get("THEIRSTACK_SAMPLE_PATH") or "").strip() or None
 
     def get_api_key(self) -> str:
+        """Return the TheirStack API key or raise when unset."""
         key = (os.environ.get("THEIRSTACK_API_KEY") or "").strip()
         if not key:
             raise RuntimeError("THEIRSTACK_API_KEY is required")
         return key
 
-    def build_search_body(self, limit: int, page: int = 0) -> dict[str, Any]:
+    def build_search_body(
+        self,
+        limit: int,
+        page: int | None = None,
+        *,
+        offset: int | None = None,
+    ) -> dict[str, Any]:
+        """Build a Canada Indeed/LinkedIn search body (page or offset paging)."""
         country = (os.environ.get("THEIRSTACK_COUNTRY") or "CA").strip() or "CA"
         max_age = get_int_env("THEIRSTACK_POSTED_AT_MAX_AGE_DAYS")
         if max_age is None:
@@ -91,15 +101,19 @@ class TheirStackScraper:
         body: dict[str, Any] = {
             "job_country_code_or": [country],
             "posted_at_max_age_days": max_age,
-            "limit": min(limit, 100),
-            "page": page,
+            "limit": min(max(1, limit), self._PAGE_SIZE_CAP),
             "url_domain_or": domain_or,
         }
+        if offset is not None:
+            body["offset"] = max(0, offset)
+        else:
+            body["page"] = 0 if page is None else page
         if domain_not:
             body["url_domain_not"] = domain_not
         return body
 
     def fetch_jobs(self) -> list[dict[str, Any]]:
+        """Fetch Canada Indeed/LinkedIn jobs (live API or offline sample)."""
         sample_path = self.get_sample_path()
         if sample_path:
             records = self._load_sample_records(sample_path)
@@ -119,15 +133,17 @@ class TheirStackScraper:
         return self.jobs
 
     def _fetch_canada_jobs(self) -> list[dict[str, Any]]:
+        """Page TheirStack with offset paging; never request more rows than ``limit``."""
         key = self.get_api_key()
         limit = self._max_jobs or get_int_env("THEIRSTACK_MAX_ITEMS") or 50
-        page_size = min(limit, 100)
+        page_size = min(limit, self._PAGE_SIZE_CAP)
         collected: list[dict[str, Any]] = []
-        page = 0
         while len(collected) < limit:
-            body = self.build_search_body(page_size, page=page)
+            need = min(page_size, limit - len(collected))
+            body = self.build_search_body(need, offset=len(collected))
             scraper_log(
-                f"\tTheirStack search CA page={page} "
+                f"\tTheirStack search CA offset={body.get('offset')} "
+                f"limit={body.get('limit')} "
                 f"domains_or={body.get('url_domain_or')} "
                 f"max_age_days={body.get('posted_at_max_age_days')}"
             )
@@ -150,12 +166,12 @@ class TheirStackScraper:
             if not batch:
                 break
             collected.extend(j for j in batch if isinstance(j, dict))
-            if len(batch) < page_size:
+            if len(batch) < need:
                 break
-            page += 1
         return collected[:limit]
 
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        """Load TheirStack job dicts from a local JSON sample file."""
         path = Path(sample_path).expanduser()
         if not path.is_file():
             raise RuntimeError(f"THEIRSTACK_SAMPLE_PATH not found: {path}")
@@ -168,6 +184,7 @@ class TheirStackScraper:
         raise RuntimeError(f"Unexpected TheirStack sample JSON: {path}")
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
+        """Map one TheirStack job record to Wev fields. Return None to skip."""
         title = (record.get("job_title") or record.get("title") or "").strip()
         company_obj = record.get("company_object") or {}
         if not isinstance(company_obj, dict):
@@ -264,6 +281,7 @@ class TheirStackScraper:
     def _process_record(
         self, record: dict[str, Any], index: int, *, weeks: int
     ) -> tuple[dict[str, Any] | None, bool]:
+        """Map one TheirStack record; return (job_dict|None, should_stop)."""
         fields = self.parse_job(record)
         if not fields:
             return None, False

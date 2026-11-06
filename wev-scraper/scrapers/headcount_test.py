@@ -289,3 +289,58 @@ def test_loads_sample_wrapped_data_envelope(monkeypatch, tmp_path):
 
     jobs = HeadcountLabsScraper(make_source()).fetch_jobs()
     assert len(jobs) == 1
+
+
+def test_stops_when_job_updated_at_outside_window(scraper_env, monkeypatch):
+    monkeypatch.setenv("WITHIN_WEEKS", "1")
+    scraper = HeadcountLabsScraper(make_source())
+    fresh = _ca_job(
+        job_updated_at="2026-11-04T12:00:00.000Z",
+        job_first_seen_at="2026-11-04T12:00:00.000Z",
+    )
+    fresh["postings"][0]["source_posted_at"] = "2026-11-04T10:00:00.000Z"
+    stale = _ca_job(
+        job_id="55555555-5555-4555-8555-555555555555",
+        job_updated_at="2020-01-01T00:00:00.000Z",
+        title={"state": "known", "value": "Stale Role"},
+    )
+    stale["postings"][0]["posting_url"] = {
+        "state": "known",
+        "value": "https://boards.greenhouse.io/example/jobs/2000",
+    }
+    stale["postings"][0]["source_posted_at"] = "2020-01-01T00:00:00.000Z"
+    pages = [
+        mock_json_response({"data": [fresh], "next_cursor": "c2"}),
+        mock_json_response({"data": [stale], "next_cursor": "c3"}),
+        mock_json_response({"data": [fresh], "next_cursor": None}),
+    ]
+    with patch("scrapers.headcount.requests.get", side_effect=pages) as mock_get:
+        jobs = scraper.fetch_jobs()
+    assert len(jobs) == 1
+    assert mock_get.call_count == 2
+
+
+def test_page_cap_bounds_unbounded_pagination(scraper_env, monkeypatch):
+    scraper = HeadcountLabsScraper(make_source())
+    monkeypatch.setattr(scraper, "_MAX_PAGES", 2)
+
+    def _page(cursor_out: str | None, job_id: str, url_suffix: str):
+        record = _ca_job(
+            job_id=job_id,
+            title={"state": "known", "value": f"Role {url_suffix}"},
+        )
+        record["postings"][0]["posting_url"] = {
+            "state": "known",
+            "value": f"https://boards.greenhouse.io/example/jobs/{url_suffix}",
+        }
+        return mock_json_response({"data": [record], "next_cursor": cursor_out})
+
+    pages = [
+        _page("c2", "66666666-6666-4666-8666-666666666666", "3001"),
+        _page("c3", "77777777-7777-4777-8777-777777777777", "3002"),
+        _page(None, "88888888-8888-4888-8888-888888888888", "3003"),
+    ]
+    with patch("scrapers.headcount.requests.get", side_effect=pages) as mock_get:
+        jobs = scraper.fetch_jobs()
+    assert len(jobs) == 2
+    assert mock_get.call_count == 2

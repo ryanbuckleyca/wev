@@ -84,3 +84,50 @@ def test_default_domain_constants_partition_channels():
     assert "indeed.com" in DEFAULT_DOMAIN_OR
     assert "linkedin.com" in DEFAULT_DOMAIN_OR
     assert "myworkdayjobs.com" in DEFAULT_DOMAIN_NOT
+
+
+def test_fetch_canada_jobs_sizes_final_offset_page(monkeypatch):
+    """Offset paging keeps a capped page size and never requests past ``limit``."""
+    scraper = _scraper()
+    monkeypatch.setenv("THEIRSTACK_API_KEY", "test-key")
+    monkeypatch.setenv("THEIRSTACK_MAX_ITEMS", "150")
+    monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
+    monkeypatch.delenv("THEIRSTACK_SAMPLE_PATH", raising=False)
+
+    seen: list[dict] = []
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        seen.append(dict(json or {}))
+        offset = int((json or {}).get("offset") or 0)
+        limit = int((json or {}).get("limit") or 0)
+        batch = [
+            _sample_record(
+                id=offset + i,
+                final_url=f"https://ca.indeed.com/viewjob?jk={offset + i}",
+            )
+            for i in range(limit)
+        ]
+        return _Resp({"data": batch})
+
+    monkeypatch.setattr("scrapers.theirstack.requests.post", fake_post)
+    records = scraper._fetch_canada_jobs()
+    assert len(records) == 150
+    assert [b["offset"] for b in seen] == [0, 100]
+    assert [b["limit"] for b in seen] == [100, 50]
+    assert all("page" not in b for b in seen)

@@ -386,6 +386,46 @@ def test_confident_dupe_cross_source_same_host_via_source_id():
     assert is_confident_duplicate_pair(left, right)
 
 
+def test_confident_dupe_same_source_id_distinct_hosts_is_cross_source():
+    """Same source_id with distinct listing hosts still gets the cross-board threshold."""
+    from utils.job_near_dupes import description_ratio, is_cross_source_pair
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": body,
+        "source_id": "aggregator",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/999",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": rewritten,
+        "source_id": "aggregator",
+    }
+    assert is_cross_source_pair(left, right)
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_job_city_key_skips_non_geocodeable_locations():
+    from utils.job_near_dupes import job_city_key
+
+    assert job_city_key({"municipality": "Remote"}) is None
+    assert job_city_key({"municipality": "Ontario"}) is None
+    assert job_city_key({"location": "Canada"}) is None
+    assert job_city_key({"location": "Remote, Canada"}) is None
+    assert job_city_key({"municipality": "Toronto"}) == "toronto"
+    assert job_city_key({"location": "Toronto, ON, Canada"}) == "toronto"
+
+
 def test_cities_same_requires_matching_province_when_both_set():
     from utils.job_near_dupes import cities_same
 

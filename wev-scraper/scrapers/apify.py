@@ -56,6 +56,7 @@ class ApifyJobBankScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_sample_path(self) -> str | None:
+        """Return offline sample path when an Apify/Job Bank sample env is set."""
         raw = (
             os.environ.get("APIFY_JOBBANK_SAMPLE_PATH")
             or os.environ.get("JOBBANK_SAMPLE_PATH")
@@ -64,11 +65,13 @@ class ApifyJobBankScraper:
         return raw or None
 
     def get_actor_id(self) -> str:
+        """Return the Apify actor id (env override or default Job Bank actor)."""
         return (
             os.environ.get("APIFY_JOBBANK_ACTOR") or DEFAULT_ACTOR_ID
         ).strip() or DEFAULT_ACTOR_ID
 
     def get_token(self) -> str:
+        """Return the Apify API token or raise when unset."""
         token = (os.environ.get("APIFY_API_TOKEN") or "").strip()
         if not token:
             raise RuntimeError("APIFY_API_TOKEN is required for Apify Job Bank scrape")
@@ -104,6 +107,7 @@ class ApifyJobBankScraper:
         return payload
 
     def fetch_jobs(self) -> list[dict[str, Any]]:
+        """Fetch Canada Job Bank jobs via Apify actor or offline sample."""
         sample_path = self.get_sample_path()
         if sample_path:
             records = self._load_sample_records(sample_path)
@@ -136,6 +140,7 @@ class ApifyJobBankScraper:
         return self.jobs
 
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        """Load Apify Job Bank job dicts from a local JSON sample file."""
         path = Path(sample_path).expanduser()
         if not path.is_file():
             raise RuntimeError(f"APIFY_JOBBANK_SAMPLE_PATH not found: {path}")
@@ -157,6 +162,7 @@ class ApifyJobBankScraper:
         return [r for r in records if isinstance(r, dict)]
 
     def _run_actor(self, limit: int) -> list[dict[str, Any]]:
+        """Start the Job Bank actor run, wait for terminal status, fetch dataset."""
         actor = _actor_path(self.get_actor_id())
         total_wait = get_int_env("APIFY_JOBBANK_WAIT_SECS") or DEFAULT_WAIT_SECS
         wait_param = min(total_wait, _API_WAIT_FOR_FINISH_MAX)
@@ -231,6 +237,7 @@ class ApifyJobBankScraper:
         return run
 
     def _fetch_dataset_items(self, dataset_id: str) -> list[dict[str, Any]]:
+        """Download all items from an Apify dataset via offset paging."""
         items: list[dict[str, Any]] = []
         offset = 0
         page_size = 250
@@ -266,6 +273,7 @@ class ApifyJobBankScraper:
         skip_on_existing: bool,
         compare_only: bool,
     ) -> tuple[dict[str, Any] | None, bool]:
+        """Map one Apify record; return (job_dict|None, should_stop)."""
         fields = self.parse_job(record)
         if fields is None:
             scraper_log(f"\t\tSkipping job {index + 1}: parse_job returned None")
@@ -389,6 +397,7 @@ class ApifyJobBankScraper:
         }
 
     def _format_wage(self, record: dict[str, Any]) -> str | None:
+        """Format Job Bank salary fields into a display wage string."""
         currency = (record.get("salary_currency") or "CAD").upper()
         unit = (record.get("salary_unit") or "").strip().lower()
         period = {
@@ -420,6 +429,7 @@ class ApifyJobBankScraper:
         return raw or None
 
     def _employment_type(self, record: dict[str, Any]) -> str | None:
+        """Normalize Job Bank employment_type text to Wev tokens."""
         raw = (record.get("employment_type") or "").strip().lower()
         if not raw:
             return None
@@ -449,6 +459,7 @@ class ApifyJobBankScraper:
         return raw.replace(" ", "-")
 
     def _date_posted(self, record: dict[str, Any]) -> str | None:
+        """Return the first present Job Bank posted-date field as a string."""
         for key in ("date_posted", "posted_date", "date_posted_raw"):
             value = record.get(key)
             if value:

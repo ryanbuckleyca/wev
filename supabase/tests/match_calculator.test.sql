@@ -6,7 +6,7 @@
 
 begin;
 
-select plan(14);
+select plan(15);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -224,6 +224,32 @@ select ok(
   'async job recalc: summary/description UPDATE does not enqueue recalc'
 );
 
+-- is_sse-only false→true must fire trg_job_values_changed (UPDATE OF includes is_sse).
+\set sse_promote_job_id '''00000000-0000-0000-0000-000000000007'''
+
+insert into public.jobs (
+  id, source_id, job_title, organization, organization_id, listing_url,
+  skills, values, work_type, is_sse
+) values (
+  :sse_promote_job_id, :test_source_id, 'pgTAP SSE Promote Job', 'pgTAP SSE Org',
+  :test_org_id, 'https://example.com/pgtap-sse-promote',
+  array['pgtap-skill-exact'], array['community'], 'remote', false
+) on conflict (id) do nothing;
+
+delete from public.job_match_recalc_queue where job_id = :sse_promote_job_id;
+
+update public.jobs
+set is_sse = true
+where id = :sse_promote_job_id;
+
+select ok(
+  exists(
+    select 1 from public.job_match_recalc_queue
+     where job_id = :sse_promote_job_id and processed_at is null
+  ),
+  'async job recalc: is_sse false→true enqueues recalc'
+);
+
 -- ─── Test 7: weighted path + job outside the skill candidate set ─────────────
 -- Regression for the null-shared_skills prod failure. The weighted path (ranked
 -- values_rated) read ts.shared_skills without COALESCE, so any job with no row
@@ -275,12 +301,15 @@ select ok(
 
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-delete from public.job_match_recalc_queue where job_id in (:test_job_id, :test_job_id_2);
+delete from public.job_match_recalc_queue
+ where job_id in (:test_job_id, :test_job_id_2, :sse_promote_job_id);
 delete from public.job_matches where user_id in (:test_user_id, :weighted_user_id);
 delete from public.profile_skills where user_id in (:test_user_id, :weighted_user_id);
 delete from public.job_skills where job_id in (:test_job_id, :test_job_id_2);
 delete from public.profiles    where id in (:test_user_id, :weighted_user_id);
-delete from public.jobs        where id in (:test_job_id, :test_job_id_2, :value_only_job_id);
+delete from public.jobs
+ where id in (:test_job_id, :test_job_id_2, :value_only_job_id, :sse_promote_job_id);
+delete from public.organizations where id = :test_org_id;
 delete from public.sources     where id = :test_source_id;
 delete from public.esco_skills where concept_uri like 'pgtap-%';
 

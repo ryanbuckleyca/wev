@@ -1,6 +1,8 @@
 -- Skip job-match recalculation unless jobs.is_sse is true.
 -- jobs.is_sse defaults to false (unclassified / non-SSE); only confirmed SSE
 -- jobs enqueue. Watch is_sse so false→true after classification enqueues too.
+-- Recreate the trigger so UPDATE OF includes is_sse (column-scoped triggers
+-- ignore function body checks for columns not listed).
 
 create or replace function public.trigger_recalculate_job_matches()
 returns trigger language plpgsql security definer
@@ -52,3 +54,12 @@ begin
   return new;
 end;
 $func$;
+
+drop trigger if exists trg_job_values_changed on public.jobs;
+
+create trigger trg_job_values_changed
+after insert or update of
+  "values", values_rated, skills, work_type,
+  lat, lng, municipality, province, geocode_accuracy_type, is_sse
+on public.jobs
+for each row execute function public.trigger_recalculate_job_matches();

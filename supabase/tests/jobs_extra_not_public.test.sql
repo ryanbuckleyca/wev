@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(3);
+select plan(4);
 
 select ok(
   exists(
@@ -22,6 +22,23 @@ select ok(
   not has_column_privilege('anon', 'public.jobs', 'extra', 'SELECT')
   and not has_column_privilege('authenticated', 'public.jobs', 'extra', 'SELECT'),
   'anon/authenticated cannot SELECT jobs.extra'
+);
+
+select ok(
+  not exists(
+    select 1
+    from information_schema.columns c
+    where c.table_schema = 'public'
+      and c.table_name = 'jobs'
+      and c.column_name <> 'extra'
+      and (
+        not has_column_privilege('anon', 'public.jobs', c.column_name, 'SELECT')
+        or not has_column_privilege(
+          'authenticated', 'public.jobs', c.column_name, 'SELECT'
+        )
+      )
+  ),
+  'anon/authenticated retain SELECT on every jobs column except extra'
 );
 
 select ok(

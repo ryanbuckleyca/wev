@@ -59,19 +59,23 @@ class SerpApiGoogleJobsScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_sample_path(self) -> str | None:
+        """Return offline sample path when ``SERPAPI_GOOGLE_JOBS_SAMPLE_PATH`` is set."""
         return (os.environ.get("SERPAPI_GOOGLE_JOBS_SAMPLE_PATH") or "").strip() or None
 
     def get_api_key(self) -> str:
+        """Return the SerpApi key or raise when unset."""
         key = (os.environ.get("SERPAPI_API_KEY") or "").strip()
         if not key:
             raise RuntimeError("SERPAPI_API_KEY is required for Google Jobs scrape")
         return key
 
     def get_queries(self) -> list[str]:
+        """Return comma-split Google Jobs query strings from env (or defaults)."""
         raw = (os.environ.get("SERPAPI_GOOGLE_JOBS_QUERIES") or DEFAULT_QUERIES).strip()
         return [q.strip() for q in raw.split(",") if q.strip()]
 
     def fetch_jobs(self) -> list[dict[str, Any]]:
+        """Fetch Canada Google Jobs listings (live API or offline sample)."""
         sample_path = self.get_sample_path()
         if sample_path:
             records = self._load_sample_records(sample_path)
@@ -91,6 +95,7 @@ class SerpApiGoogleJobsScraper:
         return self.jobs
 
     def _fetch_canada_jobs(self) -> list[dict[str, Any]]:
+        """Query SerpApi google_jobs across configured queries and pages."""
         key = self.get_api_key()
         location = (os.environ.get("SERPAPI_GOOGLE_JOBS_LOCATION") or "Canada").strip()
         gl = (os.environ.get("SERPAPI_GOOGLE_JOBS_GL") or "ca").strip()
@@ -143,6 +148,7 @@ class SerpApiGoogleJobsScraper:
         return list(by_key.values())[:limit]
 
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        """Load SerpApi job dicts from a local JSON sample file."""
         path = Path(sample_path).expanduser()
         if not path.is_file():
             raise RuntimeError(f"SERPAPI_GOOGLE_JOBS_SAMPLE_PATH not found: {path}")
@@ -156,6 +162,7 @@ class SerpApiGoogleJobsScraper:
         return [r for r in records if isinstance(r, dict)]
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
+        """Map one SerpApi Google Jobs result to Wev fields. Return None to skip."""
         title = (record.get("title") or record.get("job_title") or "").strip()
         organization = (record.get("company_name") or "").strip()
         listing_url = self._best_apply_url(record)
@@ -224,6 +231,7 @@ class SerpApiGoogleJobsScraper:
         }
 
     def _best_apply_url(self, record: dict[str, Any]) -> str | None:
+        """Prefer the first concrete apply_options link, else share_link."""
         for opt in record.get("apply_options") or []:
             if not isinstance(opt, dict):
                 continue
@@ -259,6 +267,7 @@ class SerpApiGoogleJobsScraper:
         return parts[0], parts[1]
 
     def _employment_type(self, raw: str | None) -> str | None:
+        """Normalize SerpApi employment schedule strings to Wev tokens."""
         if not raw:
             return None
         text = raw.strip().lower().replace("_", " ")
@@ -278,6 +287,7 @@ class SerpApiGoogleJobsScraper:
     def _process_record(
         self, record: dict[str, Any], index: int, *, weeks: int
     ) -> tuple[dict[str, Any] | None, bool]:
+        """Map one SerpApi record; return (job_dict|None, should_stop)."""
         fields = self.parse_job(record)
         if not fields:
             return None, False

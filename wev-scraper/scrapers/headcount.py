@@ -88,6 +88,8 @@ class HeadcountLabsScraper:
     language = "en"
     request_timeout = 30
     _FETCH_MAX_ATTEMPTS = 4
+    # Safety bound when MAX_JOBS_PER_SOURCE is unset (updated-sort has no natural end).
+    _MAX_PAGES = 40
 
     def __init__(self, source: dict[str, Any]):
         self.source = source
@@ -169,9 +171,15 @@ class HeadcountLabsScraper:
 
         cursor: str | None = None
         followed_cursors: set[str] = set()
+        pages_fetched = 0
         while True:
             if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
                 scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
+                break
+            if pages_fetched >= self._MAX_PAGES:
+                scraper_log(
+                    f"\tReached Headcount page cap ({self._MAX_PAGES}); stopping."
+                )
                 break
 
             try:
@@ -186,6 +194,7 @@ class HeadcountLabsScraper:
                     )
                     break
                 raise
+            pages_fetched += 1
 
             raw_data = page.get("data")
             if not raw_data:
@@ -342,6 +351,18 @@ class HeadcountLabsScraper:
             scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already scraped")
             return None, False
         self.scraped_urls.add(norm_url)
+
+        # Updated-sort feed: once job_updated_at falls outside the window, later
+        # pages are older — stop even though is_chronological is False.
+        updated_at = record.get("job_updated_at")
+        if updated_at and not is_recent_job(
+            str(updated_at), weeks=weeks, lang=self.language
+        ):
+            scraper_log(
+                f"\t\tStopping: job_updated_at outside recency window "
+                f"({updated_at})"
+            )
+            return None, True
 
         date_str = fields.get("date_posted")
         title = fields.get("job_title", "Unknown")

@@ -67,9 +67,11 @@ class TheJobsApiScraper:
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
 
     def get_sample_path(self) -> str | None:
+        """Return offline sample path when ``TJA_SAMPLE_PATH`` is set."""
         return (os.environ.get("TJA_SAMPLE_PATH") or "").strip() or None
 
     def get_api_key(self) -> str:
+        """Return the The Jobs API key or raise when unset."""
         key = (
             os.environ.get("TJA_API_KEY") or os.environ.get("THEJOBSAPI_KEY") or ""
         ).strip()
@@ -78,6 +80,7 @@ class TheJobsApiScraper:
         return key
 
     def _headers(self) -> dict[str, str]:
+        """Bearer auth headers for TJA list/detail requests."""
         return {"Authorization": f"Bearer {self.get_api_key()}", "Accept": "application/json"}
 
     def resolve_window(self, weeks: int | None = None) -> str:
@@ -95,6 +98,7 @@ class TheJobsApiScraper:
         return window_for_within_weeks(weeks if weeks is not None else get_within_weeks())
 
     def fetch_jobs(self) -> list[dict[str, Any]]:
+        """Fetch Canada ATS jobs from The Jobs API (live or offline sample)."""
         sample_path = self.get_sample_path()
         if sample_path:
             details = self._load_sample_records(sample_path)
@@ -122,6 +126,7 @@ class TheJobsApiScraper:
         return self.jobs
 
     def _fetch_canada_details(self) -> list[dict[str, Any]]:
+        """List Canada jobs via TJA cursor paging, then hydrate missing descriptions."""
         limit = self._max_jobs or get_int_env("TJA_MAX_ITEMS") or 50
         window = self.resolve_window()
         country = (os.environ.get("TJA_COUNTRY") or "CA").strip() or "CA"
@@ -221,6 +226,7 @@ class TheJobsApiScraper:
         return details
 
     def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
+        """Load TJA job detail dicts from a local JSON sample file."""
         path = Path(sample_path).expanduser()
         if not path.is_file():
             raise RuntimeError(f"TJA_SAMPLE_PATH not found: {path}")
@@ -233,6 +239,7 @@ class TheJobsApiScraper:
         raise RuntimeError(f"Unexpected TJA sample JSON: {path}")
 
     def parse_job(self, detail: dict[str, Any]) -> dict[str, Any] | None:
+        """Map one TJA job detail to Wev fields. Return None to skip."""
         title = (detail.get("title") or "").strip()
         organization = (detail.get("organization") or "").strip()
         listing_url = (
@@ -307,6 +314,7 @@ class TheJobsApiScraper:
     def _process_record(
         self, detail: dict[str, Any], index: int, *, weeks: int
     ) -> tuple[dict[str, Any] | None, bool]:
+        """Map one TJA detail; return (job_dict|None, should_stop)."""
         fields = self.parse_job(detail)
         if not fields:
             return None, False
