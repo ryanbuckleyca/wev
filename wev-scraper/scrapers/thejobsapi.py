@@ -18,19 +18,16 @@ Env:
 
 from __future__ import annotations
 
-import json
 import os
 import time
-from pathlib import Path
 from typing import Any
 
 import requests
 
-from utils.date_utils import _parse_localized_date, get_within_weeks, is_recent_job
+from scrapers.base_api import BaseApiScraper
+from utils.date_utils import get_within_weeks
 from utils.env import get_int_env
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
-from utils.url import normalize_listing_url
 
 TJA_BASE = "https://api.thejobsapi.com"
 # Documented /v1/jobs window values (first-collected window).
@@ -48,27 +45,15 @@ def window_for_within_weeks(weeks: int) -> str:
     return "6m"
 
 
-class TheJobsApiScraper:
+class TheJobsApiScraper(BaseApiScraper):
     """Canada ATS jobs from The Jobs API."""
 
     # /v1/jobs is newest-first, but pages can be sparse under search; do not
     # early-break on an outdated row — ``window`` already bounds the request.
-    is_chronological = False
     language = "en"
     request_timeout = 60
-
-    def __init__(self, source: dict[str, Any]):
-        self.source = source
-        self.existing_urls: set[str] = set()
-        self.skipped_duplicates = 0
-        self.total_listings_found = 0
-        self.scraped_urls: set[str] = set()
-        self.jobs: list[dict[str, Any]] = []
-        self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
-
-    def get_sample_path(self) -> str | None:
-        """Return offline sample path when ``TJA_SAMPLE_PATH`` is set."""
-        return (os.environ.get("TJA_SAMPLE_PATH") or "").strip() or None
+    sample_path_envs = ("TJA_SAMPLE_PATH",)
+    auto_detect_employment_type = False
 
     def get_api_key(self) -> str:
         """Return the The Jobs API key or raise when unset."""
@@ -225,19 +210,6 @@ class TheJobsApiScraper:
                 time.sleep(0.2)
         return details
 
-    def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
-        """Load TJA job detail dicts from a local JSON sample file."""
-        path = Path(sample_path).expanduser()
-        if not path.is_file():
-            raise RuntimeError(f"TJA_SAMPLE_PATH not found: {path}")
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(payload, list):
-            return [r for r in payload if isinstance(r, dict)]
-        if isinstance(payload, dict):
-            records = payload.get("jobs") or payload.get("data") or []
-            return [r for r in records if isinstance(r, dict)]
-        raise RuntimeError(f"Unexpected TJA sample JSON: {path}")
-
     def parse_job(self, detail: dict[str, Any]) -> dict[str, Any] | None:
         """Map one TJA job detail to Wev fields. Return None to skip."""
         title = (detail.get("title") or "").strip()
@@ -311,61 +283,4 @@ class TheJobsApiScraper:
             "_ats": detail.get("source") or detail.get("board"),
         }
 
-    def _process_record(
-        self, detail: dict[str, Any], index: int, *, weeks: int
-    ) -> tuple[dict[str, Any] | None, bool]:
-        """Map one TJA detail; return (job_dict|None, should_stop)."""
-        fields = self.parse_job(detail)
-        if not fields:
-            return None, False
-        listing_url = fields.get("listing_url", "")
-        norm_url = normalize_listing_url(listing_url)
-        if not norm_url:
-            return None, False
-        if norm_url in self.existing_urls:
-            self.skipped_duplicates += 1
-            return None, False
-        if norm_url in self.scraped_urls:
-            return None, False
-        self.scraped_urls.add(norm_url)
 
-        date_str = fields.get("date_posted")
-        title = fields.get("job_title", "Unknown")
-        if date_str:
-            if not is_recent_job(str(date_str), weeks=weeks, lang=self.language):
-                scraper_log(f"\t\tSkipping outdated job {index + 1}: '{title}'")
-                return None, False
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}' posted {date_str}")
-            try:
-                dt = _parse_localized_date(str(date_str), lang=self.language)
-                fields["date_posted"] = dt.isoformat()
-            except Exception:
-                pass
-        else:
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}'")
-
-        fields["listing_url"] = norm_url
-        job_dict = normalize_job_data(
-            {
-                "job_title": fields.get("job_title"),
-                "date_posted": fields.get("date_posted"),
-                "description": fields.get("description", ""),
-                "organization": fields.get("organization"),
-                "location": fields.get("location"),
-                "municipality": fields.get("municipality"),
-                "province": fields.get("province"),
-                "lat": fields.get("lat"),
-                "lng": fields.get("lng"),
-                "listing_url": fields.get("listing_url"),
-                "employment_type": fields.get("employment_type"),
-                "wage": fields.get("wage"),
-                "language": self.language,
-                "is_remote": fields.get("is_remote"),
-                "work_type": fields.get("work_type"),
-                "source_dump": detail,
-            }
-        )
-        return job_dict, False
-
-    def close_browser(self) -> None:
-        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""

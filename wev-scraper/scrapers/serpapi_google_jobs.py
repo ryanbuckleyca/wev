@@ -17,24 +17,16 @@ Env:
 
 from __future__ import annotations
 
-import json
 import os
 import re
-from pathlib import Path
 from typing import Any
 
 import requests
 
-from utils.date_utils import (
-    _parse_localized_date,
-    get_within_weeks,
-    is_recent_job,
-    parse_relative_posted_at,
-)
+from scrapers.base_api import BaseApiScraper
+from utils.date_utils import get_within_weeks, parse_relative_posted_at
 from utils.env import get_int_env
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
-from utils.url import normalize_listing_url
 
 SERPAPI_ENDPOINT = "https://serpapi.com/search.json"
 DEFAULT_QUERIES = (
@@ -42,25 +34,15 @@ DEFAULT_QUERIES = (
 )
 
 
-class SerpApiGoogleJobsScraper:
+class SerpApiGoogleJobsScraper(BaseApiScraper):
     """Canada Google Jobs via SerpApi (engine=google_jobs)."""
 
-    is_chronological = False
     language = "en"
     request_timeout = 60
-
-    def __init__(self, source: dict[str, Any]):
-        self.source = source
-        self.existing_urls: set[str] = set()
-        self.skipped_duplicates = 0
-        self.total_listings_found = 0
-        self.scraped_urls: set[str] = set()
-        self.jobs: list[dict[str, Any]] = []
-        self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
-
-    def get_sample_path(self) -> str | None:
-        """Return offline sample path when ``SERPAPI_GOOGLE_JOBS_SAMPLE_PATH`` is set."""
-        return (os.environ.get("SERPAPI_GOOGLE_JOBS_SAMPLE_PATH") or "").strip() or None
+    sample_path_envs = ("SERPAPI_GOOGLE_JOBS_SAMPLE_PATH",)
+    sample_list_keys = ("jobs_results", "data", "jobs", "items")
+    defer_scraped_url_until_accepted = True
+    auto_detect_employment_type = False
 
     def get_api_key(self) -> str:
         """Return the SerpApi key or raise when unset."""
@@ -147,19 +129,14 @@ class SerpApiGoogleJobsScraper:
                 scraper_log(f"\t\tpage {page + 1}: +{len(batch)} (unique={len(by_key)})")
         return list(by_key.values())[:limit]
 
-    def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
-        """Load SerpApi job dicts from a local JSON sample file."""
-        path = Path(sample_path).expanduser()
-        if not path.is_file():
-            raise RuntimeError(f"SERPAPI_GOOGLE_JOBS_SAMPLE_PATH not found: {path}")
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(payload, dict):
-            records = payload.get("jobs_results") or payload.get("data") or []
-        elif isinstance(payload, list):
-            records = payload
-        else:
-            raise RuntimeError(f"Unexpected SerpApi sample JSON shape: {path}")
-        return [r for r in records if isinstance(r, dict)]
+    def _prepare_date_posted(self, fields: dict[str, Any]) -> None:
+        """Prefer SerpApi relative strings like ``3 days ago`` before recency."""
+        date_str = fields.get("date_posted")
+        if not date_str:
+            return
+        relative = parse_relative_posted_at(str(date_str))
+        if relative is not None:
+            fields["date_posted"] = relative.date().isoformat()
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
         """Map one SerpApi Google Jobs result to Wev fields. Return None to skip."""
@@ -283,64 +260,3 @@ class SerpApiGoogleJobsScraper:
             "volunteer": "volunteer",
         }
         return mapping.get(text, text.replace(" ", "-"))
-
-    def _process_record(
-        self, record: dict[str, Any], index: int, *, weeks: int
-    ) -> tuple[dict[str, Any] | None, bool]:
-        """Map one SerpApi record; return (job_dict|None, should_stop)."""
-        fields = self.parse_job(record)
-        if not fields:
-            return None, False
-        listing_url = fields.get("listing_url", "")
-        norm_url = normalize_listing_url(listing_url)
-        if not norm_url:
-            return None, False
-        if norm_url in self.existing_urls:
-            self.skipped_duplicates += 1
-            return None, False
-        if norm_url in self.scraped_urls:
-            return None, False
-
-        date_str = fields.get("date_posted")
-        title = fields.get("job_title", "Unknown")
-        if date_str:
-            relative = parse_relative_posted_at(str(date_str))
-            if relative is not None:
-                fields["date_posted"] = relative.date().isoformat()
-            if not is_recent_job(str(fields["date_posted"]), weeks=weeks, lang=self.language):
-                scraper_log(f"\t\tSkipping outdated job {index + 1}: '{title}'")
-                return None, False
-            if relative is None:
-                try:
-                    dt = _parse_localized_date(str(date_str), lang=self.language)
-                    fields["date_posted"] = dt.date().isoformat()
-                except Exception:
-                    pass
-        # Record after the date check so a stale hit does not block a later
-        # fresh listing that shares the same apply URL.
-        self.scraped_urls.add(norm_url)
-        scraper_log(f"\t\tProcessing job {index + 1}: '{title}' via={fields.get('_via')}")
-
-        fields["listing_url"] = norm_url
-        job_dict = normalize_job_data(
-            {
-                "job_title": fields.get("job_title"),
-                "date_posted": fields.get("date_posted"),
-                "description": fields.get("description", ""),
-                "organization": fields.get("organization"),
-                "location": fields.get("location"),
-                "municipality": fields.get("municipality"),
-                "province": fields.get("province"),
-                "listing_url": fields.get("listing_url"),
-                "employment_type": fields.get("employment_type"),
-                "wage": fields.get("wage"),
-                "language": self.language,
-                "is_remote": fields.get("is_remote"),
-                "work_type": fields.get("work_type"),
-                "source_dump": record,
-            }
-        )
-        return job_dict, False
-
-    def close_browser(self) -> None:
-        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""

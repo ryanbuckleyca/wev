@@ -11,21 +11,18 @@ file of Headcount job records (array or ``{data: [...]}``). No API key needed.
 
 from __future__ import annotations
 
-import json
 import os
 import time
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
 import requests
 
+from scrapers.base_api import BaseApiScraper
 from utils.constants import BROWSER_USER_AGENT
-from utils.date_utils import _parse_localized_date, get_within_weeks, is_recent_job
-from utils.env import get_int_env, is_truthy_env
+from utils.date_utils import get_within_weeks, is_recent_job
+from utils.env import is_truthy_env
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
-from utils.url import normalize_listing_url
 
 DEFAULT_BASE_URL = "https://api.headcountlabs.com"
 DEFAULT_PAGE_LIMIT = 50
@@ -80,34 +77,25 @@ def _format_wage(pay_value: Any) -> str | None:
     return f"{amount} {suffix}".strip() if suffix else amount
 
 
-class HeadcountLabsScraper:
+class HeadcountLabsScraper(BaseApiScraper):
     """JSON API scraper for Headcount Labs public jobs (Canada-scoped)."""
 
     # Headcount pages are not strictly newest-first; keep scanning past stale rows.
-    is_chronological = False
     language = "en"
     request_timeout = 30
     _FETCH_MAX_ATTEMPTS = 4
     # Safety bound when MAX_JOBS_PER_SOURCE is unset (updated-sort has no natural end).
     _MAX_PAGES = 40
+    sample_path_envs = ("HEADCOUNTLABS_SAMPLE_PATH",)
+    sample_list_keys = ("data", "jobs", "items")
 
     def __init__(self, source: dict[str, Any]):
-        self.source = source
-        self.existing_urls: set[str] = set()
-        self.skipped_duplicates = 0
-        self.total_listings_found = 0
-        self.scraped_urls: set[str] = set()
-        self.jobs: list[dict[str, Any]] = []
-        self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
+        super().__init__(source)
+        self._stop_on_stale_updated = False
 
     def get_base_url(self) -> str:
         """Return the Headcount API base URL (env override or default)."""
         return (os.environ.get("HEADCOUNTLABS_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
-
-    def get_sample_path(self) -> str | None:
-        """Return offline sample path when ``HEADCOUNTLABS_SAMPLE_PATH`` is set."""
-        raw = (os.environ.get("HEADCOUNTLABS_SAMPLE_PATH") or "").strip()
-        return raw or None
 
     @staticmethod
     def is_configured() -> bool:
@@ -242,8 +230,9 @@ class HeadcountLabsScraper:
         stop_on_stale_updated: bool = False,
     ) -> bool:
         """Process a list of Headcount job records. Returns True to stop paging."""
+        self._stop_on_stale_updated = stop_on_stale_updated
         for index, record in enumerate(records):
-            if self._max_jobs is not None and len(self.jobs) >= self._max_jobs:
+            if self._at_job_limit():
                 scraper_log(f"\tReached max jobs limit ({self._max_jobs}).")
                 return True
             if not isinstance(record, dict):
@@ -256,35 +245,12 @@ class HeadcountLabsScraper:
                 weeks=weeks,
                 skip_on_existing=skip_on_existing,
                 compare_only=compare_only,
-                stop_on_stale_updated=stop_on_stale_updated,
             )
             if job_dict:
                 self.jobs.append(job_dict)
             if should_break:
                 return True
         return False
-
-    def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
-        """Load Headcount job dicts from a local JSON sample file."""
-        path = Path(sample_path).expanduser()
-        if not path.is_file():
-            raise RuntimeError(f"HEADCOUNTLABS_SAMPLE_PATH not found: {path}")
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Invalid Headcount sample JSON at {path}: {e}") from e
-
-        if isinstance(payload, list):
-            records = payload
-        elif isinstance(payload, dict):
-            records = payload.get("data") or []
-        else:
-            raise RuntimeError(
-                f"Headcount sample JSON must be a list or {{data: [...]}} object: {path}"
-            )
-        if not isinstance(records, list):
-            raise RuntimeError(f"Headcount sample `data` must be a list: {path}")
-        return [r for r in records if isinstance(r, dict)]
 
     def _fetch_page(self, cursor: str | None) -> dict[str, Any]:
         """GET one Headcount jobs page; retry HTTP 429/503 with bounded backoff."""
@@ -321,106 +287,26 @@ class HeadcountLabsScraper:
             f"retries: {last_error}"
         )
 
-    def _process_record(
+    def _should_stop_before_accept(
         self,
         record: dict[str, Any],
-        index: int,
+        fields: dict[str, Any],
         *,
         weeks: int,
-        skip_on_existing: bool,
-        compare_only: bool,
-        stop_on_stale_updated: bool = False,
-    ) -> tuple[dict[str, Any] | None, bool]:
-        """Map one Headcount record; return (job_dict|None, should_stop_paging)."""
-        fields = self.parse_job(record)
-        if fields is None:
-            scraper_log(f"\t\tSkipping job {index + 1}: parse_job returned None")
-            return None, False
-
-        listing_url = fields.get("listing_url", "")
-        norm_url = normalize_listing_url(listing_url)
-        if not norm_url:
-            scraper_log(f"\t\tSkipping job {index + 1}: no valid URL")
-            return None, False
-
-        # During --compare, keep existing URLs so the orchestrator can diff them.
-        if norm_url in self.existing_urls and skip_on_existing and not compare_only:
-            scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already in database")
-            self.skipped_duplicates += 1
-            return None, False
-
-        if compare_only and norm_url not in self.existing_urls:
-            scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): new URL (compare-only mode)")
-            return None, False
-
-        if norm_url in self.scraped_urls:
-            scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already scraped")
-            return None, False
-        self.scraped_urls.add(norm_url)
-
-        # Live updated-sort feed only: once job_updated_at falls outside the
-        # window, later pages are older — stop even though is_chronological is
-        # False. Offline samples are not ordered that way.
+    ) -> bool:
+        """Live updated-sort only: stop once ``job_updated_at`` leaves the window."""
+        if not self._stop_on_stale_updated:
+            return False
         updated_at = record.get("job_updated_at")
-        if (
-            stop_on_stale_updated
-            and updated_at
-            and not is_recent_job(str(updated_at), weeks=weeks, lang=self.language)
+        if updated_at and not is_recent_job(
+            str(updated_at), weeks=weeks, lang=self.language
         ):
             scraper_log(
-                f"\t\tStopping: job_updated_at outside recency window "
+                f"		Stopping: job_updated_at outside recency window "
                 f"({updated_at})"
             )
-            return None, True
-
-        date_str = fields.get("date_posted")
-        title = fields.get("job_title", "Unknown")
-        if date_str:
-            if not is_recent_job(date_str, weeks=weeks, lang=self.language):
-                scraper_log(f"\t\tSkipping outdated job {index + 1}: '{title}'")
-                if self.is_chronological:
-                    scraper_log(
-                        "\t\tStopping early: chronological API page encountered non-recent job"
-                    )
-                    return None, True
-                return None, False
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}' posted {date_str}")
-            try:
-                dt = _parse_localized_date(date_str, lang=self.language)
-                fields["date_posted"] = dt.isoformat()
-            except Exception:
-                pass
-        else:
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}' (date not available)")
-
-        if not fields.get("employment_type"):
-            from utils.extractors import detect_employment_type_from_texts
-
-            fields["employment_type"] = detect_employment_type_from_texts(
-                [fields.get("job_title"), fields.get("description"), fields.get("wage")]
-            )
-
-        fields["listing_url"] = norm_url
-        fields["language"] = fields.get("language", self.language)
-
-        job_dict = normalize_job_data(
-            {
-                "job_title": fields.get("job_title"),
-                "date_posted": fields.get("date_posted"),
-                "close_date": fields.get("close_date"),
-                "description": fields.get("description", ""),
-                "summary": fields.get("summary"),
-                "organization": fields.get("organization"),
-                "location": fields.get("location"),
-                "listing_url": fields.get("listing_url"),
-                "employment_type": fields.get("employment_type"),
-                "wage": fields.get("wage"),
-                "language": fields.get("language"),
-                "website": fields.get("website") or fields.get("organization_website"),
-                "source_dump": record,
-            }
-        )
-        return job_dict, False
+            return True
+        return False
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
         """Map one Headcount job record to Wev job fields. Return None to skip."""
@@ -561,6 +447,3 @@ class HeadcountLabsScraper:
                 return str(value)
         return None
 
-    def close_browser(self):
-        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""
-        pass

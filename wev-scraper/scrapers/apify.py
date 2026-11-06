@@ -12,19 +12,16 @@ Listings originate on jobbank.gc.ca; prefer that ``url`` as ``listing_url``.
 
 from __future__ import annotations
 
-import json
 import os
 import time
-from pathlib import Path
 from typing import Any
 
 import requests
 
-from utils.date_utils import _parse_localized_date, get_within_weeks, is_recent_job
+from scrapers.base_api import BaseApiScraper
+from utils.date_utils import get_within_weeks
 from utils.env import get_int_env
 from utils.log import scraper_log
-from utils.normalize import normalize_job_data
-from utils.url import normalize_listing_url
 
 DEFAULT_ACTOR_ID = "getascraper/jobbank-scraper"
 APIFY_API_BASE = "https://api.apify.com/v2"
@@ -39,30 +36,13 @@ def _actor_path(actor_id: str) -> str:
     return actor_id.strip().replace("/", "~")
 
 
-class ApifyJobBankScraper:
+class ApifyJobBankScraper(BaseApiScraper):
     """Apify scraper for Canada Job Bank (getascraper/jobbank-scraper actor)."""
 
-    is_chronological = False
     language = "en"
     request_timeout = 60
-
-    def __init__(self, source: dict[str, Any]):
-        self.source = source
-        self.existing_urls: set[str] = set()
-        self.skipped_duplicates = 0
-        self.total_listings_found = 0
-        self.scraped_urls: set[str] = set()
-        self.jobs: list[dict[str, Any]] = []
-        self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
-
-    def get_sample_path(self) -> str | None:
-        """Return offline sample path when an Apify/Job Bank sample env is set."""
-        raw = (
-            os.environ.get("APIFY_JOBBANK_SAMPLE_PATH")
-            or os.environ.get("JOBBANK_SAMPLE_PATH")
-            or ""
-        ).strip()
-        return raw or None
+    sample_path_envs = ("APIFY_JOBBANK_SAMPLE_PATH", "JOBBANK_SAMPLE_PATH")
+    sample_list_keys = ("data", "items", "jobs")
 
     def get_actor_id(self) -> str:
         """Return the Apify actor id (env override or default Job Bank actor)."""
@@ -119,47 +99,17 @@ class ApifyJobBankScraper:
 
         self.total_listings_found = len(records)
         weeks = get_within_weeks()
-        skip_on_existing = True
-        compare_only = False
 
         for index, record in enumerate(records):
-            if self._max_jobs and len(self.jobs) >= self._max_jobs:
+            if self._at_job_limit():
                 break
             if not isinstance(record, dict):
                 continue
-            job_dict, _ = self._process_record(
-                record,
-                index,
-                weeks=weeks,
-                skip_on_existing=skip_on_existing,
-                compare_only=compare_only,
-            )
+            job_dict, _ = self._process_record(record, index, weeks=weeks)
             if job_dict:
                 self.jobs.append(job_dict)
 
         return self.jobs
-
-    def _load_sample_records(self, sample_path: str) -> list[dict[str, Any]]:
-        """Load Apify Job Bank job dicts from a local JSON sample file."""
-        path = Path(sample_path).expanduser()
-        if not path.is_file():
-            raise RuntimeError(f"APIFY_JOBBANK_SAMPLE_PATH not found: {path}")
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"Invalid Apify Job Bank sample JSON at {path}: {e}") from e
-
-        if isinstance(payload, list):
-            records = payload
-        elif isinstance(payload, dict):
-            records = payload.get("data") or payload.get("items") or []
-        else:
-            raise RuntimeError(
-                f"Apify Job Bank sample JSON must be a list or {{data: [...]}}: {path}"
-            )
-        if not isinstance(records, list):
-            raise RuntimeError(f"Apify Job Bank sample data must be a list: {path}")
-        return [r for r in records if isinstance(r, dict)]
 
     def _run_actor(self, limit: int) -> list[dict[str, Any]]:
         """Start the Job Bank actor run, wait for terminal status, fetch dataset."""
@@ -263,94 +213,6 @@ class ApifyJobBankScraper:
             offset += page_size
             time.sleep(0.2)
         return items
-
-    def _process_record(
-        self,
-        record: dict[str, Any],
-        index: int,
-        *,
-        weeks: int,
-        skip_on_existing: bool,
-        compare_only: bool,
-    ) -> tuple[dict[str, Any] | None, bool]:
-        """Map one Apify record; return (job_dict|None, should_stop)."""
-        fields = self.parse_job(record)
-        if fields is None:
-            scraper_log(f"\t\tSkipping job {index + 1}: parse_job returned None")
-            return None, False
-
-        listing_url = fields.get("listing_url", "")
-        norm_url = normalize_listing_url(listing_url)
-        if not norm_url:
-            scraper_log(f"\t\tSkipping job {index + 1}: no valid URL")
-            return None, False
-
-        if norm_url in self.existing_urls and skip_on_existing:
-            scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already in database")
-            self.skipped_duplicates += 1
-            return None, False
-
-        if compare_only and norm_url not in self.existing_urls:
-            scraper_log(
-                f"\t\tSkipping job {index + 1} ({listing_url}): new URL (compare-only mode)"
-            )
-            return None, False
-
-        if norm_url in self.scraped_urls:
-            scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already scraped")
-            return None, False
-        self.scraped_urls.add(norm_url)
-
-        date_str = fields.get("date_posted")
-        title = fields.get("job_title", "Unknown")
-        if date_str:
-            if not is_recent_job(date_str, weeks=weeks, lang=self.language):
-                scraper_log(f"\t\tSkipping outdated job {index + 1}: '{title}'")
-                return None, False
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}' posted {date_str}")
-            try:
-                dt = _parse_localized_date(date_str, lang=self.language)
-                fields["date_posted"] = dt.isoformat()
-            except Exception:
-                pass
-        else:
-            scraper_log(f"\t\tProcessing job {index + 1}: '{title}' (date not available)")
-
-        if not fields.get("employment_type"):
-            from utils.extractors import detect_employment_type_from_texts
-
-            fields["employment_type"] = detect_employment_type_from_texts(
-                [fields.get("job_title"), fields.get("description"), fields.get("wage")]
-            )
-
-        fields["listing_url"] = norm_url
-        fields["language"] = fields.get("language", self.language)
-
-        job_dict = normalize_job_data(
-            {
-                "job_title": fields.get("job_title"),
-                "date_posted": fields.get("date_posted"),
-                "close_date": fields.get("close_date"),
-                "description": fields.get("description", ""),
-                "summary": fields.get("summary"),
-                "organization": fields.get("organization"),
-                "location": fields.get("location"),
-                "municipality": fields.get("municipality"),
-                "province": fields.get("province"),
-                "listing_url": fields.get("listing_url"),
-                "employment_type": fields.get("employment_type"),
-                "wage": fields.get("wage"),
-                "language": fields.get("language"),
-                "website": fields.get("website"),
-                "is_remote": fields.get("is_remote"),
-                "work_type": fields.get("work_type"),
-                "source_dump": record,
-            }
-        )
-        return job_dict, False
-
-    def close_browser(self) -> None:
-        """No-op. Required by ScraperOrchestrator's finally-block cleanup."""
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
         """Map one getascraper Job Bank record to Wev fields. Return None to skip."""
