@@ -146,6 +146,7 @@ def test_dry_run_no_writes():
             "summary": None,
             "description": "Coordinate things",
             "skills_raw": ["budget management", "vendor coordination"],
+            "is_sse": True,
         }
     ]
 
@@ -178,6 +179,7 @@ def test_retag_clears_jobs_without_skills_raw_phrases():
             "summary": None,
             "description": "See website",
             "skills_raw": [],
+            "is_sse": True,
         }
     ]
     delete_chain = MagicMock()
@@ -218,6 +220,7 @@ def test_empty_skills_raw_list_clears_mistags_without_retag():
             "description": "See website",
             "skills_raw": [],
             "skills": ["http://esco/old-mistag"],
+            "is_sse": True,
         }
     ]
     delete_chain = MagicMock()
@@ -260,6 +263,7 @@ def test_null_skills_raw_does_not_clear_without_retag():
             "description": "Body",
             "skills_raw": None,
             "skills": ["http://esco/existing"],
+            "is_sse": True,
         }
     ]
 
@@ -282,6 +286,79 @@ def test_null_skills_raw_does_not_clear_without_retag():
     mock_supabase.table.return_value.update.assert_not_called()
     assert result["processed"] == 0
     assert result["inserted"] == 0
+
+
+def test_non_sse_jobs_are_not_vectorized():
+    """is_sse=false jobs must not embed or write ESCO tags."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-non-sse",
+            "job_title": "Clerk",
+            "organization": "Corp",
+            "summary": None,
+            "description": "Office work",
+            "skills_raw": ["data entry", "customer service"],
+            "skills": None,
+            "is_sse": False,
+        }
+    ]
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+    ):
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(job_ids=["job-non-sse"], dry_run=False)
+
+    mock_svc_cls.assert_not_called()
+    mock_supabase.rpc.assert_not_called()
+    mock_supabase.table.return_value.upsert.assert_not_called()
+    assert result["processed"] == 0
+    assert result["errors"] == 0
+
+
+def test_non_sse_empty_skills_raw_clears_without_embedding():
+    """Non-SSE jobs with skills_raw=[] still clear mistags; Jina stays unused."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-non-sse-empty",
+            "job_title": "Clerk",
+            "organization": "Corp",
+            "summary": None,
+            "description": "Office work",
+            "skills_raw": [],
+            "skills": ["http://esco/old-mistag"],
+            "is_sse": False,
+        }
+    ]
+    delete_chain = MagicMock()
+    delete_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.delete.return_value = delete_chain
+    update_chain = MagicMock()
+    update_chain.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_supabase.table.return_value.update.return_value = update_chain
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+    ):
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(
+            job_ids=["job-non-sse-empty"], retag=True, dry_run=False
+        )
+
+    mock_svc_cls.assert_not_called()
+    mock_supabase.rpc.assert_not_called()
+    mock_supabase.table.return_value.delete.assert_called()
+    mock_supabase.table.return_value.update.assert_called()
+    assert mock_supabase.table.return_value.update.call_args[0][0] == {"skills": []}
+    assert result["processed"] == 1
+    assert result["inserted"] == 0
+    assert result["errors"] == 0
 
 
 def test_filter_untagged_jobs_skips_durable_empty_skills():

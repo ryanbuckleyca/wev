@@ -265,6 +265,251 @@ def test_confident_dupe_requires_near_identical_body():
     assert not is_confident_duplicate_pair(left, right)
 
 
+def test_confident_dupe_rejects_same_body_different_city():
+    """Cover confident dupe rejects same body different city."""
+    body = ("Community support worker duties include case management " * 25).strip()
+    left = {
+        "job_title": "Community Support Worker",
+        "listing_url": "https://indeed.com/viewjob?jk=aaa",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "description": body,
+    }
+    right = {
+        "job_title": "Community Support Worker",
+        "listing_url": "https://ca.linkedin.com/jobs/view/111",
+        "date_posted": "2026-11-01",
+        "municipality": "Ottawa",
+        "description": body,
+    }
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def _moderate_cross_source_bodies() -> tuple[str, str]:
+    """Shared-prefix rewrite that lands in the 0.70–0.89 confident band."""
+    paras = [
+        "Our Toronto clinic provides community mental health services to adults.",
+        "The Registered Social Worker completes assessments and develops care plans.",
+        "You will collaborate with nurses, physicians, and peer support workers.",
+        "Caseload includes clients with complex needs across the downtown catchment.",
+        "Documentation must meet college standards and program quality frameworks.",
+        "This is a permanent full-time role with evening clinic coverage twice monthly.",
+        "Candidates require registration with the Ontario College of Social Workers.",
+        "We offer supervision, professional development funds, and extended benefits.",
+    ]
+    body = " ".join(paras * 3)
+    cut = int(len(body) * 0.80)
+    rewritten = body[:cut] + (
+        " Evening shifts rotate among the clinical team each month. "
+        "Applicants need active OCSWSSW membership and two years experience. "
+        "Compensation includes benefits, supervision, and a learning stipend."
+    )
+    return body, rewritten
+
+
+def test_confident_dupe_cross_source_same_city_moderate_similarity():
+    """Indeed vs Google rewrite of the same Toronto opening (~0.70–0.89 body)."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": rewritten,
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_same_board_moderate_similarity_stays_review_only():
+    """0.70–0.89 body on the same board must not auto-skip distinct openings."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "description": body,
+        "source_id": "src-a",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=def456",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "description": rewritten,
+        "source_id": "src-a",
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_cross_source_same_host_via_source_id():
+    """Different source_id + same host still counts as cross-source at 0.70–0.89."""
+    from utils.job_near_dupes import description_ratio
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/111",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": body,
+        "source_id": "serpapi-uuid",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/222",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": rewritten,
+        "source_id": "theirstack-uuid",
+    }
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_same_source_id_distinct_hosts_is_not_cross_source():
+    """Same source_id is the board identity — differing apply hosts are not cross-source."""
+    from utils.job_near_dupes import description_ratio, is_cross_source_pair
+
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": body,
+        "source_id": "aggregator",
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.linkedin.com/jobs/view/999",
+        "date_posted": "2026-11-02",
+        "municipality": "Toronto",
+        "province": "ON",
+        "description": rewritten,
+        "source_id": "aggregator",
+    }
+    assert not is_cross_source_pair(left, right)
+    ratio = description_ratio(left["description"], right["description"])
+    assert 0.70 <= ratio < 0.90
+    # Without cross-source threshold, moderate rewrite stays human-reviewed.
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def test_cross_source_uses_hosts_when_source_id_missing():
+    """Aggregator rows without source_id still use listing-host board evidence."""
+    from utils.job_near_dupes import is_cross_source_pair
+
+    left = {"listing_url": "https://ca.indeed.com/viewjob?jk=abc123"}
+    right = {"listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999"}
+    assert is_cross_source_pair(left, right)
+    assert not is_cross_source_pair(
+        {"listing_url": "https://www.indeed.com/viewjob?jk=1"},
+        {"listing_url": "https://ca.indeed.com/viewjob?jk=2"},
+    )
+
+
+def test_job_city_key_skips_non_geocodeable_locations():
+    """Cover job city key skips non geocodeable locations."""
+    from utils.job_near_dupes import job_city_key
+
+    assert job_city_key({"municipality": "Remote"}) is None
+    assert job_city_key({"municipality": "Ontario"}) is None
+    assert job_city_key({"location": "Canada"}) is None
+    assert job_city_key({"location": "Remote, Canada"}) is None
+    assert job_city_key({"municipality": "Toronto"}) == "toronto"
+    assert job_city_key({"location": "Toronto, ON, Canada"}) == "toronto"
+
+
+def test_cities_same_requires_matching_province_when_both_set():
+    """Same city name in different provinces is not cities_same."""
+    from utils.job_near_dupes import cities_same
+
+    assert cities_same(
+        {"municipality": "London", "province": "ON"},
+        {"municipality": "London", "province": "ON"},
+    )
+    assert not cities_same(
+        {"municipality": "London", "province": "ON"},
+        {"municipality": "London", "province": "QC"},
+    )
+
+
+def test_listing_host_collapses_indeed_regional_subdomains():
+    """ca.indeed.com and www.indeed.com compare as one board host."""
+    from utils.job_near_dupes import _listing_host
+
+    assert _listing_host("https://www.indeed.com/viewjob?jk=1") == "indeed.com"
+    assert _listing_host("https://ca.indeed.com/viewjob?jk=1") == "indeed.com"
+    assert _listing_host("https://ca.linkedin.com/jobs/view/1") == "linkedin.com"
+    assert _listing_host("https://boards.greenhouse.io/x/jobs/1") == "boards.greenhouse.io"
+
+
+def test_confident_dupe_rejects_same_city_name_different_province():
+    """London ON vs London QC with near-identical bodies must not auto-skip."""
+    body = (
+        "Registered social worker providing community mental health support, "
+        "case management, crisis intervention, and care coordination with "
+        "local agencies and interdisciplinary clinical partners. "
+    ) * 8
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=london-on",
+        "date_posted": "2026-11-01",
+        "municipality": "London",
+        "province": "ON",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=london-qc",
+        "date_posted": "2026-11-02",
+        "municipality": "London",
+        "province": "QC",
+        "description": body,
+    }
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def test_confident_dupe_cross_source_needs_city_match():
+    """Moderate similarity without a shared city stays review-only."""
+    body, rewritten = _moderate_cross_source_bodies()
+    left = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://ca.indeed.com/viewjob?jk=abc123",
+        "date_posted": "2026-11-01",
+        "description": body,
+    }
+    right = {
+        "job_title": "Registered Social Worker",
+        "listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999",
+        "date_posted": "2026-11-02",
+        "description": rewritten,
+    }
+    assert not is_confident_duplicate_pair(left, right)
+
+
 def test_confident_dupe_eco_canada_multi_id_clone():
     body = (
         "Position Title: Project Manager - Renewable Energy "

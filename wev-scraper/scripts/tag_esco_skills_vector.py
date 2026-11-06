@@ -338,19 +338,12 @@ def tag_esco_skills_vector(
     print(f"Workers:     {workers} (match/write; embed serial)")
     print()
 
-    # Initialize embedding service
-    try:
-        svc = JinaEmbeddingService()
-        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
-        print(f"✓ JinaEmbeddingService initialized — {mode}\n")
-    except ConfigurationError as e:
-        print(f"✗ {e}")
-        return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 1}
-
-    # Fetch jobs
+    # Fetch jobs before initializing Jina so empty / non-SSE selections return
+    # without requiring JINA_API_KEY.
     # Include skills so we can treat skills=[] as a durable "tagged, zero hits"
-    # marker (skills is None = never tagged).
-    columns = "id, job_title, organization, summary, description, skills_raw, skills"
+    # marker (skills is None = never tagged). is_sse gates vectorize/ESCO — only
+    # social/solidarity economy roles get embeddings (same rule for web + API).
+    columns = "id, job_title, organization, summary, description, skills_raw, skills, is_sse"
     try:
         if job_ids:
             jobs = []
@@ -380,18 +373,17 @@ def tag_esco_skills_vector(
     if limit:
         jobs = jobs[:limit]
 
-    total = len(jobs)
-    print(f"Jobs to process: {total}\n")
-
-    if total == 0:
+    if not jobs:
         print("Nothing to do.")
         return {"processed": 0, "inserted": 0, "zero_match_jobs": 0, "avg_top1_score": 0.0, "errors": 0}
 
     start_time = time.time()
 
-    # 1. Collect all jobs with their phrases (empty-skills_raw jobs are cleared inline).
+    # 1. Clear stale tags for empty skills_raw on *all* selected jobs (incl.
+    # non-SSE / --retag). Embedding is SSE-only — applied when collecting phrases.
     jobs_with_phrases = []
     jobs_cleared_no_phrases = 0
+    skipped_non_sse_embed = 0
 
     for job in jobs:
         skills_raw = job.get("skills_raw")
@@ -402,7 +394,7 @@ def tag_esco_skills_vector(
         if not valid_phrases:
             # Durable empty extract (skills_raw=[]) must clear stale whole-job
             # mistags even without --retag. Leave skills_raw=None alone (not
-            # extracted yet).
+            # extracted yet). Runs for non-SSE too so --retag can wipe mistags.
             if isinstance(skills_raw, list) and not dry_run:
                 job_id = job["id"]
                 try:
@@ -424,23 +416,46 @@ def tag_esco_skills_vector(
                     )
             continue
 
+        if job.get("is_sse") is not True:
+            skipped_non_sse_embed += 1
+            continue
+
         jobs_with_phrases.append({
             "job": job,
             "phrases": valid_phrases,
         })
 
-    print(f"Collected phrases across {len(jobs_with_phrases)} jobs.")
+    if skipped_non_sse_embed:
+        print(
+            f"Skipping ESCO/vectorize for {skipped_non_sse_embed} non-SSE job(s) "
+            "with skills_raw phrases (is_sse is not true)."
+        )
+    print(f"Jobs selected for embed: {len(jobs_with_phrases)}")
     if jobs_cleared_no_phrases:
         print(f"Cleared stale tags on {jobs_cleared_no_phrases} jobs with empty skills_raw.")
 
     if not jobs_with_phrases:
-        print("No jobs with skills_raw phrases — nothing to embed.")
+        print("No SSE jobs with skills_raw phrases — nothing to embed.")
         return {
             "processed": jobs_cleared_no_phrases,
             "inserted": 0,
             "zero_match_jobs": 0,
             "avg_top1_score": 0.0,
             "errors": 0,
+        }
+
+    try:
+        svc = JinaEmbeddingService()
+        mode = "local (HuggingFace MPS)" if svc.is_local else "API (jina.ai)"
+        print(f"✓ JinaEmbeddingService initialized — {mode}\n")
+    except ConfigurationError as e:
+        print(f"✗ {e}")
+        return {
+            "processed": jobs_cleared_no_phrases,
+            "inserted": 0,
+            "zero_match_jobs": 0,
+            "avg_top1_score": 0.0,
+            "errors": 1,
         }
 
     # 2. Embed phrases and dispatch writes in bounded job groups.
@@ -635,6 +650,7 @@ def _filter_untagged_jobs(jobs: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    """Helper: main."""
     parser = argparse.ArgumentParser(description="Tag ESCO skills via Jina v3 vector embeddings")
     parser.add_argument("--dry-run", action="store_true", help="Log candidates without writing to DB")
     parser.add_argument("--prod", action="store_true", help="Target production DB with remote Jina API")

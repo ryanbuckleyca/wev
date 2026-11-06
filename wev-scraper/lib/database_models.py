@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 
 class Bookmarks(BaseModel):
+    """Pydantic model for ``Bookmarks`` rows/views."""
     user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     job_id: UUID = Field(
         ...,
@@ -28,6 +29,7 @@ class Bookmarks(BaseModel):
 
 
 class ProfileSkills(BaseModel):
+    """Pydantic model for ``ProfileSkills`` rows/views."""
     user_id: UUID = Field(
         ...,
         description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
@@ -42,6 +44,7 @@ class ProfileSkills(BaseModel):
 
 
 class RequestLogs(BaseModel):
+    """Pydantic model for ``RequestLogs`` rows/views."""
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     user_id: UUID
     event_name: str
@@ -49,6 +52,7 @@ class RequestLogs(BaseModel):
 
 
 class ScrapeRuns(BaseModel):
+    """Pydantic model for ``ScrapeRuns`` rows/views."""
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     started_at: str
     ended_at: Optional[str] = None
@@ -65,6 +69,7 @@ class ScrapeRuns(BaseModel):
 
 
 class JobSkills(BaseModel):
+    """Pydantic model for ``JobSkills`` rows/views."""
     job_id: UUID = Field(
         ...,
         description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `jobs.id`.<fk table='jobs' column='id'/>",
@@ -79,6 +84,7 @@ class JobSkills(BaseModel):
 
 
 class Jobs(BaseModel):
+    """Pydantic model for ``Jobs`` rows/views."""
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     source_id: UUID = Field(
         ...,
@@ -136,6 +142,7 @@ class Jobs(BaseModel):
 
 
 class Profiles(BaseModel):
+    """Pydantic model for ``Profiles`` rows/views."""
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     full_name: Optional[str] = None
     bio: Optional[str] = None
@@ -166,6 +173,7 @@ class Profiles(BaseModel):
 
 
 class EscoSkills(BaseModel):
+    """Pydantic model for ``EscoSkills`` rows/views."""
     concept_uri: str = Field(
         ...,
         description='Stable ESCO concept URI identifier.\n\nNote:\nThis is a Primary Key.<pk/>',
@@ -197,6 +205,7 @@ class EscoSkills(BaseModel):
 
 
 class MatchedJobs(BaseModel):
+    """Pydantic model for ``MatchedJobs`` rows/views."""
     id: Optional[UUID] = Field(None, description='Note:\nThis is a Primary Key.<pk/>')
     source_id: Optional[UUID] = Field(
         None,
@@ -210,7 +219,6 @@ class MatchedJobs(BaseModel):
     date_posted: Optional[str] = None
     employment_type: Optional[str] = None
     external_job_id: Optional[str] = None
-    extra: Optional[Any] = None
     scraped_at: Optional[str] = None
     wage: Optional[str] = None
     close_date: Optional[date] = None
@@ -258,6 +266,7 @@ class MatchedJobs(BaseModel):
 
 
 class JobSkillPhrases(BaseModel):
+    """Pydantic model for ``JobSkillPhrases`` rows/views."""
     job_id: UUID = Field(
         ...,
         description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `jobs.id`.<fk table='jobs' column='id'/>",
@@ -271,6 +280,7 @@ class JobSkillPhrases(BaseModel):
 
 
 class UserRoles(BaseModel):
+    """Pydantic model for ``UserRoles`` rows/views."""
     user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     roles: Optional[List[str]] = None
     created_at: Optional[str] = 'now()'
@@ -278,6 +288,7 @@ class UserRoles(BaseModel):
 
 
 class JobMatches(BaseModel):
+    """Pydantic model for ``JobMatches`` rows/views."""
     user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     job_id: UUID = Field(
         ...,
@@ -308,6 +319,7 @@ class JobMatches(BaseModel):
 
 
 class Cities(BaseModel):
+    """Pydantic model for ``Cities`` rows/views."""
     id: int = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     name: str
     province: str
@@ -318,6 +330,7 @@ class Cities(BaseModel):
 
 
 class Organizations(BaseModel):
+    """Pydantic model for ``Organizations`` rows/views."""
     id: int = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     created_at: str
     name: str
@@ -378,6 +391,7 @@ class Organizations(BaseModel):
 
 
 class JobMatchRecalcQueue(BaseModel):
+    """Pydantic model for ``JobMatchRecalcQueue`` rows/views."""
     job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     enqueued_at: str
     run_after: str
@@ -389,6 +403,7 @@ class JobMatchRecalcQueue(BaseModel):
 
 
 class Sources(BaseModel):
+    """Pydantic model for ``Sources`` rows/views."""
     id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     name: str
     url: str
@@ -398,6 +413,7 @@ class Sources(BaseModel):
 
 
 class Model(BaseModel):
+    """Pydantic model for ``Model`` rows/views."""
     bookmarks: Optional[Bookmarks] = None
     profile_skills: Optional[ProfileSkills] = None
     request_logs: Optional[RequestLogs] = None

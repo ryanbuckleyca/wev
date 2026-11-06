@@ -12,6 +12,13 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from difflib import SequenceMatcher
 from typing import Iterable
+from urllib.parse import urlparse
+
+from utils.location_parser import (
+    _normalize_ca_province_code,
+    location_has_no_geocodeable_city,
+)
+from utils.municipality_canonical import normalize_location
 
 # Tiny function words that don't help title identity.
 _TITLE_STOP = frozenset(
@@ -149,13 +156,20 @@ def dates_within(
 
 def job_city_key(job: dict) -> str | None:
     """Best-effort city identity from municipality or location prefix."""
-    muni = (job.get("municipality") or "").strip().lower()
+    muni = (job.get("municipality") or "").strip()
     if muni:
-        return muni
+        if location_has_no_geocodeable_city(muni):
+            return None
+        return normalize_location(muni) or None
     loc = (job.get("location") or "").strip()
     if not loc:
         return None
-    return loc.split(",")[0].strip().lower() or None
+    if location_has_no_geocodeable_city(loc):
+        return None
+    prefix = loc.split(",")[0].strip()
+    if not prefix:
+        return None
+    return normalize_location(prefix) or None
 
 
 def cities_conflict(left: dict, right: dict) -> bool:
@@ -163,6 +177,75 @@ def cities_conflict(left: dict, right: dict) -> bool:
     a = job_city_key(left)
     b = job_city_key(right)
     return bool(a and b and a != b)
+
+
+def cities_same(left: dict, right: dict) -> bool:
+    """True when both sides have a city and they agree.
+
+    When both rows carry a province, same-named cities in different provinces
+    are not treated as equal (London ON vs London?).
+    """
+    a = job_city_key(left)
+    b = job_city_key(right)
+    if not (a and b and a == b):
+        return False
+    pa = _normalize_ca_province_code(left.get("province"))
+    pb = _normalize_ca_province_code(right.get("province"))
+    if pa and pb and pa != pb:
+        return False
+    return True
+
+
+# Apex hosts whose ``cc.`` regional subdomains (e.g. ca.indeed.com) are the
+# same board as the apex for cross-source evidence.
+_BOARD_APEX_HOSTS = frozenset({"indeed.com", "linkedin.com"})
+
+
+def _listing_host(url: str | None) -> str | None:
+    """Hostname for cross-source board evidence (strip www / regional board CC)."""
+    if not url:
+        return None
+    try:
+        host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return None
+    if host.startswith("www."):
+        host = host[4:]
+    # ca.indeed.com / ca.linkedin.com → apex (same board as www.indeed.com).
+    parts = host.split(".")
+    if (
+        len(parts) == 3
+        and len(parts[0]) == 2
+        and parts[0].isalpha()
+        and f"{parts[1]}.{parts[2]}" in _BOARD_APEX_HOSTS
+    ):
+        host = f"{parts[1]}.{parts[2]}"
+    return host or None
+
+
+def is_cross_source_pair(left: dict, right: dict) -> bool:
+    """True when reliable evidence shows distinct boards.
+
+    Same ``source_id`` means same Wev board even when apply hosts differ
+    (ATS apply URL vs board URL). Differing ``source_id`` is conclusive.
+    When board identity is unavailable, fall back to listing-host comparison
+    (aggregator / missing source rows). Uncertain pairs return False so they
+    stay human-reviewed rather than auto-skipping at the cross-source threshold.
+    """
+    sid_a = left.get("source_id")
+    sid_b = right.get("source_id")
+    if sid_a and sid_b:
+        return sid_a != sid_b
+    host_a = _listing_host(left.get("listing_url"))
+    host_b = _listing_host(right.get("listing_url"))
+    if host_a and host_b:
+        return host_a != host_b
+    return False
+
+
+# Cross-board rewrites (Indeed vs Google vs ATS) rarely hit 0.90 similarity.
+# Same city + same role + moderately similar body is enough to auto-skip.
+_CROSS_SOURCE_DESC_MIN = 0.70
 
 
 # Multi-office copies of the same req share nearly identical bodies.
@@ -285,9 +368,12 @@ def is_confident_duplicate_pair(
     shared employer boilerplate is common across distinct reqs.
 
     Also treats same board listing id (different URL shapes) as clones when
-    title/dates align. High body similarity still refuses pairs that disagree
-    on hours or employment_type. Empty-vs-full description alone is not enough
-    without a shared board listing id — that path stays human-reviewed.
+    title/dates align. Conflicting municipalities reject the pair (multi-office
+    copies stay human-reviewed). Same city + description ratio ≥ 0.70 catches
+    cross-source rewrites that miss the 0.90 threshold. High body similarity
+    still refuses pairs that disagree on hours or employment_type.
+    Empty-vs-full description alone is not enough without a shared board
+    listing id — that path stays human-reviewed.
     """
     url_a = (left.get("listing_url") or "").strip().rstrip("/")
     url_b = (right.get("listing_url") or "").strip().rstrip("/")
@@ -304,6 +390,12 @@ def is_confident_duplicate_pair(
     if id_a and id_b and id_a == id_b:
         return True
 
+    # Both cities known but not the same place (name or province) → different
+    # openings. Missing city on either side stays eligible (board-id path above
+    # already returned; otherwise description gates apply).
+    if job_city_key(left) and job_city_key(right) and not cities_same(left, right):
+        return False
+
     if material_role_conflict(left, right):
         return False
 
@@ -313,7 +405,18 @@ def is_confident_duplicate_pair(
     norm_b = description_normalized(desc_b)
     if norm_a and norm_a == norm_b and len(norm_a) >= _THIN_DESC_CHARS:
         return True
-    return description_ratio(desc_a, desc_b) >= _CONFIDENT_DESC_MIN
+    ratio = description_ratio(desc_a, desc_b)
+    if ratio >= _CONFIDENT_DESC_MIN:
+        return True
+    # Cross-source only: same role + same city + strong-but-not-identical body.
+    # Same-board moderate rewrites stay human-reviewed (distinct openings).
+    if (
+        cities_same(left, right)
+        and ratio >= _CROSS_SOURCE_DESC_MIN
+        and is_cross_source_pair(left, right)
+    ):
+        return True
+    return False
 
 
 def job_quality_score(job: dict) -> tuple:

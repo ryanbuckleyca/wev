@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, NamedTuple, Tuple
 
 from utils.db import fetch_all_rows, supabase
+from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
@@ -62,14 +63,22 @@ def _is_org_field_missing(org: Dict[str, Any], field: str) -> bool:
     return False
 
 
+def esco_tagging_enabled() -> bool:
+    """ESCO vector tagging is opt-in via ``SHOULD_TAG_SKILLS`` (skills_raw is separate)."""
+    return is_truthy_env("SHOULD_TAG_SKILLS")
+
+
 def job_needs_skills(job: Dict[str, Any]) -> bool:
-    """True when this job still needs skills extract and/or ESCO tagging.
+    """True when this job still needs skills_raw extract and/or ESCO tagging.
 
     Contract:
     - no description → False (nothing to extract; matches _needs_skills_reextract guard)
-    - ``skills_raw is None`` → never extracted (needs unified extract, then tag)
+    - ``skills_raw is None`` → never extracted (needs unified extract, then optional tag)
     - ``skills_raw == []`` (or only blank strings) → extract finished empty; done
-    - phrases present + ``skills is None`` → phrases awaiting ESCO tag
+    - phrases present + ``SHOULD_TAG_SKILLS`` off → raw extract is enough; done
+    - phrases present + ``is_sse is False`` → non-SSE jobs are never ESCO/vectorized; done
+    - phrases present + ``is_sse is None`` → wait until SSE is classified, then tag if yes
+    - phrases present + ``is_sse is True`` + ``skills is None`` → awaiting ESCO tag
     - phrases present + ``skills == []`` → tagged, zero ESCO hits; done (durable)
     - phrases present + non-empty ``skills`` → tagged; done
     """
@@ -82,7 +91,18 @@ def job_needs_skills(job: Dict[str, Any]) -> bool:
         return True
     if not any(str(s).strip() for s in skills_raw):
         return False
-    return job.get("skills") is None
+    if not esco_tagging_enabled():
+        return False
+    # skills=[] (zero hits) or URI list → already through the tagger; durable.
+    if job.get("skills") is not None:
+        return False
+    # Non-SSE jobs keep skills_raw but never ESCO / Jina vectorize.
+    if job.get("is_sse") is False:
+        return False
+    if job.get("is_sse") is not True:
+        # SSE still unknown — stay in the queue until classify settles.
+        return True
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -756,10 +776,14 @@ def process_unprocessed_jobs(
             seen.append(name)
     outcome.provider_used = ", ".join(seen) if seen else None
 
+    # ESCO / Jina vectorize: SHOULD_TAG_SKILLS on. Pass skills-needing ids; the
+    # tagger re-reads is_sse from the DB so jobs classified SSE in this same
+    # pass are included, and non-SSE are skipped (no embed).
+    run_esco = (not skip_esco) and esco_tagging_enabled()
     esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]
-    if not skip_esco:
+    if run_esco:
         outcome.esco_targeted = len(esco_ids)
-    if esco_ids and not skip_esco:
+    if esco_ids and run_esco:
         try:
             from scripts.tag_esco_skills_vector import tag_esco_skills_vector
 
@@ -769,6 +793,14 @@ def process_unprocessed_jobs(
         except Exception as exc:
             _log(f"❌ ESCO tagging failed: {exc}")
             outcome.esco_errors = len(esco_ids)
+    elif not run_esco:
+        skipped = sum(1 for _j, needs in unprocessed if "skills" in needs)
+        if skipped:
+            reason = "skip_esco" if skip_esco else "SHOULD_TAG_SKILLS off"
+            _log(
+                f"{reason} — skipping ESCO for {skipped} job(s); "
+                "skills_raw extract still applies."
+            )
 
     return outcome
 

@@ -26,6 +26,116 @@ def test_fetch_sources(mock_supabase):
 
 
 @patch("scrape.supabase")
+def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
+    """Cover fetch sources skips explicit only apis by default."""
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "SerpApi Google Jobs", "slug": "serpapi"},
+            {"id": "s3", "name": "Apify (Canada Job Bank)", "slug": "apify"},
+            {"id": "s4", "name": "The Jobs API", "slug": "thejobsapi"},
+            {"id": "s5", "name": "TheirStack", "slug": "theirstack"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator()
+    sources = orchestrator._fetch_sources()
+    assert [s["slug"] for s in sources] == ["goodwork"]
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_skips_headcount_without_api_key(mock_supabase, monkeypatch):
+    """Cover fetch sources skips headcount without api key."""
+    monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "Headcount Labs", "slug": "headcount"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator()
+    sources = orchestrator._fetch_sources()
+    assert [s["slug"] for s in sources] == ["goodwork"]
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_keeps_headcount_with_api_key(mock_supabase, monkeypatch):
+    """Cover fetch sources keeps headcount with api key."""
+    monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "Headcount Labs", "slug": "headcount"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator()
+    sources = orchestrator._fetch_sources()
+    assert [s["slug"] for s in sources] == ["goodwork", "headcount"]
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_headcount_explicit_without_key_raises(mock_supabase, monkeypatch):
+    """Cover fetch sources headcount explicit without key raises."""
+    monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [{"id": "s2", "name": "Headcount Labs", "slug": "headcount"}]
+    )
+    orchestrator = ScraperOrchestrator(source_slug="headcount")
+    with pytest.raises(RuntimeError, match="HEADCOUNTLABS_API_KEY"):
+        orchestrator._fetch_sources()
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_explicit_api_slug_still_runs(mock_supabase):
+    """Cover fetch sources explicit api slug still runs."""
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s2", "name": "SerpApi Google Jobs", "slug": "serpapi"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator(source_slug="serpapi")
+    sources = orchestrator._fetch_sources()
+    assert len(sources) == 1
+    assert sources[0]["slug"] == "serpapi"
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
+    """Cover fetch sources apis flag runs all api sources in order."""
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [
+            {"id": "s0", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s3", "name": "The Jobs API", "slug": "thejobsapi"},
+            {"id": "s1", "name": "SerpApi Google Jobs", "slug": "serpapi"},
+            {"id": "s4", "name": "TheirStack", "slug": "theirstack"},
+            {"id": "s2", "name": "Apify (Canada Job Bank)", "slug": "apify"},
+        ]
+    )
+    orchestrator = ScraperOrchestrator(api_sources=True)
+    sources = orchestrator._fetch_sources()
+    assert [s["slug"] for s in sources] == [
+        "serpapi",
+        "apify",
+        "thejobsapi",
+        "theirstack",
+    ]
+
+
+@patch("scrape.supabase")
+def test_fetch_sources_rejects_source_and_apis_together(mock_supabase):
+    """Cover fetch sources rejects source and apis together."""
+    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
+        [{"id": "s1", "name": "SerpApi", "slug": "serpapi"}]
+    )
+    orchestrator = ScraperOrchestrator(source_slug="serpapi", api_sources=True)
+    with pytest.raises(RuntimeError, match="either --source"):
+        orchestrator._fetch_sources()
+
+
+@patch("scrape.supabase")
 def test_fetch_sources_exact_slug_match(mock_supabase):
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
@@ -255,6 +365,8 @@ def test_main_flow(mock_orch_class, mock_init):
         args.headed = True
         args.vpn = True
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -263,6 +375,40 @@ def test_main_flow(mock_orch_class, mock_init):
         assert os.environ["MAX_JOBS_PER_SOURCE"] == "5"
         assert os.environ["SCRAPER_HEADED"] == "1"
         assert os.environ["SCRAPER_VPN_MODE"] == "1"
+        mock_orch_class.assert_called_once()
+        kwargs = mock_orch_class.call_args.kwargs
+        assert kwargs.get("api_sources") is False
+        mock_orch.run.assert_called_once()
+
+
+@patch("scrape.initialize_runtime_env")
+@patch("scrape.ScraperOrchestrator")
+def test_main_forwards_apis_flag(mock_orch_class, mock_init):
+    """Cover main forwards apis flag."""
+    mock_orch = mock_orch_class.return_value
+    mock_orch.post_scrape_errors = 0
+    mock_orch.had_failures.return_value = False
+    with patch("scrape.parse_args") as mock_args:
+        args = MagicMock()
+        args.prod = False
+        args.publish = False
+        args.staging = False
+        args.env = "local"
+        args.dry_run = True
+        args.compare = False
+        args.provider = None
+        args.max_jobs = None
+        args.headed = False
+        args.vpn = False
+        args.list_sources = False
+        args.slug = None
+        args.apis = True
+        mock_args.return_value = args
+
+        main()
+
+        mock_orch_class.assert_called_once()
+        assert mock_orch_class.call_args.kwargs.get("api_sources") is True
         mock_orch.run.assert_called_once()
 
 
@@ -286,6 +432,8 @@ def test_main_vpn_does_not_force_headed_mode(mock_orch_class, mock_init, monkeyp
         args.headed = False
         args.vpn = True
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -317,6 +465,8 @@ def test_main_prod_confirmation_propagates_to_child_scripts(mock_orch_class, moc
         args.headed = False
         args.vpn = False
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         main()
@@ -346,6 +496,8 @@ def test_main_prod_noninteractive_requires_confirmation(mock_orch_class, mock_in
         args.headed = False
         args.vpn = False
         args.list_sources = False
+        args.slug = None
+        args.apis = False
         mock_args.return_value = args
 
         with pytest.raises(SystemExit) as exc:

@@ -6,7 +6,7 @@
 
 begin;
 
-select plan(14);
+select plan(15);
 
 -- ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -163,16 +163,22 @@ select ok(
 -- UPDATE must NOT enqueue match recalculation.
 
 \set test_job_id_2 '''00000000-0000-0000-0000-000000000004'''
+\set test_org_id 900004
+
+-- Match enqueue requires jobs.is_sse = true, which needs an SSE org.
+insert into public.organizations (id, name, slug, is_sse)
+values (:test_org_id, 'pgTAP SSE Org', 'pgtap-sse-org-900004', true)
+on conflict (id) do update set is_sse = excluded.is_sse;
 
 insert into public.jobs (
-  id, source_id, job_title, organization, listing_url,
-  skills, values, work_type, lat, lng, municipality, province
+  id, source_id, job_title, organization, organization_id, listing_url,
+  skills, values, work_type, lat, lng, municipality, province, is_sse
 ) values (
-  :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'Test Org',
+  :test_job_id_2, :test_source_id, 'pgTAP Test Job 2', 'pgTAP SSE Org', :test_org_id,
   'https://example.com/pgtap-job-2',
   array['pgtap-skill-exact'],
   array['community'],
-  'remote', 45.4215, -75.6972, 'Ottawa', 'ON'
+  'remote', 45.4215, -75.6972, 'Ottawa', 'ON', true
 ) on conflict (id) do nothing;
 
 insert into public.job_skills (job_id, skill_id, score, source)
@@ -216,6 +222,32 @@ select ok(
      where job_id = :test_job_id and enqueued_at > now() - interval '10s'
   ),
   'async job recalc: summary/description UPDATE does not enqueue recalc'
+);
+
+-- is_sse-only false→true must fire trg_job_values_changed (UPDATE OF includes is_sse).
+\set sse_promote_job_id '''00000000-0000-0000-0000-000000000007'''
+
+insert into public.jobs (
+  id, source_id, job_title, organization, organization_id, listing_url,
+  skills, values, work_type, is_sse
+) values (
+  :sse_promote_job_id, :test_source_id, 'pgTAP SSE Promote Job', 'pgTAP SSE Org',
+  :test_org_id, 'https://example.com/pgtap-sse-promote',
+  array['pgtap-skill-exact'], array['community'], 'remote', false
+) on conflict (id) do nothing;
+
+delete from public.job_match_recalc_queue where job_id = :sse_promote_job_id;
+
+update public.jobs
+set is_sse = true
+where id = :sse_promote_job_id;
+
+select ok(
+  exists(
+    select 1 from public.job_match_recalc_queue
+     where job_id = :sse_promote_job_id and processed_at is null
+  ),
+  'async job recalc: is_sse false→true enqueues recalc'
 );
 
 -- ─── Test 7: weighted path + job outside the skill candidate set ─────────────
@@ -269,12 +301,15 @@ select ok(
 
 -- ─── Cleanup ─────────────────────────────────────────────────────────────────
 
-delete from public.job_match_recalc_queue where job_id in (:test_job_id, :test_job_id_2);
+delete from public.job_match_recalc_queue
+ where job_id in (:test_job_id, :test_job_id_2, :sse_promote_job_id);
 delete from public.job_matches where user_id in (:test_user_id, :weighted_user_id);
 delete from public.profile_skills where user_id in (:test_user_id, :weighted_user_id);
 delete from public.job_skills where job_id in (:test_job_id, :test_job_id_2);
 delete from public.profiles    where id in (:test_user_id, :weighted_user_id);
-delete from public.jobs        where id in (:test_job_id, :test_job_id_2, :value_only_job_id);
+delete from public.jobs
+ where id in (:test_job_id, :test_job_id_2, :value_only_job_id, :sse_promote_job_id);
+delete from public.organizations where id = :test_org_id;
 delete from public.sources     where id = :test_source_id;
 delete from public.esco_skills where concept_uri like 'pgtap-%';
 
