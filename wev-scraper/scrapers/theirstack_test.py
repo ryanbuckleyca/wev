@@ -88,11 +88,11 @@ def test_default_domain_constants_partition_channels():
 
 def test_fetch_canada_jobs_sizes_final_offset_page(monkeypatch):
     """Offset paging keeps a capped page size and never requests past ``limit``."""
-    scraper = _scraper()
     monkeypatch.setenv("THEIRSTACK_API_KEY", "test-key")
     monkeypatch.setenv("THEIRSTACK_MAX_ITEMS", "150")
     monkeypatch.delenv("MAX_JOBS_PER_SOURCE", raising=False)
     monkeypatch.delenv("THEIRSTACK_SAMPLE_PATH", raising=False)
+    scraper = _scraper()
 
     seen: list[dict] = []
 
