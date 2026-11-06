@@ -387,8 +387,8 @@ def test_confident_dupe_cross_source_same_host_via_source_id():
     assert is_confident_duplicate_pair(left, right)
 
 
-def test_confident_dupe_same_source_id_distinct_hosts_is_cross_source():
-    """Same source_id with distinct listing hosts still gets the cross-board threshold."""
+def test_same_source_id_distinct_hosts_is_not_cross_source():
+    """Same source_id is the board identity — differing apply hosts are not cross-source."""
     from utils.job_near_dupes import description_ratio, is_cross_source_pair
 
     body, rewritten = _moderate_cross_source_bodies()
@@ -410,10 +410,24 @@ def test_confident_dupe_same_source_id_distinct_hosts_is_cross_source():
         "description": rewritten,
         "source_id": "aggregator",
     }
-    assert is_cross_source_pair(left, right)
+    assert not is_cross_source_pair(left, right)
     ratio = description_ratio(left["description"], right["description"])
     assert 0.70 <= ratio < 0.90
-    assert is_confident_duplicate_pair(left, right)
+    # Without cross-source threshold, moderate rewrite stays human-reviewed.
+    assert not is_confident_duplicate_pair(left, right)
+
+
+def test_cross_source_uses_hosts_when_source_id_missing():
+    """Aggregator rows without source_id still use listing-host board evidence."""
+    from utils.job_near_dupes import is_cross_source_pair
+
+    left = {"listing_url": "https://ca.indeed.com/viewjob?jk=abc123"}
+    right = {"listing_url": "https://www.glassdoor.ca/job-listing/jv?jl=999"}
+    assert is_cross_source_pair(left, right)
+    assert not is_cross_source_pair(
+        {"listing_url": "https://www.indeed.com/viewjob?jk=1"},
+        {"listing_url": "https://ca.indeed.com/viewjob?jk=2"},
+    )
 
 
 def test_job_city_key_skips_non_geocodeable_locations():

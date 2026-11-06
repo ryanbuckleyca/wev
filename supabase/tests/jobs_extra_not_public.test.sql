@@ -3,7 +3,7 @@
 
 begin;
 
-select plan(4);
+select plan(6);
 
 select ok(
   exists(
@@ -51,6 +51,22 @@ select ok(
   ),
   'matched_jobs does not expose extra'
 );
+
+-- Executable SELECTs under each role catch missing view/join grants that
+-- privilege catalog checks alone would miss.
+set local role anon;
+select lives_ok(
+  $$select id from public.matched_jobs limit 1$$,
+  'anon can SELECT from matched_jobs'
+);
+reset role;
+
+set local role authenticated;
+select lives_ok(
+  $$select id from public.matched_jobs limit 1$$,
+  'authenticated can SELECT from matched_jobs'
+);
+reset role;
 
 select * from finish();
 

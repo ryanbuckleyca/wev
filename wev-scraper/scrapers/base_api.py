@@ -147,12 +147,42 @@ class BaseApiScraper:
         if compare_only is None:
             compare_only = is_truthy_env("COMPARE_ONLY")
 
-        fields = self.parse_job(record)
+        if not isinstance(record, dict):
+            scraper_log(
+                f"\t\tSkipping job {index + 1}: record is {type(record).__name__}, "
+                "expected dict"
+            )
+            return None, False
+
+        try:
+            fields = self.parse_job(record)
+        except (TypeError, AttributeError, ValueError) as e:
+            # Malformed provider fields (e.g. non-string employer) must not abort
+            # the whole source run — skip and keep processing siblings.
+            scraper_log(
+                f"\t\tSkipping job {index + 1}: malformed record ({type(e).__name__}: {e})"
+            )
+            return None, False
         if not fields:
             scraper_log(f"\t\tSkipping job {index + 1}: parse_job returned None")
             return None, False
 
         listing_url = fields.get("listing_url", "")
+        if listing_url is not None and not isinstance(listing_url, str):
+            scraper_log(
+                f"\t\tSkipping job {index + 1}: listing_url is "
+                f"{type(listing_url).__name__}, expected string"
+            )
+            return None, False
+        for key in ("job_title", "organization"):
+            value = fields.get(key)
+            if value is not None and not isinstance(value, str):
+                scraper_log(
+                    f"\t\tSkipping job {index + 1}: {key} is "
+                    f"{type(value).__name__}, expected string"
+                )
+                return None, False
+
         norm_url = normalize_listing_url(listing_url)
         if not norm_url:
             scraper_log(f"\t\tSkipping job {index + 1}: no valid URL")

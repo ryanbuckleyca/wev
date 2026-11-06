@@ -139,6 +139,16 @@ class ApifyJobBankScraper(BaseApiScraper):
         run = self._wait_for_run_terminal(run, total_wait_secs=total_wait)
         status = run.get("status")
         dataset_id = run.get("defaultDatasetId")
+        if status not in _TERMINAL_RUN_STATUSES:
+            # Wait budget expired while still RUNNING/READY — stop the actor
+            # so it does not keep consuming Apify compute units.
+            run_id = run.get("id")
+            if run_id:
+                self._abort_run(str(run_id))
+            raise RuntimeError(
+                f"Apify Job Bank run did not finish in time: status={status} "
+                f"id={run_id} message={run.get('statusMessage')}"
+            )
         if status != "SUCCEEDED":
             raise RuntimeError(
                 f"Apify Job Bank run did not succeed: status={status} "
@@ -148,6 +158,20 @@ class ApifyJobBankScraper(BaseApiScraper):
             raise RuntimeError("Apify Job Bank run missing defaultDatasetId")
 
         return self._fetch_dataset_items(dataset_id)
+
+    def _abort_run(self, run_id: str) -> None:
+        """Best-effort abort of a still-running Apify actor run."""
+        abort_url = f"{APIFY_API_BASE}/actor-runs/{run_id}/abort"
+        try:
+            with requests.post(
+                abort_url,
+                headers=self._auth_headers(),
+                timeout=self.request_timeout,
+            ) as response:
+                response.raise_for_status()
+            scraper_log(f"\tAborted non-terminal Apify run {run_id}")
+        except requests.RequestException as e:
+            scraper_log(f"\tWarning: failed to abort Apify run {run_id}: {e}")
 
     def _wait_for_run_terminal(
         self, run: dict[str, Any], *, total_wait_secs: int

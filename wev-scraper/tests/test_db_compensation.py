@@ -188,3 +188,25 @@ def test_job_row_omits_extra_when_absent(mock_extract):
 
     row = _job_row(_base_job(), "src-1")
     assert "extra" not in row
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_omits_empty_dict_extra(mock_extract):
+    """Empty dict extra must not be written onto the row."""
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    row = _job_row(_base_job(extra={}), "src-1")
+    assert "extra" not in row
+
+
+@patch("utils.db.extract_and_guard")
+def test_job_row_omits_truthy_non_dict_extra(mock_extract):
+    """Truthy non-dict extra values are ignored (not coerced)."""
+    mock_extract.return_value = _make_extraction()
+    from utils.db import _job_row
+
+    row = _job_row(_base_job(extra="not-a-dict"), "src-1")
+    assert "extra" not in row
+    row2 = _job_row(_base_job(extra=1), "src-1")
+    assert "extra" not in row2

@@ -224,11 +224,18 @@ def _listing_host(url: str | None) -> str | None:
 
 
 def is_cross_source_pair(left: dict, right: dict) -> bool:
-    """True when source_id or listing host evidence shows distinct boards."""
+    """True when reliable evidence shows distinct boards.
+
+    Same ``source_id`` means same Wev board even when apply hosts differ
+    (ATS apply URL vs board URL). Differing ``source_id`` is conclusive.
+    When board identity is unavailable, fall back to listing-host comparison
+    (aggregator / missing source rows). Uncertain pairs return False so they
+    stay human-reviewed rather than auto-skipping at the cross-source threshold.
+    """
     sid_a = left.get("source_id")
     sid_b = right.get("source_id")
-    if sid_a and sid_b and sid_a != sid_b:
-        return True
+    if sid_a and sid_b:
+        return sid_a != sid_b
     host_a = _listing_host(left.get("listing_url"))
     host_b = _listing_host(right.get("listing_url"))
     if host_a and host_b:

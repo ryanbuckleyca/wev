@@ -49,6 +49,16 @@ def test_parse_relative_posted_at_overflow_returns_none():
     assert parse_relative_posted_at(f"{10**12} days ago", now=now) is None
 
 
+def test_parse_relative_posted_at_oversized_digit_string_returns_none():
+    """Digit strings past sys.get_int_max_str_digits must not abort the scrape."""
+    import sys
+
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    limit = sys.get_int_max_str_digits() or 4300
+    huge = "9" * (limit + 50)
+    assert parse_relative_posted_at(f"{huge} days ago", now=now) is None
+
+
 def test_parse_localized_date_relative():
     """Cover parse localized date relative."""
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)

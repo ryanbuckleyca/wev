@@ -72,7 +72,6 @@ def parse_relative_posted_at(
     match = _RELATIVE_POSTED.match(str(s).strip())
     if not match:
         return None
-    amount = int(match.group(1))
     unit = match.group(2).lower()
     base = now or datetime.now(timezone.utc)
     if base.tzinfo is None:
@@ -80,6 +79,8 @@ def parse_relative_posted_at(
     else:
         base = base.astimezone(timezone.utc)
     try:
+        # ValueError: digit string exceeds sys.get_int_max_str_digits().
+        amount = int(match.group(1))
         delta = {
             "minute": timedelta(minutes=amount),
             "hour": timedelta(hours=amount),
@@ -89,7 +90,10 @@ def parse_relative_posted_at(
             "month": timedelta(days=30 * amount),
         }[unit]
         return base - delta
-    except OverflowError:
+    except (OverflowError, ValueError, KeyError):
+        # OverflowError: timedelta can't hold the span.
+        # ValueError: int conversion limit on oversized digit strings.
+        # KeyError: unknown unit (should not happen with the regex).
         return None
 
 

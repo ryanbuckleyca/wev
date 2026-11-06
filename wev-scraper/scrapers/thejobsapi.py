@@ -97,11 +97,32 @@ class TheJobsApiScraper(BaseApiScraper):
         for index, detail in enumerate(details):
             if self._max_jobs and len(self.jobs) >= self._max_jobs:
                 break
-            if (detail.get("country") or "").upper() not in ("CA", "CANADA", ""):
+            if not isinstance(detail, dict):
+                scraper_log(
+                    f"\t\tSkipping job {index + 1}: detail is "
+                    f"{type(detail).__name__}, expected dict"
+                )
+                continue
+            country_raw = detail.get("country")
+            if country_raw is None:
+                country = ""
+            elif isinstance(country_raw, str):
+                country = country_raw.upper()
+            else:
+                scraper_log(
+                    f"\t\tSkipping job {index + 1}: country is "
+                    f"{type(country_raw).__name__}, expected string"
+                )
+                continue
+            if country not in ("CA", "CANADA", ""):
                 # Empty country allowed if locations say CA
                 locs = detail.get("locations") or []
+                if not isinstance(locs, list):
+                    continue
                 if not any(
-                    isinstance(loc, dict) and (loc.get("country") or "").upper() == "CA"
+                    isinstance(loc, dict)
+                    and isinstance(loc.get("country"), str)
+                    and loc.get("country", "").upper() == "CA"
                     for loc in locs
                 ):
                     continue
