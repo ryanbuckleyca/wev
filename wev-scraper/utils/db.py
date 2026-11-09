@@ -256,11 +256,21 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
         "source_id": source_id if source_id is not None else job.get("source_id"),
     }
 
-    date_lo = date_hi = None
+    # jobs.date_posted is text. Established writer formats (see
+    # try_parse_job_date_posted): YYYY-MM-DD and ISO datetimes. Lexicographic
+    # bounds work for those; exclusive upper bound keeps same-day timestamps.
+    # NULL dates must stay eligible (dates_within treats missing as a match).
+    date_filter = None
     posted = parse_job_date(job.get("date_posted"))
     if posted is not None:
         date_lo = (posted - timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS)).isoformat()
-        date_hi = (posted + timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS)).isoformat()
+        date_hi_excl = (
+            posted + timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS + 1)
+        ).isoformat()
+        date_filter = (
+            f"date_posted.is.null,"
+            f"and(date_posted.gte.{date_lo},date_posted.lt.{date_hi_excl})"
+        )
 
     cursor_id = None
     for _ in range(_NEAR_DUPE_CANDIDATE_MAX_PAGES):
@@ -273,8 +283,8 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
         )
         for col, val in filters.items():
             query = query.eq(col, val)
-        if date_lo is not None and date_hi is not None:
-            query = query.gte("date_posted", date_lo).lte("date_posted", date_hi)
+        if date_filter is not None:
+            query = query.or_(date_filter)
         if cursor_id is not None:
             query = query.lt("id", cursor_id)
         resp = query.execute()

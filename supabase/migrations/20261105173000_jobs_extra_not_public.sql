@@ -26,14 +26,37 @@ begin
   end if;
 
   -- Column-level SELECT is a fixed snapshot of public.jobs columns at apply
-  -- time. Any future public.jobs column needs an explicit
-  -- GRANT SELECT (new_col) … TO anon, authenticated, and matched_jobs must be
-  -- rebuilt (same column list, still excluding extra) or clients will not see it.
+  -- time. After ADD COLUMN on public.jobs, call
+  -- public.maintain_jobs_public_column_grants() so anon/authenticated keep
+  -- SELECT on every non-extra column and matched_jobs is rebuilt without extra.
   revoke select on table public.jobs from anon, authenticated;
   execute format(
     'grant select (%s) on table public.jobs to anon, authenticated',
     cols
   );
+
+  -- Guard: column-level SELECT must be present after lockdown (table SELECT alone
+  -- would expose extra). Future ADD COLUMN: call maintain_jobs_public_column_grants().
+  if not exists (
+    select 1
+    from information_schema.column_privileges
+    where table_schema = 'public'
+      and table_name = 'jobs'
+      and grantee = 'anon'
+      and privilege_type = 'SELECT'
+      and column_name = 'id'
+  ) or not exists (
+    select 1
+    from information_schema.column_privileges
+    where table_schema = 'public'
+      and table_name = 'jobs'
+      and grantee = 'authenticated'
+      and privilege_type = 'SELECT'
+      and column_name = 'id'
+  ) then
+    raise exception
+      'jobs_extra_not_public: anon/authenticated lack column SELECT on public.jobs';
+  end if;
 end;
 $lockdown$;
 
@@ -87,3 +110,72 @@ begin
   $c$;
 end;
 $rebuild$;
+
+-- Maintenance hook for future public.jobs ADD COLUMN migrations (except extra):
+-- SELECT public.maintain_jobs_public_column_grants();
+create or replace function public.maintain_jobs_public_column_grants()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $fn$
+declare
+  cols text;
+  view_cols text;
+begin
+  select string_agg(format('%I', c.column_name), ', ' order by c.ordinal_position)
+    into cols
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'jobs'
+    and c.column_name <> 'extra';
+
+  if cols is null or cols = '' then
+    raise exception 'maintain_jobs_public_column_grants: failed to list jobs columns';
+  end if;
+
+  revoke select on table public.jobs from anon, authenticated;
+  execute format(
+    'grant select (%s) on table public.jobs to anon, authenticated',
+    cols
+  );
+  grant select (extra), insert (extra), update (extra) on table public.jobs to service_role;
+
+  select string_agg(format('j.%I', c.column_name), ', ' order by c.ordinal_position)
+    into view_cols
+  from information_schema.columns c
+  where c.table_schema = 'public'
+    and c.table_name = 'jobs'
+    and c.column_name <> 'extra';
+
+  execute 'drop view if exists public.matched_jobs';
+  execute format(
+    $v$
+    create view public.matched_jobs with (security_invoker = true) as
+    select
+      %s,
+      s.name as source,
+      o.type as org_type,
+      o.sector_id as org_sector_id,
+      coalesce(jm.score, 0) as match_score,
+      coalesce(jm.value_score, 0) as value_score,
+      coalesce(jm.skill_score, 0) as skill_score
+    from public.jobs j
+    left join public.sources s on j.source_id = s.id
+    left join public.organizations o on j.organization_id = o.id
+    left join public.job_matches jm
+      on j.id = jm.job_id
+      and jm.user_id = auth.uid()
+    $v$,
+    view_cols
+  );
+  grant select on public.matched_jobs to anon, authenticated, service_role;
+end;
+$fn$;
+
+comment on function public.maintain_jobs_public_column_grants() is
+  'Re-grant anon/authenticated SELECT on all public.jobs columns except extra, '
+  'and rebuild matched_jobs without extra. Call after ADD COLUMN on public.jobs.';
+
+revoke all on function public.maintain_jobs_public_column_grants() from public, anon, authenticated;
+grant execute on function public.maintain_jobs_public_column_grants() to service_role;

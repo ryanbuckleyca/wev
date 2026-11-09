@@ -262,7 +262,11 @@ def test_apify_start_does_not_recover_uncorrelated_succeeded(monkeypatch):
             raised = False
         except RuntimeError as e:
             raised = True
-            assert "uncertain" in str(e).lower()
+            msg = str(e).lower()
+            assert "uncertain" in msg
+            assert "do not retry" in msg
+            assert "timed out" not in msg
+            assert "connection" not in msg
     assert raised
 
 

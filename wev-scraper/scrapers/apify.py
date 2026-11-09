@@ -189,9 +189,11 @@ class ApifyJobBankScraper(BaseApiScraper):
                 )
                 return recovered
             # No reliable correlation — do not abort or consume an unrelated run.
+            # Keep ``from e`` for the traceback; omit ``e`` from the message so
+            # transient connection text is not treated as a safe orchestrator retry.
             raise RuntimeError(
-                f"Failed to start Apify Job Bank run (uncertain; no correlated "
-                f"run to recover): {e}"
+                "Uncertain Apify Job Bank start: no correlated run to recover. "
+                "Do not retry — a paid actor run may already exist."
             ) from e
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
