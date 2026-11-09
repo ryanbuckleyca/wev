@@ -32,6 +32,14 @@ from utils.log import scraper_log
 TJA_BASE = "https://api.thejobsapi.com"
 # Documented /v1/jobs window values (first-collected window).
 _VALID_WINDOWS = frozenset({"1h", "24h", "7d", "30d", "6m"})
+# Default ATS allowlist when TJA_SOURCES is unset (employer career pages only).
+_DEFAULT_TJA_SOURCES = (
+    "workday,greenhouse,icims,dayforce,lever,ashby,bamboohr"
+)
+# Stop after this many consecutive list pages with no dict rows.
+_EMPTY_PAGE_LIMIT = 3
+# Location country values that confirm Canada (not US state "CA").
+_CA_LOCATION_COUNTRIES = frozenset({"CA", "CAN", "CANADA"})
 
 
 def window_for_within_weeks(weeks: int) -> str:
@@ -105,27 +113,22 @@ class TheJobsApiScraper(BaseApiScraper):
                 continue
             country_raw = detail.get("country")
             if country_raw is None:
-                country = ""
+                country = None
             elif isinstance(country_raw, str):
-                country = country_raw.upper()
+                country = country_raw.strip().upper() or None
             else:
                 scraper_log(
                     f"\t\tSkipping job {index + 1}: country is "
                     f"{type(country_raw).__name__}, expected string"
                 )
                 continue
-            if country not in ("CA", "CANADA", ""):
-                # Empty country allowed if locations say CA
-                locs = detail.get("locations") or []
-                if not isinstance(locs, list):
-                    continue
-                if not any(
-                    isinstance(loc, dict)
-                    and isinstance(loc.get("country"), str)
-                    and loc.get("country", "").upper() == "CA"
-                    for loc in locs
-                ):
-                    continue
+            if country in ("CA", "CANADA", "CAN"):
+                pass
+            elif self._locations_confirm_canada(detail.get("locations")):
+                # Missing/non-CA top-level country OK only when locations prove CA.
+                pass
+            else:
+                continue
             job_dict, _ = self._process_record(detail, index, weeks=weeks)
             if job_dict:
                 self.jobs.append(job_dict)
@@ -136,11 +139,20 @@ class TheJobsApiScraper(BaseApiScraper):
         limit = self._max_jobs or get_int_env("TJA_MAX_ITEMS") or 50
         window = self.resolve_window()
         country = (os.environ.get("TJA_COUNTRY") or "CA").strip() or "CA"
-        sources = (os.environ.get("TJA_SOURCES") or "").strip()
+        # Blank/unset → ATS defaults; explicit TJA_SOURCES (incl. empty-with-spaces
+        # after strip already handled) overrides.
+        sources_env = os.environ.get("TJA_SOURCES")
+        if sources_env is None:
+            sources = _DEFAULT_TJA_SOURCES
+        else:
+            sources = sources_env.strip()
+            if not sources:
+                sources = _DEFAULT_TJA_SOURCES
 
         collected: list[dict[str, Any]] = []
         cursor: str | None = None
         page = 0
+        empty_pages = 0
         while len(collected) < limit:
             page_size = min(limit - len(collected), 100)
             params: dict[str, Any] = {
@@ -151,9 +163,8 @@ class TheJobsApiScraper(BaseApiScraper):
                 "window": window,
                 # Prefer full text on the list so we can skip per-id detail calls.
                 "description": "text",
+                "source": sources,
             }
-            if sources:
-                params["source"] = sources
             if cursor:
                 params["cursor"] = cursor
 
@@ -177,11 +188,25 @@ class TheJobsApiScraper(BaseApiScraper):
             batch = payload.get("jobs") or payload.get("data") or []
             if not isinstance(batch, list):
                 raise RuntimeError("TJA list response jobs was not an array")
+            page_dicts = 0
             for job in batch:
                 if not isinstance(job, dict):
                     continue
+                page_dicts += 1
                 collected.append(job)
                 if len(collected) >= limit:
+                    break
+
+            if page_dicts:
+                empty_pages = 0
+            else:
+                empty_pages += 1
+                if empty_pages >= _EMPTY_PAGE_LIMIT:
+                    scraper_log(
+                        f"\tWarning: stopping TJA pagination after "
+                        f"{empty_pages} consecutive pages with no valid records "
+                        f"(keeping {len(collected)} job(s))"
+                    )
                     break
 
             next_cursor = payload.get("next_cursor")
@@ -194,6 +219,21 @@ class TheJobsApiScraper(BaseApiScraper):
             time.sleep(0.2)
 
         return self._ensure_job_details(collected[:limit])
+
+    @staticmethod
+    def _locations_confirm_canada(locs: Any) -> bool:
+        """True when a location ``country`` is a clear Canada code (not US state)."""
+        if not isinstance(locs, list):
+            return False
+        for loc in locs:
+            if not isinstance(loc, dict):
+                continue
+            raw = loc.get("country")
+            if not isinstance(raw, str):
+                continue
+            if raw.strip().upper() in _CA_LOCATION_COUNTRIES:
+                return True
+        return False
 
     def _ensure_job_details(self, jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Hydrate list rows that lack a description via GET /v1/jobs/{id}."""

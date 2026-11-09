@@ -3,12 +3,12 @@
 -- production sources are unchanged — this only inserts missing rows.
 --
 -- Matches supabase/seed.sql rows for headcount + cost-waterfall APIs.
--- Conflict on url (sources_url_key): local db reset runs this migration then
--- seed.sql, so both paths must be idempotent on the same unique key.
+-- Untargeted ON CONFLICT DO NOTHING: retain existing rows on either
+-- sources_url_key or sources_slug_key (local db reset runs this then seed).
 
 INSERT INTO public.sources (name, slug, url)
 VALUES ('Headcount Labs', 'headcount', 'https://api.headcountlabs.com/v1/jobs')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.sources (name, slug, url)
 VALUES
@@ -20,4 +20,4 @@ VALUES
   ),
   ('The Jobs API', 'thejobsapi', 'https://api.thejobsapi.com/v1/jobs'),
   ('TheirStack', 'theirstack', 'https://api.theirstack.com/v1/jobs/search')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;

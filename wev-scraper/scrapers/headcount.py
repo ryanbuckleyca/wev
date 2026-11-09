@@ -179,10 +179,12 @@ class HeadcountLabsScraper(BaseApiScraper):
                 # Keep jobs from earlier pages so the orchestrator can still
                 # save/compare them rather than discarding the whole run.
                 if self.jobs:
-                    scraper_log(
-                        f"\tStopping Headcount pagination after fetch error "
+                    msg = (
+                        f"Stopping Headcount pagination after fetch error "
                         f"(keeping {len(self.jobs)} job(s)): {e}"
                     )
+                    scraper_log(f"\t{msg}")
+                    self.fetch_warnings.append(msg)
                     break
                 raise
             pages_fetched += 1
@@ -328,10 +330,11 @@ class HeadcountLabsScraper(BaseApiScraper):
         location = self._location_text(record)
         wage = self._wage_text(record)
         employment_type = self._employment_type(record)
-        date_posted = self._date_posted(record)
+        selected_posting = self._selected_live_posting(record)
+        date_posted = self._date_posted(record, selected_posting=selected_posting)
         website = self._organization_website(record)
 
-        return {
+        fields: dict[str, Any] = {
             "job_title": title,
             "organization": organization,
             "listing_url": listing_url,
@@ -342,6 +345,32 @@ class HeadcountLabsScraper(BaseApiScraper):
             "date_posted": date_posted,
             "website": website,
         }
+        work_type, is_remote = self._work_arrangement(record)
+        if work_type is not None:
+            fields["work_type"] = work_type
+            fields["is_remote"] = is_remote
+        return fields
+
+    def _work_arrangement(
+        self, record: dict[str, Any]
+    ) -> tuple[str | None, bool | None]:
+        """Map Headcount ``work_arrangement`` to work_type / is_remote when known."""
+        raw = _state_value(record.get("work_arrangement"))
+        if not isinstance(raw, str) or not raw.strip():
+            return None, None
+        key = raw.strip().lower().replace("-", "_").replace(" ", "_")
+        mapping = {
+            "remote": ("remote", True),
+            "hybrid": ("hybrid", False),
+            "in_person": ("onsite", False),
+            "onsite": ("onsite", False),
+            "on_site": ("onsite", False),
+            "office": ("onsite", False),
+        }
+        hit = mapping.get(key)
+        if not hit:
+            return None, None
+        return hit
 
     def _organization_name(self, record: dict[str, Any]) -> str | None:
         """Prefer company.name, then employer_name state field."""
@@ -366,8 +395,8 @@ class HeadcountLabsScraper(BaseApiScraper):
                 return value.strip()
         return None
 
-    def _listing_url(self, record: dict[str, Any]) -> str | None:
-        """First live posting URL; skip ``no_longer_listed`` postings."""
+    def _selected_live_posting(self, record: dict[str, Any]) -> dict[str, Any] | None:
+        """First live posting with a usable URL (skip ``no_longer_listed``)."""
         postings = record.get("postings") or []
         if not isinstance(postings, list):
             return None
@@ -380,7 +409,18 @@ class HeadcountLabsScraper(BaseApiScraper):
             for key in ("posting_url", "application_url"):
                 url = _state_value(posting.get(key))
                 if isinstance(url, str) and url.strip():
-                    return url.strip()
+                    return posting
+        return None
+
+    def _listing_url(self, record: dict[str, Any]) -> str | None:
+        """URL from the selected live posting."""
+        posting = self._selected_live_posting(record)
+        if not posting:
+            return None
+        for key in ("posting_url", "application_url"):
+            url = _state_value(posting.get(key))
+            if isinstance(url, str) and url.strip():
+                return url.strip()
         return None
 
     def _location_text(self, record: dict[str, Any]) -> str | None:
@@ -432,16 +472,18 @@ class HeadcountLabsScraper(BaseApiScraper):
                     return str(emp).lower().replace("_", "-").replace(" ", "-")
         return None
 
-    def _date_posted(self, record: dict[str, Any]) -> str | None:
-        """Prefer source_posted_at, then Headcount first-seen / updated stamps."""
-        postings = record.get("postings") or []
-        if isinstance(postings, list):
-            for posting in postings:
-                if not isinstance(posting, dict):
-                    continue
-                posted = posting.get("source_posted_at")
-                if posted:
-                    return str(posted)
+    def _date_posted(
+        self,
+        record: dict[str, Any],
+        *,
+        selected_posting: dict[str, Any] | None = None,
+    ) -> str | None:
+        """Prefer ``source_posted_at`` from the same posting that supplied the URL."""
+        posting = selected_posting if selected_posting is not None else self._selected_live_posting(record)
+        if isinstance(posting, dict):
+            posted = posting.get("source_posted_at")
+            if posted:
+                return str(posted)
         for key in ("job_first_seen_at", "job_updated_at", "curated_at"):
             value = record.get(key)
             if value:

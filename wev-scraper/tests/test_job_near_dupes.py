@@ -387,8 +387,8 @@ def test_confident_dupe_cross_source_same_host_via_source_id():
     assert is_confident_duplicate_pair(left, right)
 
 
-def test_same_source_id_distinct_hosts_is_not_cross_source():
-    """Same source_id is the board identity — differing apply hosts are not cross-source."""
+def test_same_source_id_known_board_hosts_is_cross_source():
+    """Same aggregator source_id + distinct known boards (Indeed vs LinkedIn)."""
     from utils.job_near_dupes import description_ratio, is_cross_source_pair
 
     body, rewritten = _moderate_cross_source_bodies()
@@ -410,11 +410,25 @@ def test_same_source_id_distinct_hosts_is_not_cross_source():
         "description": rewritten,
         "source_id": "aggregator",
     }
-    assert not is_cross_source_pair(left, right)
+    assert is_cross_source_pair(left, right)
     ratio = description_ratio(left["description"], right["description"])
     assert 0.70 <= ratio < 0.90
-    # Without cross-source threshold, moderate rewrite stays human-reviewed.
-    assert not is_confident_duplicate_pair(left, right)
+    assert is_confident_duplicate_pair(left, right)
+
+
+def test_same_source_id_unknown_apply_hosts_is_not_cross_source():
+    """Same source_id with ATS/apply hosts alone is not conclusive cross-board."""
+    from utils.job_near_dupes import is_cross_source_pair
+
+    left = {
+        "listing_url": "https://boards.greenhouse.io/example/jobs/1",
+        "source_id": "aggregator",
+    }
+    right = {
+        "listing_url": "https://jobs.lever.co/example/abc",
+        "source_id": "aggregator",
+    }
+    assert not is_cross_source_pair(left, right)
 
 
 def test_cross_source_uses_hosts_when_source_id_missing():

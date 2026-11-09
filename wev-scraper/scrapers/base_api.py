@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +65,8 @@ class BaseApiScraper:
         self.scraped_urls: set[str] = set()
         self.jobs: list[dict[str, Any]] = []
         self._max_jobs = get_int_env("MAX_JOBS_PER_SOURCE")
+        # Soft failures (e.g. Headcount mid-pagination) for the source summary.
+        self.fetch_warnings: list[str] = []
 
     def get_sample_path(self) -> str | None:
         """Return the first configured offline sample path, if any."""
@@ -119,7 +122,9 @@ class BaseApiScraper:
         """True when ``MAX_JOBS_PER_SOURCE`` has been reached."""
         return self._max_jobs is not None and len(self.jobs) >= self._max_jobs
 
-    def _prepare_date_posted(self, fields: dict[str, Any]) -> None:
+    def _prepare_date_posted(
+        self, fields: dict[str, Any], *, now: datetime | None = None
+    ) -> None:
         """Optional hook to coerce ``date_posted`` before the recency check."""
 
     def _should_stop_before_accept(
@@ -195,11 +200,7 @@ class BaseApiScraper:
             self.skipped_duplicates += 1
             return None, False
 
-        if compare_only and norm_url not in self.existing_urls:
-            scraper_log(
-                f"\t\tSkipping job {index + 1} ({listing_url}): new URL (compare-only mode)"
-            )
-            return None, False
+        # Compare-only keeps new URLs so the orchestrator can report [NEW] counts.
 
         if norm_url in self.scraped_urls:
             scraper_log(f"\t\tSkipping job {index + 1} ({listing_url}): already scraped")
@@ -212,12 +213,14 @@ class BaseApiScraper:
             self.scraped_urls.add(norm_url)
 
         original_date = fields.get("date_posted")
-        self._prepare_date_posted(fields)
+        # Shared clock for relative-date rewrite + inclusive recency cutoff.
+        now = datetime.now(timezone.utc)
+        self._prepare_date_posted(fields, now=now)
         date_str = fields.get("date_posted")
         title = fields.get("job_title", "Unknown")
         lang = self.language or "en"
         if date_str:
-            if not is_recent_job(str(date_str), weeks=weeks, lang=lang):
+            if not is_recent_job(str(date_str), weeks=weeks, lang=lang, now=now):
                 scraper_log(f"\t\tSkipping outdated job {index + 1}: '{title}'")
                 if self.is_chronological:
                     scraper_log(
@@ -231,7 +234,7 @@ class BaseApiScraper:
             # (e.g. SerpApi ``3 days ago`` → ISO date).
             if date_str == original_date:
                 try:
-                    dt = _parse_localized_date(str(date_str), lang=lang)
+                    dt = _parse_localized_date(str(date_str), lang=lang, now=now)
                     fields["date_posted"] = dt.isoformat()
                 except Exception:
                     pass
@@ -260,4 +263,11 @@ class BaseApiScraper:
         payload["website"] = fields.get("website") or fields.get("organization_website")
         payload["source_dump"] = record
 
-        return normalize_job_data(payload), False
+        try:
+            return normalize_job_data(payload), False
+        except (TypeError, AttributeError, ValueError, KeyError) as e:
+            scraper_log(
+                f"\t\tSkipping job {index + 1}: normalize failed "
+                f"({type(e).__name__}: {e})"
+            )
+            return None, False

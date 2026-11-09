@@ -161,6 +161,8 @@ class ApifyJobBankScraper(BaseApiScraper):
         """
         # Accept immediately; polling happens in ``_wait_for_run_terminal``.
         run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish=0"
+        # Correlation floor for recovery: only adopt a run started at/after this.
+        attempt_started = time.time()
         try:
             with requests.post(
                 run_url,
@@ -177,22 +179,27 @@ class ApifyJobBankScraper(BaseApiScraper):
             # Server responded — start was rejected; safe for orchestrator retry.
             raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
         except (requests.Timeout, requests.ConnectionError) as e:
-            recovered = self._recover_recent_run(actor)
+            recovered = self._recover_correlated_run(
+                actor, started_after=attempt_started
+            )
             if recovered:
                 scraper_log(
                     f"\tRecovered Apify run {recovered.get('id')} after uncertain "
                     f"start ({type(e).__name__})"
                 )
                 return recovered
+            # No reliable correlation — do not abort or consume an unrelated run.
             raise RuntimeError(
-                f"Failed to start Apify Job Bank run (uncertain; no recent run "
-                f"found to recover): {e}"
+                f"Failed to start Apify Job Bank run (uncertain; no correlated "
+                f"run to recover): {e}"
             ) from e
         except requests.RequestException as e:
             raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
 
-    def _recover_recent_run(self, actor: str) -> dict[str, Any] | None:
-        """Return a very recent actor run if one likely belongs to a timed-out start."""
+    def _recover_correlated_run(
+        self, actor: str, *, started_after: float
+    ) -> dict[str, Any] | None:
+        """Adopt a non-terminal run only when its start time correlates to this attempt."""
         list_url = f"{APIFY_API_BASE}/acts/{actor}/runs?limit=5&desc=1"
         try:
             with requests.get(
@@ -209,8 +216,8 @@ class ApifyJobBankScraper(BaseApiScraper):
         items = payload.get("data", {}).get("items")
         if not isinstance(items, list):
             items = payload.get("data") if isinstance(payload.get("data"), list) else []
-        # Only adopt a run started within the last two minutes.
-        cutoff = time.time() - 120
+        # Small skew allowance for clock differences between client and Apify.
+        floor = started_after - 5
         for item in items:
             if not isinstance(item, dict) or not item.get("id"):
                 continue
@@ -218,14 +225,14 @@ class ApifyJobBankScraper(BaseApiScraper):
             if not isinstance(started, str):
                 continue
             try:
-                # Apify returns ISO-8601 UTC timestamps.
                 started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
-                if started_dt.timestamp() < cutoff:
+                if started_dt.timestamp() < floor:
                     continue
             except ValueError:
                 continue
             status = item.get("status")
-            if status in _TERMINAL_RUN_STATUSES and status != "SUCCEEDED":
+            # Only non-terminal — a prior SUCCEEDED run is not this start attempt.
+            if status in _TERMINAL_RUN_STATUSES:
                 continue
             return item
         return None
@@ -256,6 +263,7 @@ class ApifyJobBankScraper(BaseApiScraper):
             return run
 
         deadline = time.monotonic() + max(0, total_wait_secs)
+        consecutive_poll_failures = 0
         while time.monotonic() < deadline:
             remaining = max(0, int(deadline - time.monotonic()))
             wait_param = min(remaining, _API_WAIT_FOR_FINISH_MAX)
@@ -272,10 +280,21 @@ class ApifyJobBankScraper(BaseApiScraper):
                 ) as response:
                     response.raise_for_status()
                     run = response.json().get("data") or run
+                consecutive_poll_failures = 0
             except requests.RequestException as e:
-                raise RuntimeError(
-                    f"Failed to poll Apify Job Bank run {run_id}: {e}"
-                ) from e
+                consecutive_poll_failures += 1
+                scraper_log(
+                    f"\tWarning: poll failed for Apify run {run_id} "
+                    f"({consecutive_poll_failures}/3): {e}"
+                )
+                if consecutive_poll_failures >= 3:
+                    # Keep ownership of the known run — abort before propagating.
+                    self._abort_run(str(run_id))
+                    raise RuntimeError(
+                        f"Failed to poll Apify Job Bank run {run_id}: {e}"
+                    ) from e
+                time.sleep(min(2, max(0, deadline - time.monotonic())))
+                continue
             status = run.get("status")
             if status in _TERMINAL_RUN_STATUSES:
                 return run

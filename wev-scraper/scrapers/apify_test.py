@@ -223,3 +223,44 @@ def test_apify_start_recovers_recent_run_after_timeout(monkeypatch):
             "getascraper~jobbank-scraper", {"maxItems": 1}
         )
     assert run["id"] == "run-recovered"
+
+
+def test_apify_start_does_not_recover_uncorrelated_succeeded(monkeypatch):
+    """A prior SUCCEEDED run must not be adopted after an uncertain start."""
+    from datetime import datetime, timezone, timedelta
+
+    import requests
+
+    monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
+    scraper = _scraper()
+    started = (datetime.now(timezone.utc) - timedelta(seconds=30)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000Z"
+    )
+    list_resp = _JsonResp(
+        {
+            "data": {
+                "items": [
+                    {
+                        "id": "old-success",
+                        "status": "SUCCEEDED",
+                        "startedAt": started,
+                        "defaultDatasetId": "ds-old",
+                    }
+                ]
+            }
+        }
+    )
+    with (
+        patch(
+            "scrapers.apify.requests.post",
+            side_effect=requests.Timeout("start timed out"),
+        ),
+        patch("scrapers.apify.requests.get", return_value=list_resp),
+    ):
+        try:
+            scraper._start_actor_run("getascraper~jobbank-scraper", {"maxItems": 1})
+            raised = False
+        except RuntimeError as e:
+            raised = True
+            assert "uncertain" in str(e).lower()
+    assert raised

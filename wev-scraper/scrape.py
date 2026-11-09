@@ -339,6 +339,9 @@ class ScraperOrchestrator:
             _log(f"Found {len(jobs)} jobs.")
 
             source_summary = self._save_or_compare_jobs(jobs, source)
+            warnings = getattr(scraper, "fetch_warnings", None) or []
+            if warnings:
+                source_summary["warnings"] = list(warnings)
             self.results.summary.append(source_summary)
 
             if "job_ids" in source_summary:

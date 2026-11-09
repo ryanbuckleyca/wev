@@ -493,6 +493,8 @@ _MATCH_RELEVANT_KEYS = frozenset({
     "municipality",
     "province",
     "geocode_accuracy_type",
+    # Enqueue when SSE flips even before DB trigger watches is_sse.
+    "is_sse",
 })
 
 

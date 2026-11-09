@@ -110,18 +110,28 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
                     ) as response:
                         response.raise_for_status()
                         payload = response.json()
-                except requests.RequestException as e:
-                    raise RuntimeError(f"SerpApi Google Jobs request failed: {e}") from e
+                except requests.RequestException:
+                    # Never chain/include the exception — params embed api_key.
+                    raise RuntimeError(
+                        "SerpApi Google Jobs request failed "
+                        "(network or HTTP error; API key redacted)"
+                    ) from None
                 if payload.get("error"):
                     scraper_log(f"\t\tSerpApi error: {payload.get('error')}")
                     break
                 batch = payload.get("jobs_results") or []
+                weeks = get_within_weeks()
                 for job in batch:
                     if not isinstance(job, dict):
                         continue
+                    if not self._serpapi_record_is_recent(job, weeks=weeks):
+                        continue
                     dedupe = str(job.get("job_id") or job.get("share_link") or "")
                     if not dedupe:
-                        dedupe = f"{job.get('title')}|{job.get('company_name')}|{job.get('location')}"
+                        dedupe = (
+                            f"{job.get('title')}|{job.get('company_name')}|"
+                            f"{job.get('location')}"
+                        )
                     by_key.setdefault(dedupe, job)
                 next_token = (payload.get("serpapi_pagination") or {}).get("next_page_token")
                 if not next_token or not batch:
@@ -129,17 +139,37 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
                 scraper_log(f"\t\tpage {page + 1}: +{len(batch)} (unique={len(by_key)})")
         return list(by_key.values())[:limit]
 
-    def _prepare_date_posted(self, fields: dict[str, Any]) -> None:
+    def _serpapi_record_is_recent(self, job: dict[str, Any], *, weeks: int) -> bool:
+        """True when the listing has no posted_at signal or it passes the cutoff."""
+        from utils.date_utils import is_recent_job
+
+        detected = job.get("detected_extensions") or {}
+        posted = detected.get("posted_at") if isinstance(detected, dict) else None
+        if not posted:
+            for ext in job.get("extensions") or []:
+                if isinstance(ext, str) and re.search(
+                    r"\b(ago|day|hour|week|month)\b", ext, re.I
+                ):
+                    posted = ext
+                    break
+        if not posted:
+            return True
+        return is_recent_job(str(posted), weeks=weeks, lang=self.language or "en")
+
+    def _prepare_date_posted(
+        self, fields: dict[str, Any], *, now=None
+    ) -> None:
         """Resolve SerpApi relative strings to a full timestamp before recency.
 
         Keep the time component so ``is_recent_job``'s inclusive cutoff is not
         undermined by date-only truncation; ``normalize_date`` shortens to
-        ``YYYY-MM-DD`` only after the job is accepted.
+        ``YYYY-MM-DD`` only after the job is accepted. ``now`` must match the
+        clock passed to ``is_recent_job`` for boundary stability.
         """
         date_str = fields.get("date_posted")
         if not date_str:
             return
-        relative = parse_relative_posted_at(str(date_str))
+        relative = parse_relative_posted_at(str(date_str), now=now)
         if relative is not None:
             fields["date_posted"] = relative.isoformat()
 

@@ -152,8 +152,18 @@ def _parse_localized_date(
         raise
 
 
-def is_recent_job(date_posted_str: str | None, weeks: int = 2, lang: str | None = None) -> bool:
-    """Return True if job is within `weeks` weeks, False if older or invalid."""
+def is_recent_job(
+    date_posted_str: str | None,
+    weeks: int = 2,
+    lang: str | None = None,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """Return True if job is within `weeks` weeks, False if older or invalid.
+
+    Pass a shared ``now`` when the caller already resolved a relative timestamp
+    against the same clock (avoids boundary drift vs ``_prepare_date_posted``).
+    """
     if date_posted_str is None:
         print("\tNotice: No date provided, skipping date check.")
         return False
@@ -161,7 +171,12 @@ def is_recent_job(date_posted_str: str | None, weeks: int = 2, lang: str | None 
     is_recent = False
     try:
         # One reference time for relative parse + cutoff so inclusive edges stay stable.
-        now = datetime.now(timezone.utc)
+        if now is None:
+            now = datetime.now(timezone.utc)
+        elif now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+        else:
+            now = now.astimezone(timezone.utc)
         lang_to_use = lang or "en"
         date_posted = _parse_localized_date(date_posted_str, lang=lang_to_use, now=now)
         # Normalize to aware UTC to avoid naive/aware comparison errors.

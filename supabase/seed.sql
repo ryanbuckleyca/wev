@@ -1,19 +1,19 @@
 -- Local seed. Migrations may already provision some of these rows
--- (e.g. 20261108120000_seed_canada_api_sources); url/slug conflicts are no-ops.
+-- (e.g. 20261108120000_seed_canada_api_sources); any unique conflict is a no-op.
 
 INSERT INTO public.sources (name, slug, url)
 VALUES ('Work in Culture', 'workinculture', 'https://workinculture.ca/job-search/')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.sources (name, slug, url)
 VALUES
   ('WorkInNonProfits Volunteer', 'winpvol', 'https://workinnonprofits.ca/volunteer-jobs/search'),
   ('WorkInNonProfits Jobs', 'winpjobs', 'https://workinnonprofits.ca/jobs/search')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO public.sources (name, slug, url)
 VALUES ('Headcount Labs', 'headcount', 'https://api.headcountlabs.com/v1/jobs')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- Canada cost waterfall API sources (opt-in only — scrape skips these unless
 -- ``--source <slug>`` / ``--apis``: serpapi | apify | thejobsapi | theirstack).
@@ -29,4 +29,4 @@ VALUES
   ),
   ('The Jobs API', 'thejobsapi', 'https://api.thejobsapi.com/v1/jobs'),
   ('TheirStack', 'theirstack', 'https://api.theirstack.com/v1/jobs/search')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;

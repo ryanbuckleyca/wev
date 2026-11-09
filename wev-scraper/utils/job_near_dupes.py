@@ -183,22 +183,40 @@ def cities_same(left: dict, right: dict) -> bool:
     """True when both sides have a city and they agree.
 
     When both rows carry a province, same-named cities in different provinces
-    are not treated as equal (London ON vs London?).
+    are not treated as equal (London ON vs London?). Absent provinces stay
+    comparable; a present but unnormalizable province is uncertain → False.
     """
     a = job_city_key(left)
     b = job_city_key(right)
     if not (a and b and a == b):
         return False
-    pa = _normalize_ca_province_code(left.get("province"))
-    pb = _normalize_ca_province_code(right.get("province"))
+    raw_pa = left.get("province")
+    raw_pb = right.get("province")
+    pa = _normalize_ca_province_code(raw_pa)
+    pb = _normalize_ca_province_code(raw_pb)
     if pa and pb and pa != pb:
+        return False
+    # Present text that did not normalize → leave for human review.
+    if (isinstance(raw_pa, str) and raw_pa.strip() and not pa) or (
+        isinstance(raw_pb, str) and raw_pb.strip() and not pb
+    ):
         return False
     return True
 
 
 # Apex hosts whose ``cc.`` regional subdomains (e.g. ca.indeed.com) are the
 # same board as the apex for cross-source evidence.
-_BOARD_APEX_HOSTS = frozenset({"indeed.com", "linkedin.com"})
+_BOARD_APEX_HOSTS = frozenset({"indeed.com", "linkedin.com", "glassdoor.com"})
+
+# Known public job-board hosts for aggregator cross-board detection.
+_KNOWN_BOARD_HOSTS = frozenset(
+    {
+        "indeed.com",
+        "linkedin.com",
+        "glassdoor.com",
+        "glassdoor.ca",
+    }
+)
 
 
 def _listing_host(url: str | None) -> str | None:
@@ -226,18 +244,28 @@ def _listing_host(url: str | None) -> str | None:
 def is_cross_source_pair(left: dict, right: dict) -> bool:
     """True when reliable evidence shows distinct boards.
 
-    Same ``source_id`` means same Wev board even when apply hosts differ
-    (ATS apply URL vs board URL). Differing ``source_id`` is conclusive.
-    When board identity is unavailable, fall back to listing-host comparison
-    (aggregator / missing source rows). Uncertain pairs return False so they
-    stay human-reviewed rather than auto-skipping at the cross-source threshold.
+    Differing ``source_id`` is conclusive. Same aggregator ``source_id`` still
+    counts as cross-board when both listing hosts are *known* public job boards
+    (Indeed vs LinkedIn). Differing apply/ATS or unknown hosts alone do not.
+    When board identity is unavailable, fall back to listing-host comparison.
+    Uncertain pairs return False for human review.
     """
     sid_a = left.get("source_id")
     sid_b = right.get("source_id")
-    if sid_a and sid_b:
-        return sid_a != sid_b
     host_a = _listing_host(left.get("listing_url"))
     host_b = _listing_host(right.get("listing_url"))
+    if sid_a and sid_b:
+        if sid_a != sid_b:
+            return True
+        if (
+            host_a
+            and host_b
+            and host_a in _KNOWN_BOARD_HOSTS
+            and host_b in _KNOWN_BOARD_HOSTS
+            and host_a != host_b
+        ):
+            return True
+        return False
     if host_a and host_b:
         return host_a != host_b
     return False

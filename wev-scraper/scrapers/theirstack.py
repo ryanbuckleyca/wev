@@ -147,10 +147,22 @@ class TheirStackScraper(BaseApiScraper):
             except requests.RequestException as e:
                 raise RuntimeError(f"TheirStack search failed: {e}") from e
 
-            batch = payload.get("data") or []
-            if not batch:
+            batch = payload.get("data")
+            if batch is None or batch == []:
                 break
-            collected.extend(j for j in batch if isinstance(j, dict))
+            if not isinstance(batch, list):
+                raise RuntimeError(
+                    "TheirStack search `data` must be a list, "
+                    f"got {type(batch).__name__}"
+                )
+            dict_rows = [j for j in batch if isinstance(j, dict)]
+            # Full page with no objects would otherwise re-request the same offset.
+            if not dict_rows:
+                raise RuntimeError(
+                    "TheirStack search page contained no object entries "
+                    f"(batch_len={len(batch)}, offset={body.get('offset')})"
+                )
+            collected.extend(dict_rows)
             if len(batch) < need:
                 break
         return collected[:limit]
@@ -243,19 +255,17 @@ class TheirStackScraper(BaseApiScraper):
             "_source_job_id": record.get("id"),
             "_source_url": record.get("source_url"),
         }
-        # Only classify when TheirStack sent workplace flags; missing keys leave
-        # inference to location parsing instead of a false onsite default.
-        has_remote = "remote" in record
-        has_hybrid = "hybrid" in record
-        if has_remote or has_hybrid:
-            if record.get("remote") is True:
-                fields["is_remote"] = True
-                fields["work_type"] = "remote"
-            elif record.get("hybrid") is True:
-                fields["is_remote"] = False
-                fields["work_type"] = "hybrid"
-            else:
-                fields["is_remote"] = False
-                fields["work_type"] = "onsite"
+        # Explicit true/false flags classify; both null/missing leave inference.
+        remote_val = record.get("remote") if "remote" in record else None
+        hybrid_val = record.get("hybrid") if "hybrid" in record else None
+        if remote_val is True:
+            fields["is_remote"] = True
+            fields["work_type"] = "remote"
+        elif hybrid_val is True:
+            fields["is_remote"] = False
+            fields["work_type"] = "hybrid"
+        elif remote_val is False or hybrid_val is False:
+            fields["is_remote"] = False
+            fields["work_type"] = "onsite"
         return fields
 

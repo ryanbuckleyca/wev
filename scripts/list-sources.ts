@@ -23,6 +23,40 @@ function loadExplicitOnlySlugs(): Set<string> {
   return new Set(raw);
 }
 
+/** Mirrors wev-scraper SOURCE_NAME_TO_SLUG for opt-in API sources (null slug). */
+const API_SOURCE_NAME_TO_SLUG: Record<string, string> = {
+  serpapi: "serpapi",
+  "google jobs": "serpapi",
+  "serpapi google jobs": "serpapi",
+  apify: "apify",
+  "apify job bank": "apify",
+  "apify (canada job bank)": "apify",
+  jobbank: "apify",
+  "job bank": "apify",
+  "canada job bank": "apify",
+  "canada job bank (apify)": "apify",
+  thejobsapi: "thejobsapi",
+  "the jobs api": "thejobsapi",
+  tja: "thejobsapi",
+  theirstack: "theirstack",
+};
+
+function normalizeSourceName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isExplicitOnlySource(
+  row: { name?: string | null; slug?: string | null },
+  explicitOnly: Set<string>,
+): boolean {
+  const slug = (row.slug || "").trim();
+  if (slug && explicitOnly.has(slug)) return true;
+  // Legacy jobbank slug → apify (same as Python LEGACY_SLUG_ALIASES).
+  if (slug === "jobbank" && explicitOnly.has("apify")) return true;
+  const byName = API_SOURCE_NAME_TO_SLUG[normalizeSourceName(row.name || "")];
+  return Boolean(byName && explicitOnly.has(byName));
+}
+
 async function main() {
   const argv = process.argv.slice(2);
 
@@ -71,7 +105,9 @@ async function main() {
   for (const row of data) {
     const slug = row.slug ?? "<missing slug>";
     const name = row.name ?? "Unknown Source";
-    const optIn = explicitOnly.has(slug) ? " [explicit --source only]" : "";
+    const optIn = isExplicitOnlySource(row, explicitOnly)
+      ? " [explicit --source only]"
+      : "";
     console.log(`  - ${slug} (${name})${optIn}`);
   }
   console.log(
