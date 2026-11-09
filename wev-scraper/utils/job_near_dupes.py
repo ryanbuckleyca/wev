@@ -208,13 +208,18 @@ def cities_same(left: dict, right: dict) -> bool:
 # same board as the apex for cross-source evidence.
 _BOARD_APEX_HOSTS = frozenset({"indeed.com", "linkedin.com", "glassdoor.com"})
 
+# ccTLD board hosts → apex board identity (indeed.ca ≡ indeed.com).
+_BOARD_HOST_ALIASES = {
+    "indeed.ca": "indeed.com",
+    "glassdoor.ca": "glassdoor.com",
+}
+
 # Known public job-board hosts for aggregator cross-board detection.
 _KNOWN_BOARD_HOSTS = frozenset(
     {
         "indeed.com",
         "linkedin.com",
         "glassdoor.com",
-        "glassdoor.ca",
     }
 )
 
@@ -238,6 +243,7 @@ def _listing_host(url: str | None) -> str | None:
         and f"{parts[1]}.{parts[2]}" in _BOARD_APEX_HOSTS
     ):
         host = f"{parts[1]}.{parts[2]}"
+    host = _BOARD_HOST_ALIASES.get(host, host)
     return host or None
 
 

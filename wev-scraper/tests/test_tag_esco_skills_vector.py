@@ -315,9 +315,9 @@ def test_non_sse_jobs_are_not_vectorized():
     mock_svc_cls.assert_not_called()
     mock_supabase.rpc.assert_not_called()
     mock_supabase.table.return_value.upsert.assert_not_called()
-    # skills is None (never tagged) — skip must not delete/update either.
-    mock_supabase.table.return_value.delete.assert_not_called()
-    mock_supabase.table.return_value.update.assert_not_called()
+    # Non-SSE still clears junction + jobs.skills (orphaned rows / durable retry).
+    mock_supabase.table.return_value.delete.assert_called()
+    mock_supabase.table.return_value.update.assert_called()
     assert result["processed"] == 0
     assert result["errors"] == 0
 

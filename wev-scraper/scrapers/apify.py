@@ -265,10 +265,12 @@ class ApifyJobBankScraper(BaseApiScraper):
         deadline = time.monotonic() + max(0, total_wait_secs)
         consecutive_poll_failures = 0
         while time.monotonic() < deadline:
-            remaining = max(0, int(deadline - time.monotonic()))
-            wait_param = min(remaining, _API_WAIT_FOR_FINISH_MAX)
-            if wait_param <= 0:
+            # Keep a poll while any time remains — int() alone would drop a
+            # fractional second and skip the last request before deadline.
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
                 break
+            wait_param = min(max(1, int(remaining)), _API_WAIT_FOR_FINISH_MAX)
             poll_url = (
                 f"{APIFY_API_BASE}/actor-runs/{run_id}?waitForFinish={wait_param}"
             )

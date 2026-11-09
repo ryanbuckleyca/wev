@@ -214,7 +214,7 @@ _NEAR_DUPE_CANDIDATE_COLUMNS = (
     "id, job_title, listing_url, date_posted, description, employment_type, "
     "municipality, province, location, organization, organization_id, source_id"
 )
-_NEAR_DUPE_CANDIDATE_LIMIT = 40
+_NEAR_DUPE_CANDIDATE_PAGE = 100
 
 
 def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None):
@@ -222,6 +222,9 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
 
     Used to stop board-side ID churn (e.g. Eco Canada re-listing the same req
     under new numeric IDs) from inserting duplicate rows. Raises on DB errors.
+
+    Pages through all employer candidates (newest first) until a cross-source
+    match is found or none remain — not just the most recent window.
 
     ``source_id`` is attached to the probe so cross-source evidence works when
     two APIs land on the same listing host (e.g. LinkedIn via SerpApi vs TheirStack).
@@ -232,31 +235,39 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
     if not title or not (job.get("description") or "").strip():
         return None
 
-    query = (
-        supabase.table("jobs")
-        .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
-        .order("scraped_at", desc=True)
-        .limit(_NEAR_DUPE_CANDIDATE_LIMIT)
-    )
+    filters: dict = {}
     if organization_id is not None:
-        query = query.eq("organization_id", organization_id)
+        filters["organization_id"] = organization_id
     else:
         org_name = (job.get("organization") or "").strip()
         if not org_name:
             return None
-        query = query.eq("organization", org_name)
+        filters["organization"] = org_name
 
-    resp = query.execute()
-    rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
     probe = {
         **job,
         "organization_id": organization_id if organization_id is not None else job.get("organization_id"),
         "source_id": source_id if source_id is not None else job.get("source_id"),
     }
-    for row in rows:
-        if is_confident_duplicate_pair(probe, row):
-            return row
-    return None
+
+    offset = 0
+    while True:
+        query = (
+            supabase.table("jobs")
+            .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
+            .order("scraped_at", desc=True)
+            .range(offset, offset + _NEAR_DUPE_CANDIDATE_PAGE - 1)
+        )
+        for col, val in filters.items():
+            query = query.eq(col, val)
+        resp = query.execute()
+        rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
+        for row in rows:
+            if is_confident_duplicate_pair(probe, row):
+                return row
+        if len(rows) < _NEAR_DUPE_CANDIDATE_PAGE:
+            return None
+        offset += _NEAR_DUPE_CANDIDATE_PAGE
 
 
 def _build_update_row(job, source_id, existing_data, *, organization_id=None):

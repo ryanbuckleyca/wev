@@ -112,14 +112,47 @@ def demote_org_job_sse(supabase: Any, organization_id: Any) -> int:
     Also clears ESCO tags (``jobs.skills`` + ``job_skills`` rows) so demoted
     jobs do not keep embeddings that the SSE-gated tagger will no longer refresh.
 
+    Clears the junction first so matching cannot use stale ``job_skills`` while
+    demotion is in flight. If junction cleanup fails after demotion, ``skills``
+    is set to null so the non-SSE tagger path retries both stores.
+
     Returns the number of rows updated (best-effort; 0 on empty/failure).
     """
     if organization_id is None:
         return 0
     try:
+        listed = (
+            supabase.table("jobs")
+            .select("id")
+            .eq("organization_id", organization_id)
+            .eq("is_sse", True)
+            .execute()
+        )
+    except Exception:
+        return 0
+    listed_rows = getattr(listed, "data", None) or []
+    job_ids = [
+        row.get("id") for row in listed_rows if isinstance(row, dict) and row.get("id")
+    ]
+    if not job_ids:
+        return 0
+
+    junction_ok = True
+    try:
+        supabase.table("job_skills").delete().in_("job_id", job_ids).execute()
+    except Exception:
+        junction_ok = False
+
+    try:
         resp = (
             supabase.table("jobs")
-            .update({"is_sse": False, "skills": []})
+            .update(
+                {
+                    "is_sse": False,
+                    # Null skills when junction wipe failed → durable tagger retry.
+                    "skills": [] if junction_ok else None,
+                }
+            )
             .eq("organization_id", organization_id)
             .eq("is_sse", True)
             .execute()
@@ -127,18 +160,6 @@ def demote_org_job_sse(supabase: Any, organization_id: Any) -> int:
     except Exception:
         return 0
     data = getattr(resp, "data", None) or []
-    job_ids = [row.get("id") for row in data if isinstance(row, dict) and row.get("id")]
-    if job_ids:
-        try:
-            (
-                supabase.table("job_skills")
-                .delete()
-                .in_("job_id", job_ids)
-                .execute()
-            )
-        except Exception:
-            # Best-effort: jobs already demoted; junction cleanup can retry later.
-            pass
     return len(data)
 
 

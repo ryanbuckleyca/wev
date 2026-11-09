@@ -77,7 +77,7 @@ def job_needs_skills(job: Dict[str, Any]) -> bool:
     - ``skills_raw == []`` (or only blank strings) → extract finished empty; done
     - phrases present + ``SHOULD_TAG_SKILLS`` off → raw extract is enough; done
     - phrases present + ``is_sse is False`` → non-SSE jobs are never ESCO/vectorized; done
-    - phrases present + ``is_sse is None`` → wait until SSE is classified, then tag if yes
+    - phrases present + ``is_sse is None`` → defer ESCO (sse need keeps catch-up); recheck after classify
     - phrases present + ``is_sse is True`` + ``skills is None`` → awaiting ESCO tag
     - phrases present + ``skills == []`` → tagged, zero ESCO hits; done (durable)
     - phrases present + non-empty ``skills`` → tagged; done
@@ -100,8 +100,9 @@ def job_needs_skills(job: Dict[str, Any]) -> bool:
     if job.get("is_sse") is False:
         return False
     if job.get("is_sse") is not True:
-        # SSE still unknown — stay in the queue until classify settles.
-        return True
+        # SSE still unknown — do not count as runnable ESCO work; the ``sse``
+        # need keeps the job in catch-up until classify settles, then recheck.
+        return False
     return True
 
 
@@ -780,7 +781,12 @@ def process_unprocessed_jobs(
     # tagger re-reads is_sse from the DB so jobs classified SSE in this same
     # pass are included, and non-SSE are skipped (no embed).
     run_esco = (not skip_esco) and esco_tagging_enabled()
-    esco_ids = [j["id"] for j, needs in unprocessed if "skills" in needs]
+    # Only confirmed SSE jobs are runnable ESCO work (unset is deferred above).
+    esco_ids = [
+        j["id"]
+        for j, needs in unprocessed
+        if "skills" in needs and j.get("is_sse") is True
+    ]
     if run_esco:
         outcome.esco_targeted = len(esco_ids)
     if esco_ids and run_esco:

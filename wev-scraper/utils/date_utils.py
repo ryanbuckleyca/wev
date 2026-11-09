@@ -81,19 +81,25 @@ def parse_relative_posted_at(
     try:
         # ValueError: digit string exceeds sys.get_int_max_str_digits().
         amount = int(match.group(1))
-        delta = {
-            "minute": timedelta(minutes=amount),
-            "hour": timedelta(hours=amount),
-            "day": timedelta(days=amount),
-            "week": timedelta(weeks=amount),
+        # Build only the requested unit — constructing every timedelta for a
+        # huge amount can OverflowError an unused unit (e.g. months) first.
+        if unit == "minute":
+            delta = timedelta(minutes=amount)
+        elif unit == "hour":
+            delta = timedelta(hours=amount)
+        elif unit == "day":
+            delta = timedelta(days=amount)
+        elif unit == "week":
+            delta = timedelta(weeks=amount)
+        elif unit == "month":
             # Approximate — Google Jobs only needs coarse recency.
-            "month": timedelta(days=30 * amount),
-        }[unit]
+            delta = timedelta(days=30 * amount)
+        else:
+            return None
         return base - delta
-    except (OverflowError, ValueError, KeyError):
+    except (OverflowError, ValueError):
         # OverflowError: timedelta can't hold the span.
         # ValueError: int conversion limit on oversized digit strings.
-        # KeyError: unknown unit (should not happen with the regex).
         return None
 
 

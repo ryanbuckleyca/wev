@@ -49,10 +49,16 @@ function isExplicitOnlySource(
   row: { name?: string | null; slug?: string | null },
   explicitOnly: Set<string>,
 ): boolean {
+  // Mirror scrapers.registry.source_canonical_slug: row slug wins over name.
   const slug = (row.slug || "").trim();
-  if (slug && explicitOnly.has(slug)) return true;
-  // Legacy jobbank slug → apify (same as Python LEGACY_SLUG_ALIASES).
-  if (slug === "jobbank" && explicitOnly.has("apify")) return true;
+  if (slug) {
+    if (explicitOnly.has(slug)) return true;
+    // Legacy jobbank slug → apify (same as Python LEGACY_SLUG_ALIASES).
+    if (slug === "jobbank" && explicitOnly.has("apify")) return true;
+    // Non-empty slug is authoritative — do not let a conflicting display name
+    // mark a niche board (e.g. goodwork) as API opt-in.
+    return false;
+  }
   const byName = API_SOURCE_NAME_TO_SLUG[normalizeSourceName(row.name || "")];
   return Boolean(byName && explicitOnly.has(byName));
 }

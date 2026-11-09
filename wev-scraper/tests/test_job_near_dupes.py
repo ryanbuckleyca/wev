@@ -471,12 +471,14 @@ def test_cities_same_requires_matching_province_when_both_set():
 
 
 def test_listing_host_collapses_indeed_regional_subdomains():
-    """ca.indeed.com and www.indeed.com compare as one board host."""
+    """ca.indeed.com / indeed.ca and www.indeed.com compare as one board host."""
     from utils.job_near_dupes import _listing_host
 
     assert _listing_host("https://www.indeed.com/viewjob?jk=1") == "indeed.com"
     assert _listing_host("https://ca.indeed.com/viewjob?jk=1") == "indeed.com"
+    assert _listing_host("https://www.indeed.ca/viewjob?jk=1") == "indeed.com"
     assert _listing_host("https://ca.linkedin.com/jobs/view/1") == "linkedin.com"
+    assert _listing_host("https://www.glassdoor.ca/job-listing/jv?jl=1") == "glassdoor.com"
     assert _listing_host("https://boards.greenhouse.io/x/jobs/1") == "boards.greenhouse.io"
 
 

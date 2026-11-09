@@ -738,7 +738,7 @@ def test_job_needs_skills_phrases_pending_tag(monkeypatch):
 
 
 def test_job_needs_skills_phrases_wait_while_sse_unknown(monkeypatch):
-    """Cover job needs skills phrases wait while sse unknown."""
+    """Unset SSE defers ESCO (not runnable) until classify settles."""
     from utils.catch_up import job_needs_skills
 
     monkeypatch.setenv("SHOULD_TAG_SKILLS", "1")
@@ -751,7 +751,7 @@ def test_job_needs_skills_phrases_wait_while_sse_unknown(monkeypatch):
                 "description": "Full posting.",
             }
         )
-        is True
+        is False
     )
 
 

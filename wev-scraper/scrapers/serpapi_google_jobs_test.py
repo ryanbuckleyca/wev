@@ -92,3 +92,61 @@ def test_fetch_jobs_from_sample(monkeypatch, tmp_path):
     assert isinstance(dump, dict)
     assert dump.get("company_name") == "Example Clinic"
     assert dump.get("job_id") == "abc123"
+
+
+def test_two_weeks_ago_boundary_uses_shared_clock(monkeypatch, tmp_path):
+    """Prepare + recency share a non-midnight clock so '2 weeks ago' is kept."""
+    from datetime import datetime, timezone
+
+    sample = tmp_path / "serpapi.json"
+    sample.write_text(
+        json.dumps(
+            [
+                _sample_record(
+                    detected_extensions={
+                        "posted_at": "2 weeks ago",
+                        "schedule_type": "Full-time",
+                    }
+                )
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("SERPAPI_GOOGLE_JOBS_SAMPLE_PATH", str(sample))
+    monkeypatch.setenv("WITHIN_WEEKS", "2")
+    monkeypatch.setenv("SHOULD_GEOCODE", "0")
+    fixed_now = datetime(2026, 11, 4, 15, 30, tzinfo=timezone.utc)
+    clocks: list = []
+
+    real_parse = __import__(
+        "utils.date_utils", fromlist=["parse_relative_posted_at"]
+    ).parse_relative_posted_at
+    real_recent = __import__(
+        "utils.date_utils", fromlist=["is_recent_job"]
+    ).is_recent_job
+
+    def _capture_parse(s, *, now=None):
+        clocks.append(("parse", now))
+        return real_parse(s, now=now)
+
+    def _capture_recent(date_posted_str, weeks=2, lang=None, *, now=None):
+        clocks.append(("recent", now))
+        return real_recent(date_posted_str, weeks=weeks, lang=lang, now=now)
+
+    class _FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed_now
+
+    monkeypatch.setattr("scrapers.base_api.datetime", _FixedDateTime)
+    monkeypatch.setattr(
+        "scrapers.serpapi_google_jobs.parse_relative_posted_at", _capture_parse
+    )
+    monkeypatch.setattr("scrapers.base_api.is_recent_job", _capture_recent)
+
+    jobs = _scraper().fetch_jobs()
+    assert len(jobs) == 1
+    parse_clocks = [c for kind, c in clocks if kind == "parse"]
+    recent_clocks = [c for kind, c in clocks if kind == "recent"]
+    assert parse_clocks and recent_clocks
+    assert parse_clocks[0] == recent_clocks[0] == fixed_now

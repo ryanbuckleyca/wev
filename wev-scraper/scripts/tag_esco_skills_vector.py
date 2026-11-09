@@ -128,6 +128,25 @@ def replace_job_skills(job_id: str, rows: list[dict]) -> None:
     )
 
 
+def _clear_job_esco_tags(job_id: str, *, label_suffix: str) -> None:
+    """Clear ``job_skills`` then ``jobs.skills`` with retries (same order always).
+
+    Junction is wiped first so matching cannot keep using stale embeddings while
+    ``jobs.skills`` still looks tagged. Either step failing raises after retries.
+    """
+    _with_supabase_retries(
+        lambda jid=job_id: replace_job_skills(jid, []),
+        label=f"job {job_id} clear job_skills ({label_suffix})",
+    )
+    _with_supabase_retries(
+        lambda jid=job_id: supabase.table("jobs")
+        .update({"skills": []})
+        .eq("id", jid)
+        .execute(),
+        label=f"job {job_id} clear jobs.skills ({label_suffix})",
+    )
+
+
 def _is_transient_supabase_error(exc: BaseException) -> bool:
     """True for HTTP/2 / connection drops that usually succeed on retry.
 
@@ -398,17 +417,7 @@ def tag_esco_skills_vector(
             if isinstance(skills_raw, list) and not dry_run:
                 job_id = job["id"]
                 try:
-                    _with_supabase_retries(
-                        lambda jid=job_id: replace_job_skills(jid, []),
-                        label=f"job {job_id} clear job_skills (no phrases)",
-                    )
-                    _with_supabase_retries(
-                        lambda jid=job_id: supabase.table("jobs")
-                        .update({"skills": []})
-                        .eq("id", jid)
-                        .execute(),
-                        label=f"job {job_id} clear jobs.skills (no phrases)",
-                    )
+                    _clear_job_esco_tags(job_id, label_suffix="no phrases")
                     jobs_cleared_no_phrases += 1
                 except Exception as e:
                     logger.error(
@@ -418,25 +427,12 @@ def tag_esco_skills_vector(
 
         if job.get("is_sse") is not True:
             skipped_non_sse_embed += 1
-            # Demoted / non-SSE jobs must not keep stale ESCO tags. Clear when
-            # skills were previously written; leave skills=None (never tagged).
-            if (
-                not dry_run
-                and job.get("skills") is not None
-            ):
+            # Demoted / non-SSE jobs must not keep stale ESCO tags — clear
+            # junction + jobs.skills even when skills is null (orphaned rows).
+            if not dry_run:
                 job_id = job["id"]
                 try:
-                    _with_supabase_retries(
-                        lambda jid=job_id: replace_job_skills(jid, []),
-                        label=f"job {job_id} clear job_skills (non-SSE)",
-                    )
-                    _with_supabase_retries(
-                        lambda jid=job_id: supabase.table("jobs")
-                        .update({"skills": []})
-                        .eq("id", jid)
-                        .execute(),
-                        label=f"job {job_id} clear jobs.skills (non-SSE)",
-                    )
+                    _clear_job_esco_tags(job_id, label_suffix="non-SSE")
                 except Exception as e:
                     logger.error(
                         f"[vector-tagger] job {job_id}: clear on non-SSE demotion "

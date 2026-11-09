@@ -86,13 +86,16 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
         limit = self._max_jobs or get_int_env("SERPAPI_GOOGLE_JOBS_MAX_ITEMS") or 200
 
         by_key: dict[str, dict[str, Any]] = {}
+        # Bound how many raw results we pull; ``limit`` applies to accepted rows.
+        fetch_budget = max(limit * 3, limit + 50)
+        fetched = 0
         for query in self.get_queries():
-            if len(by_key) >= limit:
+            if len(by_key) >= limit or fetched >= fetch_budget:
                 break
             scraper_log(f"\tSerpApi google_jobs q={query!r} location={location!r}")
             next_token: str | None = None
             for page in range(max_pages):
-                if len(by_key) >= limit:
+                if len(by_key) >= limit or fetched >= fetch_budget:
                     break
                 params: dict[str, Any] = {
                     "engine": "google_jobs",
@@ -122,6 +125,9 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
                 batch = payload.get("jobs_results") or []
                 weeks = get_within_weeks()
                 for job in batch:
+                    if fetched >= fetch_budget or len(by_key) >= limit:
+                        break
+                    fetched += 1
                     if not isinstance(job, dict):
                         continue
                     if not self._serpapi_record_is_recent(job, weeks=weeks):
@@ -146,12 +152,14 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
         detected = job.get("detected_extensions") or {}
         posted = detected.get("posted_at") if isinstance(detected, dict) else None
         if not posted:
-            for ext in job.get("extensions") or []:
-                if isinstance(ext, str) and re.search(
-                    r"\b(ago|day|hour|week|month)\b", ext, re.I
-                ):
-                    posted = ext
-                    break
+            extensions = job.get("extensions")
+            if isinstance(extensions, (list, tuple)):
+                for ext in extensions:
+                    if isinstance(ext, str) and re.search(
+                        r"\b(ago|day|hour|week|month)\b", ext, re.I
+                    ):
+                        posted = ext
+                        break
         if not posted:
             return True
         return is_recent_job(str(posted), weeks=weeks, lang=self.language or "en")
@@ -192,10 +200,21 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
         if not isinstance(detected, dict):
             detected = {}
 
+        if not isinstance(extensions, (list, tuple)):
+            extensions = []
+
         wage = detected.get("salary")
         if not wage:
             for ext in extensions:
-                if isinstance(ext, str) and ("$" in ext or "hour" in ext.lower() or "year" in ext.lower()):
+                if not isinstance(ext, str):
+                    continue
+                # Exclude posting-age strings ("3 hours ago") that mention hour/day.
+                if re.search(r"\bago\b", ext, re.I):
+                    continue
+                lower = ext.lower()
+                if "$" in ext or "salary" in lower or re.search(
+                    r"\b(?:per\s+)?(?:hour|year|annum|month|week)\b", lower
+                ):
                     wage = ext
                     break
 

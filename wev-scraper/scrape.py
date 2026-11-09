@@ -100,18 +100,30 @@ class ScraperOrchestrator:
         self.resolver = None  # Initialized in run() to ensure env is loaded first
 
     def had_failures(self) -> bool:
-        """True when any source scrape or post-scrape step failed."""
+        """True when any source scrape or post-scrape step failed.
+
+        Fetch warnings (partial pagination / truncated APIs) count as failures
+        even when earlier pages still saved jobs.
+        """
         if self.post_scrape_errors > 0:
             return True
         if self.results.catch_up.get("orgs_errors", 0) > 0:
             return True
         if self.results.catch_up.get("jobs_errors", 0) > 0:
             return True
-        return any("error" in entry for entry in self.results.summary)
+        return any(
+            ("error" in entry) or bool(entry.get("warnings"))
+            for entry in self.results.summary
+        )
 
     def run(self):
         """Execute the full scraping lifecycle."""
         try:
+            # Propagate compare_only to API scrapers even when invoked without CLI
+            # (they read COMPARE_ONLY rather than orchestrator state).
+            if self.compare_only:
+                os.environ["COMPARE_ONLY"] = "1"
+
             self._log_environment_status()
 
             # 1. Setup
@@ -513,12 +525,24 @@ class ScraperOrchestrator:
             _log("-" * 40)
         for s in self.results.summary:
             source = s["source"]
+            warnings = s.get("warnings") or []
+            warn_suffix = ""
+            if warnings:
+                warn_suffix = f" ⚠️ {len(warnings)} warning(s): " + "; ".join(
+                    str(w) for w in warnings
+                )
             if "error" in s:
-                _log(f"- {source}: ❌ FAILED ({s['error']})")
+                _log(f"- {source}: ❌ FAILED ({s['error']}){warn_suffix}")
             elif self.dry_run or "jobs_added" not in s:
-                _log(f"- {source}: Found {s.get('jobs_found', '?')} jobs (Dry Run)")
+                _log(
+                    f"- {source}: Found {s.get('jobs_found', '?')} jobs (Dry Run)"
+                    f"{warn_suffix}"
+                )
             else:
-                _log(f"- {source}: Added {s['jobs_added']}, Updated {s['jobs_updated']}")
+                _log(
+                    f"- {source}: Added {s['jobs_added']}, Updated {s['jobs_updated']}"
+                    f"{warn_suffix}"
+                )
 
     def _handle_source_error(self, e: Exception, scraper, source_name: str):
         _log(f"❌ Error scraping {source_name}: {e}")

@@ -266,6 +266,9 @@ class BaseApiScraper:
         try:
             return normalize_job_data(payload), False
         except (TypeError, AttributeError, ValueError, KeyError) as e:
+            # Drop the reservation so a later valid record with the same URL
+            # can still be accepted (deferred and non-deferred modes).
+            self.scraped_urls.discard(norm_url)
             scraper_log(
                 f"\t\tSkipping job {index + 1}: normalize failed "
                 f"({type(e).__name__}: {e})"

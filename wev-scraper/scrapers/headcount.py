@@ -193,10 +193,20 @@ class HeadcountLabsScraper(BaseApiScraper):
             if not raw_data:
                 records: list[Any] = []
             elif not isinstance(raw_data, list):
-                raise RuntimeError(
+                msg = (
                     "Headcount jobs response `data` must be a list, "
                     f"got {type(raw_data).__name__}"
                 )
+                # Same partial-result path as fetch failures: keep earlier pages.
+                if self.jobs:
+                    warn = (
+                        f"Stopping Headcount pagination after malformed page "
+                        f"(keeping {len(self.jobs)} job(s)): {msg}"
+                    )
+                    scraper_log(f"\t{warn}")
+                    self.fetch_warnings.append(warn)
+                    break
+                raise RuntimeError(msg)
             else:
                 records = raw_data
             scraper_log(f"\tHeadcount page: {len(records)} jobs")
@@ -297,13 +307,24 @@ class HeadcountLabsScraper(BaseApiScraper):
         *,
         weeks: int,
     ) -> bool:
-        """Live updated-sort only: stop once ``job_updated_at`` leaves the window."""
+        """Live updated-sort only: stop once ``job_updated_at`` leaves the window.
+
+        Malformed timestamps must not stop pagination — only a successfully
+        parsed timestamp confirmed outside the window ends the walk. Invalid
+        values fall through to normal ``is_recent_job`` handling on ingest.
+        """
         if not self._stop_on_stale_updated:
             return False
         updated_at = record.get("job_updated_at")
-        if updated_at and not is_recent_job(
-            str(updated_at), weeks=weeks, lang=self.language
-        ):
+        if not updated_at:
+            return False
+        from utils.date_utils import _parse_localized_date
+
+        try:
+            _parse_localized_date(str(updated_at), lang=self.language or "en")
+        except (ValueError, TypeError, OverflowError):
+            return False
+        if not is_recent_job(str(updated_at), weeks=weeks, lang=self.language):
             scraper_log(
                 f"		Stopping: job_updated_at outside recency window "
                 f"({updated_at})"
@@ -327,10 +348,12 @@ class HeadcountLabsScraper(BaseApiScraper):
         if not isinstance(description, str):
             description = str(description)
 
-        location = self._location_text(record)
-        wage = self._wage_text(record)
-        employment_type = self._employment_type(record)
         selected_posting = self._selected_live_posting(record)
+        location = self._location_text(record, selected_posting=selected_posting)
+        wage = self._wage_text(record, selected_posting=selected_posting)
+        employment_type = self._employment_type(
+            record, selected_posting=selected_posting
+        )
         date_posted = self._date_posted(record, selected_posting=selected_posting)
         website = self._organization_website(record)
 
@@ -423,8 +446,13 @@ class HeadcountLabsScraper(BaseApiScraper):
                 return url.strip()
         return None
 
-    def _location_text(self, record: dict[str, Any]) -> str | None:
-        """Best-effort location string from locations[] or posting.location."""
+    def _location_text(
+        self,
+        record: dict[str, Any],
+        *,
+        selected_posting: dict[str, Any] | None = None,
+    ) -> str | None:
+        """Best-effort location from locations[] or the selected live posting."""
         locations = record.get("locations") or []
         if isinstance(locations, list):
             for loc in locations:
@@ -434,42 +462,52 @@ class HeadcountLabsScraper(BaseApiScraper):
                 if formatted:
                     return formatted
 
-        postings = record.get("postings") or []
-        if isinstance(postings, list):
-            for posting in postings:
-                if not isinstance(posting, dict):
-                    continue
-                formatted = _format_location(_state_value(posting.get("location")))
-                if formatted:
-                    return formatted
+        posting = (
+            selected_posting
+            if selected_posting is not None
+            else self._selected_live_posting(record)
+        )
+        if isinstance(posting, dict):
+            formatted = _format_location(_state_value(posting.get("location")))
+            if formatted:
+                return formatted
         return None
 
-    def _wage_text(self, record: dict[str, Any]) -> str | None:
-        """First posting pay value formatted as a wage string."""
-        postings = record.get("postings") or []
-        if not isinstance(postings, list):
+    def _wage_text(
+        self,
+        record: dict[str, Any],
+        *,
+        selected_posting: dict[str, Any] | None = None,
+    ) -> str | None:
+        """Pay from the same live posting that supplied the listing URL."""
+        posting = (
+            selected_posting
+            if selected_posting is not None
+            else self._selected_live_posting(record)
+        )
+        if not isinstance(posting, dict):
             return None
-        for posting in postings:
-            if not isinstance(posting, dict):
-                continue
-            wage = _format_wage(_state_value(posting.get("pay")))
-            if wage:
-                return wage
-        return None
+        return _format_wage(_state_value(posting.get("pay")))
 
-    def _employment_type(self, record: dict[str, Any]) -> str | None:
-        """Employment type from posting source_data when present."""
-        postings = record.get("postings") or []
-        if not isinstance(postings, list):
+    def _employment_type(
+        self,
+        record: dict[str, Any],
+        *,
+        selected_posting: dict[str, Any] | None = None,
+    ) -> str | None:
+        """Employment type from the selected live posting's source_data."""
+        posting = (
+            selected_posting
+            if selected_posting is not None
+            else self._selected_live_posting(record)
+        )
+        if not isinstance(posting, dict):
             return None
-        for posting in postings:
-            if not isinstance(posting, dict):
-                continue
-            source_data = posting.get("source_data") or {}
-            if isinstance(source_data, dict):
-                emp = source_data.get("employment_type")
-                if emp:
-                    return str(emp).lower().replace("_", "-").replace(" ", "-")
+        source_data = posting.get("source_data") or {}
+        if isinstance(source_data, dict):
+            emp = source_data.get("employment_type")
+            if emp:
+                return str(emp).lower().replace("_", "-").replace(" ", "-")
         return None
 
     def _date_posted(

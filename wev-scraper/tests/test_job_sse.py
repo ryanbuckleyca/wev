@@ -64,10 +64,15 @@ def test_org_is_sse_from_job_row():
 
 
 def test_demote_org_job_sse():
-    execute = MagicMock(return_value=MagicMock(data=[{"id": "a"}, {"id": "b"}]))
-    eq_sse = MagicMock(return_value=MagicMock(execute=execute))
-    eq_org = MagicMock(return_value=MagicMock(eq=eq_sse))
-    update = MagicMock(return_value=MagicMock(eq=eq_org))
+    select_execute = MagicMock(return_value=MagicMock(data=[{"id": "a"}, {"id": "b"}]))
+    select_eq_sse = MagicMock(return_value=MagicMock(execute=select_execute))
+    select_eq_org = MagicMock(return_value=MagicMock(eq=select_eq_sse))
+    select = MagicMock(return_value=MagicMock(eq=select_eq_org))
+
+    update_execute = MagicMock(return_value=MagicMock(data=[{"id": "a"}, {"id": "b"}]))
+    update_eq_sse = MagicMock(return_value=MagicMock(execute=update_execute))
+    update_eq_org = MagicMock(return_value=MagicMock(eq=update_eq_sse))
+    update = MagicMock(return_value=MagicMock(eq=update_eq_org))
 
     delete_execute = MagicMock(return_value=MagicMock(data=[]))
     delete_in = MagicMock(return_value=MagicMock(execute=delete_execute))
@@ -76,18 +81,18 @@ def test_demote_org_job_sse():
     def table_side_effect(name):
         if name == "job_skills":
             return MagicMock(delete=delete)
-        return MagicMock(update=update)
+        return MagicMock(select=select, update=update)
 
     supabase = MagicMock()
     supabase.table.side_effect = table_side_effect
 
     assert demote_org_job_sse(supabase, 7) == 2
-    update.assert_called_with({"is_sse": False, "skills": []})
-    eq_org.assert_called_with("organization_id", 7)
-    eq_sse.assert_called_with("is_sse", True)
     delete_in.assert_called_with("job_id", ["a", "b"])
+    update.assert_called_with({"is_sse": False, "skills": []})
+    update_eq_org.assert_called_with("organization_id", 7)
+    update_eq_sse.assert_called_with("is_sse", True)
 
     assert demote_org_job_sse(supabase, None) == 0
 
-    execute.side_effect = RuntimeError("db down")
+    select_execute.side_effect = RuntimeError("db down")
     assert demote_org_job_sse(supabase, 7) == 0

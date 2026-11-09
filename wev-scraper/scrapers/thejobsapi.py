@@ -281,9 +281,17 @@ class TheJobsApiScraper(BaseApiScraper):
         if not title or not organization or not listing_url:
             return None
 
-        loc0 = (detail.get("locations") or [None])[0] or {}
-        if not isinstance(loc0, dict):
-            loc0 = {}
+        locs = detail.get("locations") or []
+        if not isinstance(locs, list):
+            locs = []
+        loc0: dict[str, Any] = {}
+        for loc in locs:
+            if isinstance(loc, dict) and self._locations_confirm_canada([loc]):
+                loc0 = loc
+                break
+        if not loc0:
+            first = locs[0] if locs else None
+            loc0 = first if isinstance(first, dict) else {}
         location = loc0.get("label")
         if not location:
             parts = [p for p in (loc0.get("city"), loc0.get("province"), loc0.get("country")) if p]

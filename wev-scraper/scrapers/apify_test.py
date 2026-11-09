@@ -226,14 +226,14 @@ def test_apify_start_recovers_recent_run_after_timeout(monkeypatch):
 
 
 def test_apify_start_does_not_recover_uncorrelated_succeeded(monkeypatch):
-    """A prior SUCCEEDED run must not be adopted after an uncertain start."""
+    """An old SUCCEEDED run must not be adopted after an uncertain start."""
     from datetime import datetime, timedelta, timezone
 
     import requests
 
     monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
     scraper = _scraper()
-    started = (datetime.now(timezone.utc) - timedelta(seconds=30)).strftime(
+    started = (datetime.now(timezone.utc) - timedelta(hours=2)).strftime(
         "%Y-%m-%dT%H:%M:%S.000Z"
     )
     list_resp = _JsonResp(
@@ -264,3 +264,33 @@ def test_apify_start_does_not_recover_uncorrelated_succeeded(monkeypatch):
             raised = True
             assert "uncertain" in str(e).lower()
     assert raised
+
+
+def test_apify_recover_rejects_recent_succeeded_for_terminal_status(monkeypatch):
+    """Recent SUCCEEDED is rejected for terminal status, not merely age."""
+    import time
+    from datetime import datetime, timezone
+
+    monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
+    scraper = _scraper()
+    attempt_started = time.time()
+    started = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    list_resp = _JsonResp(
+        {
+            "data": {
+                "items": [
+                    {
+                        "id": "recent-success",
+                        "status": "SUCCEEDED",
+                        "startedAt": started,
+                        "defaultDatasetId": "ds-recent",
+                    }
+                ]
+            }
+        }
+    )
+    with patch("scrapers.apify.requests.get", return_value=list_resp):
+        recovered = scraper._recover_correlated_run(
+            "getascraper~jobbank-scraper", started_after=attempt_started
+        )
+    assert recovered is None
