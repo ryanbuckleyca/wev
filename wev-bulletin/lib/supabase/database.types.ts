@@ -8,7 +8,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5';
+    PostgrestVersion: '14.1';
   };
   public: {
     Tables: {
@@ -88,7 +88,7 @@ export type Database = {
           concept_uri: string;
           description_en: string;
           description_fr: string;
-          embedding: string | null;
+          embedding: unknown;
           preferred_label_en: string;
           preferred_label_fr: string;
           reuse_level: string;
@@ -103,7 +103,7 @@ export type Database = {
           concept_uri: string;
           description_en?: string;
           description_fr?: string;
-          embedding?: string | null;
+          embedding?: unknown;
           preferred_label_en: string;
           preferred_label_fr: string;
           reuse_level?: string;
@@ -118,7 +118,7 @@ export type Database = {
           concept_uri?: string;
           description_en?: string;
           description_fr?: string;
-          embedding?: string | null;
+          embedding?: unknown;
           preferred_label_en?: string;
           preferred_label_fr?: string;
           reuse_level?: string;
@@ -219,27 +219,27 @@ export type Database = {
       job_skill_phrases: {
         Row: {
           context_text: string | null;
-          embedding: string | null;
-          embedding_phrase: string | null;
-          embedding_query: string | null;
+          embedding: unknown;
+          embedding_phrase: unknown;
+          embedding_query: unknown;
           job_id: string;
           kind: string;
           phrase: string;
         };
         Insert: {
           context_text?: string | null;
-          embedding?: string | null;
-          embedding_phrase?: string | null;
-          embedding_query?: string | null;
+          embedding?: unknown;
+          embedding_phrase?: unknown;
+          embedding_query?: unknown;
           job_id: string;
           kind: string;
           phrase: string;
         };
         Update: {
           context_text?: string | null;
-          embedding?: string | null;
-          embedding_phrase?: string | null;
-          embedding_query?: string | null;
+          embedding?: unknown;
+          embedding_phrase?: unknown;
+          embedding_query?: unknown;
           job_id?: string;
           kind?: string;
           phrase?: string;
@@ -342,8 +342,8 @@ export type Database = {
           search_municipality: string | null;
           search_province: string | null;
           skill_details: Json | null;
-          skill_embedding: string | null;
-          skill_phrase_embedding: string | null;
+          skill_embedding: unknown;
+          skill_phrase_embedding: unknown;
           skills: string[];
           skills_raw: string[] | null;
           source_id: string;
@@ -390,8 +390,8 @@ export type Database = {
           search_municipality?: string | null;
           search_province?: string | null;
           skill_details?: Json | null;
-          skill_embedding?: string | null;
-          skill_phrase_embedding?: string | null;
+          skill_embedding?: unknown;
+          skill_phrase_embedding?: unknown;
           skills?: string[];
           skills_raw?: string[] | null;
           source_id: string;
@@ -438,8 +438,8 @@ export type Database = {
           search_municipality?: string | null;
           search_province?: string | null;
           skill_details?: Json | null;
-          skill_embedding?: string | null;
-          skill_phrase_embedding?: string | null;
+          skill_embedding?: unknown;
+          skill_phrase_embedding?: unknown;
           skills?: string[];
           skills_raw?: string[] | null;
           source_id?: string;
@@ -625,7 +625,7 @@ export type Database = {
           preferred_languages: string[] | null;
           profile_photo_url: string | null;
           province: string | null;
-          skill_embedding: string | null;
+          skill_embedding: unknown;
           skills: string[] | null;
           skills_rated: Json | null;
           updated_at: string | null;
@@ -647,7 +647,7 @@ export type Database = {
           preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
-          skill_embedding?: string | null;
+          skill_embedding?: unknown;
           skills?: string[] | null;
           skills_rated?: Json | null;
           updated_at?: string | null;
@@ -669,7 +669,7 @@ export type Database = {
           preferred_languages?: string[] | null;
           profile_photo_url?: string | null;
           province?: string | null;
-          skill_embedding?: string | null;
+          skill_embedding?: unknown;
           skills?: string[] | null;
           skills_rated?: Json | null;
           updated_at?: string | null;
@@ -835,8 +835,8 @@ export type Database = {
           search_municipality: string | null;
           search_province: string | null;
           skill_details: Json | null;
-          skill_embedding: string | null;
-          skill_phrase_embedding: string | null;
+          skill_embedding: unknown;
+          skill_phrase_embedding: unknown;
           skill_score: number | null;
           skills: string[] | null;
           skills_raw: string[] | null;
@@ -982,6 +982,7 @@ export type Database = {
         };
         Returns: number;
       };
+      maintain_jobs_public_column_grants: { Args: never; Returns: undefined };
       match_skills_by_embedding:
         | {
             Args: { match_count?: number; query_embedding: string };
