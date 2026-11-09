@@ -227,7 +227,7 @@ def test_apify_start_recovers_recent_run_after_timeout(monkeypatch):
 
 def test_apify_start_does_not_recover_uncorrelated_succeeded(monkeypatch):
     """A prior SUCCEEDED run must not be adopted after an uncertain start."""
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
 
     import requests
 
