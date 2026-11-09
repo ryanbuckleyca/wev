@@ -1,5 +1,6 @@
 -- Local seed. Migrations may already provision some of these rows
--- (e.g. 20261108120000_seed_canada_api_sources); any unique conflict is a no-op.
+-- (e.g. 20261108120000_seed_canada_api_sources,
+-- 20261109164000_seed_idealist_sources); any unique conflict is a no-op.
 
 INSERT INTO public.sources (name, slug, url)
 VALUES ('Work in Culture', 'workinculture', 'https://workinculture.ca/job-search/')
@@ -9,6 +10,17 @@ INSERT INTO public.sources (name, slug, url)
 VALUES
   ('WorkInNonProfits Volunteer', 'winpvol', 'https://workinnonprofits.ca/volunteer-jobs/search'),
   ('WorkInNonProfits Jobs', 'winpjobs', 'https://workinnonprofits.ca/jobs/search')
+ON CONFLICT DO NOTHING;
+
+-- Idealist boards (scraper already registered; dual URLs share IdealistScraper).
+INSERT INTO public.sources (name, slug, url)
+VALUES
+  ('Idealist Jobs', 'idealist', 'https://www.idealist.org/en/jobs'),
+  (
+    'Idealist Internships',
+    'idealistintern',
+    'https://www.idealist.org/en/internships'
+  )
 ON CONFLICT DO NOTHING;
 
 INSERT INTO public.sources (name, slug, url)
