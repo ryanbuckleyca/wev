@@ -140,6 +140,8 @@ def test_process_record_skips_existing_url(mock_recent, monkeypatch):
     """Cover process record skips existing url."""
     monkeypatch.setenv("SHOULD_GEOCODE", "0")
     monkeypatch.delenv("SHOULD_OVERRIDE_EXISTING", raising=False)
+    # Inherited COMPARE_ONLY=1 would keep existing URLs for compare mode.
+    monkeypatch.delenv("COMPARE_ONLY", raising=False)
     scraper = _ToyApiScraper(_source())
     url = "https://example.com/jobs/dup"
     scraper.existing_urls.add(url)

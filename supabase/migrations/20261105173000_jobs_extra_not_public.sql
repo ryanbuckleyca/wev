@@ -25,6 +25,10 @@ begin
     raise exception 'jobs_extra_not_public: failed to list jobs columns';
   end if;
 
+  -- Column-level SELECT is a fixed snapshot of public.jobs columns at apply
+  -- time. Any future public.jobs column needs an explicit
+  -- GRANT SELECT (new_col) … TO anon, authenticated, and matched_jobs must be
+  -- rebuilt (same column list, still excluding extra) or clients will not see it.
   revoke select on table public.jobs from anon, authenticated;
   execute format(
     'grant select (%s) on table public.jobs to anon, authenticated',

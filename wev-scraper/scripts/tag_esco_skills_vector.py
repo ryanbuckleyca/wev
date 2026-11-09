@@ -427,9 +427,9 @@ def tag_esco_skills_vector(
 
         if job.get("is_sse") is not True:
             skipped_non_sse_embed += 1
-            # Demoted / non-SSE jobs must not keep stale ESCO tags — clear
-            # junction + jobs.skills even when skills is null (orphaned rows).
-            if not dry_run:
+            # Unclassified (is_sse=None): skip embed but keep any tags until SSE
+            # settles. Explicit non-SSE: clear junction + jobs.skills (incl. null).
+            if job.get("is_sse") is False and not dry_run:
                 job_id = job["id"]
                 try:
                     _clear_job_esco_tags(job_id, label_suffix="non-SSE")

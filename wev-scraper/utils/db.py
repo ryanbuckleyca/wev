@@ -215,6 +215,10 @@ _NEAR_DUPE_CANDIDATE_COLUMNS = (
     "municipality, province, location, organization, organization_id, source_id"
 )
 _NEAR_DUPE_CANDIDATE_PAGE = 100
+# Bound employer scans so one insert cannot walk every historical row.
+_NEAR_DUPE_CANDIDATE_MAX_PAGES = 5
+# Align with utils.job_near_dupes.dates_within default.
+_NEAR_DUPE_DATE_WINDOW_DAYS = 21
 
 
 def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None):
@@ -223,13 +227,15 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
     Used to stop board-side ID churn (e.g. Eco Canada re-listing the same req
     under new numeric IDs) from inserting duplicate rows. Raises on DB errors.
 
-    Pages through all employer candidates (newest first) until a cross-source
-    match is found or none remain — not just the most recent window.
+    Pages employer candidates with a stable id keyset (newest ids first), an
+    optional date window, and a hard page cap — not an unbounded offset walk.
 
     ``source_id`` is attached to the probe so cross-source evidence works when
     two APIs land on the same listing host (e.g. LinkedIn via SerpApi vs TheirStack).
     """
-    from utils.job_near_dupes import is_confident_duplicate_pair
+    from datetime import timedelta
+
+    from utils.job_near_dupes import is_confident_duplicate_pair, parse_job_date
 
     title = (job.get("job_title") or "").strip()
     if not title or not (job.get("description") or "").strip():
@@ -250,16 +256,27 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
         "source_id": source_id if source_id is not None else job.get("source_id"),
     }
 
-    offset = 0
-    while True:
+    date_lo = date_hi = None
+    posted = parse_job_date(job.get("date_posted"))
+    if posted is not None:
+        date_lo = (posted - timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS)).isoformat()
+        date_hi = (posted + timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS)).isoformat()
+
+    cursor_id = None
+    for _ in range(_NEAR_DUPE_CANDIDATE_MAX_PAGES):
         query = (
             supabase.table("jobs")
             .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
-            .order("scraped_at", desc=True)
-            .range(offset, offset + _NEAR_DUPE_CANDIDATE_PAGE - 1)
+            .eq("job_title", title)
+            .order("id", desc=True)
+            .limit(_NEAR_DUPE_CANDIDATE_PAGE)
         )
         for col, val in filters.items():
             query = query.eq(col, val)
+        if date_lo is not None and date_hi is not None:
+            query = query.gte("date_posted", date_lo).lte("date_posted", date_hi)
+        if cursor_id is not None:
+            query = query.lt("id", cursor_id)
         resp = query.execute()
         rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
         for row in rows:
@@ -267,7 +284,10 @@ def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None)
                 return row
         if len(rows) < _NEAR_DUPE_CANDIDATE_PAGE:
             return None
-        offset += _NEAR_DUPE_CANDIDATE_PAGE
+        cursor_id = rows[-1].get("id")
+        if not cursor_id:
+            return None
+    return None
 
 
 def _build_update_row(job, source_id, existing_data, *, organization_id=None):

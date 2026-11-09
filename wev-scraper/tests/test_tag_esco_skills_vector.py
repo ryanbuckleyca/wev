@@ -289,7 +289,7 @@ def test_null_skills_raw_does_not_clear_without_retag():
 
 
 def test_non_sse_jobs_are_not_vectorized():
-    """is_sse=false jobs must not embed or write ESCO tags."""
+    """is_sse=false jobs must not embed; they clear stale ESCO tags."""
     mock_supabase = MagicMock()
     mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
         {
@@ -315,9 +315,42 @@ def test_non_sse_jobs_are_not_vectorized():
     mock_svc_cls.assert_not_called()
     mock_supabase.rpc.assert_not_called()
     mock_supabase.table.return_value.upsert.assert_not_called()
-    # Non-SSE still clears junction + jobs.skills (orphaned rows / durable retry).
+    # Explicit non-SSE clears junction + jobs.skills (orphaned rows / durable retry).
     mock_supabase.table.return_value.delete.assert_called()
     mock_supabase.table.return_value.update.assert_called()
+    assert result["processed"] == 0
+    assert result["errors"] == 0
+
+
+def test_unset_sse_jobs_skip_embed_without_clearing_tags():
+    """is_sse=None skips embedding but must not clear existing ESCO tags."""
+    mock_supabase = MagicMock()
+    mock_supabase.table.return_value.select.return_value.in_.return_value.execute.return_value.data = [
+        {
+            "id": "job-sse-unset",
+            "job_title": "Clerk",
+            "organization": "Corp",
+            "summary": None,
+            "description": "Office work",
+            "skills_raw": ["data entry", "customer service"],
+            "skills": ["http://esco/existing"],
+            "is_sse": None,
+        }
+    ]
+
+    with (
+        patch("scripts.tag_esco_skills_vector.supabase", mock_supabase),
+        patch("scripts.tag_esco_skills_vector.JinaEmbeddingService") as mock_svc_cls,
+    ):
+        from scripts.tag_esco_skills_vector import tag_esco_skills_vector
+
+        result = tag_esco_skills_vector(job_ids=["job-sse-unset"], dry_run=False)
+
+    mock_svc_cls.assert_not_called()
+    mock_supabase.rpc.assert_not_called()
+    mock_supabase.table.return_value.upsert.assert_not_called()
+    mock_supabase.table.return_value.delete.assert_not_called()
+    mock_supabase.table.return_value.update.assert_not_called()
     assert result["processed"] == 0
     assert result["errors"] == 0
 
