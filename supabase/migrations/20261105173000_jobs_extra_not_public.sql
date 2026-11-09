@@ -179,3 +179,18 @@ comment on function public.maintain_jobs_public_column_grants() is
 
 revoke all on function public.maintain_jobs_public_column_grants() from public, anon, authenticated;
 grant execute on function public.maintain_jobs_public_column_grants() to service_role;
+
+-- Classify the maintenance SECURITY DEFINER RPC (service_role only).
+insert into private.restricted_rpc (function_name, allowed_roles, is_optional, rationale)
+values (
+  'maintain_jobs_public_column_grants',
+  '{service_role}',
+  false,
+  'Re-grants anon/authenticated column SELECT on public.jobs (except extra) and rebuilds matched_jobs after ADD COLUMN.'
+)
+on conflict (function_name) do update
+set allowed_roles = excluded.allowed_roles,
+    is_optional = excluded.is_optional,
+    rationale = excluded.rationale;
+
+select private.apply_restricted_rpc_grants();
