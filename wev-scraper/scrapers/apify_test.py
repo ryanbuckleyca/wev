@@ -100,6 +100,22 @@ def test_parse_job_requires_core_fields():
     assert _scraper().parse_job({"title": "x", "employer": "y"}) is None
 
 
+def test_parse_job_omits_workplace_when_unset():
+    """No workplace signal → leave is_remote/work_type for location inference."""
+    fields = _scraper().parse_job(_sample_record())
+    assert fields is not None
+    assert "is_remote" not in fields
+    assert "work_type" not in fields
+
+
+def test_parse_job_classifies_explicit_remote_workplace():
+    """Cover parse job classifies explicit remote workplace."""
+    fields = _scraper().parse_job(_sample_record(workplace_type="Remote / telework"))
+    assert fields is not None
+    assert fields["is_remote"] is True
+    assert fields["work_type"] == "remote"
+
+
 class _JsonResp:
     """Test helper: _JsonResp."""
     def __init__(self, payload):
@@ -157,9 +173,53 @@ def test_apify_requests_use_bearer_header_not_query_token(monkeypatch):
     get_url = mock_get.call_args.args[0]
     assert "token=" not in post_url
     assert "token=" not in get_url
+    assert "waitForFinish=0" in post_url
     assert mock_post.call_args.kwargs["headers"]["Authorization"] == (
         "Bearer apify_api_SECRET"
     )
     assert mock_get.call_args.kwargs["headers"]["Authorization"] == (
         "Bearer apify_api_SECRET"
     )
+
+
+def test_apify_start_recovers_recent_run_after_timeout(monkeypatch):
+    """Uncertain start timeout must adopt a just-started run instead of failing open."""
+    from datetime import datetime, timezone
+    from unittest.mock import patch
+
+    import requests
+
+    from scrapers.apify import ApifyJobBankScraper
+
+    monkeypatch.setenv("APIFY_API_TOKEN", "apify_api_SECRET")
+    monkeypatch.delenv("APIFY_JOBBANK_SAMPLE_PATH", raising=False)
+    monkeypatch.delenv("JOBBANK_SAMPLE_PATH", raising=False)
+
+    scraper = ApifyJobBankScraper(
+        {
+            "id": "t",
+            "name": "Apify",
+            "url": "https://api.apify.com/v2/acts/getascraper~jobbank-scraper",
+            "slug": "apify",
+        }
+    )
+    started = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    recovered = {
+        "id": "run-recovered",
+        "status": "RUNNING",
+        "startedAt": started,
+        "defaultDatasetId": "ds-1",
+    }
+    list_resp = _JsonResp({"data": {"items": [recovered]}})
+
+    with (
+        patch(
+            "scrapers.apify.requests.post",
+            side_effect=requests.Timeout("start timed out"),
+        ),
+        patch("scrapers.apify.requests.get", return_value=list_resp),
+    ):
+        run = scraper._start_actor_run(
+            "getascraper~jobbank-scraper", {"maxItems": 1}
+        )
+    assert run["id"] == "run-recovered"

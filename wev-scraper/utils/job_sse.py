@@ -109,6 +109,9 @@ def org_is_sse_from_job_row(job: dict[str, Any] | None) -> bool | None:
 def demote_org_job_sse(supabase: Any, organization_id: Any) -> int:
     """Force ``is_sse=false`` on all SSE jobs for a non-SSE organization.
 
+    Also clears ESCO tags (``jobs.skills`` + ``job_skills`` rows) so demoted
+    jobs do not keep embeddings that the SSE-gated tagger will no longer refresh.
+
     Returns the number of rows updated (best-effort; 0 on empty/failure).
     """
     if organization_id is None:
@@ -116,7 +119,7 @@ def demote_org_job_sse(supabase: Any, organization_id: Any) -> int:
     try:
         resp = (
             supabase.table("jobs")
-            .update({"is_sse": False})
+            .update({"is_sse": False, "skills": []})
             .eq("organization_id", organization_id)
             .eq("is_sse", True)
             .execute()
@@ -124,6 +127,18 @@ def demote_org_job_sse(supabase: Any, organization_id: Any) -> int:
     except Exception:
         return 0
     data = getattr(resp, "data", None) or []
+    job_ids = [row.get("id") for row in data if isinstance(row, dict) and row.get("id")]
+    if job_ids:
+        try:
+            (
+                supabase.table("job_skills")
+                .delete()
+                .in_("job_id", job_ids)
+                .execute()
+            )
+        except Exception:
+            # Best-effort: jobs already demoted; junction cleanup can retry later.
+            pass
     return len(data)
 
 

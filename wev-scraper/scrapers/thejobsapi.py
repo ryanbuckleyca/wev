@@ -282,8 +282,7 @@ class TheJobsApiScraper(BaseApiScraper):
                 "volunteer": "volunteer",
             }.get(raw, raw)
 
-        remote = bool(detail.get("remote"))
-        return {
+        fields: dict[str, Any] = {
             "job_title": title,
             "organization": organization,
             "listing_url": listing_url,
@@ -298,10 +297,20 @@ class TheJobsApiScraper(BaseApiScraper):
             "date_posted": detail.get("posted_at")
             or detail.get("date_posted")
             or detail.get("first_seen_at"),
-            "is_remote": remote,
-            "work_type": "remote" if remote else (detail.get("work_arrangement") or "onsite"),
             "_source_job_id": detail.get("id"),
             "_ats": detail.get("source") or detail.get("board"),
         }
+        arrangement = detail.get("work_arrangement")
+        if detail.get("remote") is True:
+            fields["is_remote"] = True
+            fields["work_type"] = "remote"
+        elif isinstance(arrangement, str) and arrangement.strip():
+            work_type = arrangement.strip().lower()
+            fields["work_type"] = work_type
+            fields["is_remote"] = work_type == "remote"
+        elif detail.get("remote") is False:
+            fields["is_remote"] = False
+            fields["work_type"] = "onsite"
+        return fields
 
 

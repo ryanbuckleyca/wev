@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import datetime
 from typing import Any
 
 import requests
@@ -115,8 +116,6 @@ class ApifyJobBankScraper(BaseApiScraper):
         """Start the Job Bank actor run, wait for terminal status, fetch dataset."""
         actor = _actor_path(self.get_actor_id())
         total_wait = get_int_env("APIFY_JOBBANK_WAIT_SECS") or DEFAULT_WAIT_SECS
-        wait_param = min(total_wait, _API_WAIT_FOR_FINISH_MAX)
-        run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish={wait_param}"
         actor_input = self.build_actor_input(limit)
         scraper_log(
             f"\tStarting Apify actor {self.get_actor_id()} "
@@ -124,18 +123,7 @@ class ApifyJobBankScraper(BaseApiScraper):
             f"keyword={actor_input.get('searchKeyword')!r}, "
             f"location={actor_input.get('location')!r})"
         )
-        try:
-            with requests.post(
-                run_url,
-                json=actor_input,
-                headers=self._auth_headers(json_body=True),
-                timeout=wait_param + self.request_timeout,
-            ) as response:
-                response.raise_for_status()
-                run = response.json().get("data") or {}
-        except requests.RequestException as e:
-            raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
-
+        run = self._start_actor_run(actor, actor_input)
         run = self._wait_for_run_terminal(run, total_wait_secs=total_wait)
         status = run.get("status")
         dataset_id = run.get("defaultDatasetId")
@@ -158,6 +146,89 @@ class ApifyJobBankScraper(BaseApiScraper):
             raise RuntimeError("Apify Job Bank run missing defaultDatasetId")
 
         return self._fetch_dataset_items(dataset_id)
+
+    def _start_actor_run(
+        self, actor: str, actor_input: dict[str, Any]
+    ) -> dict[str, Any]:
+        """POST a new actor run and return its run object.
+
+        Uses ``waitForFinish=0`` so acceptance returns quickly with a run id.
+        On uncertain transport failures (timeout / connection drop after the
+        request may have been accepted), reconcile against recent actor runs
+        before raising — callers must not blindly retry a duplicate start.
+        HTTP error responses mean the run was not accepted and remain safe to
+        surface for a later retry.
+        """
+        # Accept immediately; polling happens in ``_wait_for_run_terminal``.
+        run_url = f"{APIFY_API_BASE}/acts/{actor}/runs?waitForFinish=0"
+        try:
+            with requests.post(
+                run_url,
+                json=actor_input,
+                headers=self._auth_headers(json_body=True),
+                timeout=self.request_timeout,
+            ) as response:
+                response.raise_for_status()
+                run = response.json().get("data") or {}
+                if not run.get("id"):
+                    raise RuntimeError("Apify Job Bank start response missing run id")
+                return run
+        except requests.HTTPError as e:
+            # Server responded — start was rejected; safe for orchestrator retry.
+            raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
+        except (requests.Timeout, requests.ConnectionError) as e:
+            recovered = self._recover_recent_run(actor)
+            if recovered:
+                scraper_log(
+                    f"\tRecovered Apify run {recovered.get('id')} after uncertain "
+                    f"start ({type(e).__name__})"
+                )
+                return recovered
+            raise RuntimeError(
+                f"Failed to start Apify Job Bank run (uncertain; no recent run "
+                f"found to recover): {e}"
+            ) from e
+        except requests.RequestException as e:
+            raise RuntimeError(f"Failed to start Apify Job Bank run: {e}") from e
+
+    def _recover_recent_run(self, actor: str) -> dict[str, Any] | None:
+        """Return a very recent actor run if one likely belongs to a timed-out start."""
+        list_url = f"{APIFY_API_BASE}/acts/{actor}/runs?limit=5&desc=1"
+        try:
+            with requests.get(
+                list_url,
+                headers=self._auth_headers(),
+                timeout=self.request_timeout,
+            ) as response:
+                response.raise_for_status()
+                payload = response.json()
+        except requests.RequestException as e:
+            scraper_log(f"\tWarning: could not list Apify runs for recovery: {e}")
+            return None
+
+        items = payload.get("data", {}).get("items")
+        if not isinstance(items, list):
+            items = payload.get("data") if isinstance(payload.get("data"), list) else []
+        # Only adopt a run started within the last two minutes.
+        cutoff = time.time() - 120
+        for item in items:
+            if not isinstance(item, dict) or not item.get("id"):
+                continue
+            started = item.get("startedAt") or item.get("started_at")
+            if not isinstance(started, str):
+                continue
+            try:
+                # Apify returns ISO-8601 UTC timestamps.
+                started_dt = datetime.fromisoformat(started.replace("Z", "+00:00"))
+                if started_dt.timestamp() < cutoff:
+                    continue
+            except ValueError:
+                continue
+            status = item.get("status")
+            if status in _TERMINAL_RUN_STATUSES and status != "SUCCEEDED":
+                continue
+            return item
+        return None
 
     def _abort_run(self, run_id: str) -> None:
         """Best-effort abort of a still-running Apify actor run."""
@@ -257,14 +328,10 @@ class ApifyJobBankScraper(BaseApiScraper):
             parts = [p for p in (city, province) if p]
             location = ", ".join(parts) if parts else None
 
-        workplace = (record.get("workplace_type") or record.get("work_type") or "").lower()
-        is_remote = "remote" in workplace or "telework" in workplace
-        work_type = "remote" if is_remote else ("hybrid" if "hybrid" in workplace else "onsite")
-
         website = (record.get("employer_website") or "").strip() or None
         apply_url = (record.get("application_url") or "").strip() or None
 
-        return {
+        fields: dict[str, Any] = {
             "job_title": title,
             "organization": organization,
             "listing_url": listing_url,
@@ -277,13 +344,24 @@ class ApifyJobBankScraper(BaseApiScraper):
             "date_posted": self._date_posted(record),
             "close_date": record.get("expiry_date") or record.get("valid_through"),
             "website": website,
-            "is_remote": is_remote,
-            "work_type": work_type,
             "_apply_url": apply_url,
             "_noc_code": record.get("noc_code"),
             "_source_job_id": record.get("internal_id") or record.get("job_id"),
             "_stable_id": record.get("stable_id"),
         }
+        workplace_raw = record.get("workplace_type") or record.get("work_type")
+        if isinstance(workplace_raw, str) and workplace_raw.strip():
+            workplace = workplace_raw.lower()
+            if "remote" in workplace or "telework" in workplace:
+                fields["is_remote"] = True
+                fields["work_type"] = "remote"
+            elif "hybrid" in workplace:
+                fields["is_remote"] = False
+                fields["work_type"] = "hybrid"
+            else:
+                fields["is_remote"] = False
+                fields["work_type"] = "onsite"
+        return fields
 
     def _format_wage(self, record: dict[str, Any]) -> str | None:
         """Format Job Bank salary fields into a display wage string."""

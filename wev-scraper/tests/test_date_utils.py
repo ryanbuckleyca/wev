@@ -54,7 +54,9 @@ def test_parse_relative_posted_at_oversized_digit_string_returns_none():
     import sys
 
     now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
-    limit = sys.get_int_max_str_digits() or 4300
+    # Python 3.10.0–3.10.6 lack get_int_max_str_digits; treat missing/0 as 4300.
+    getter = getattr(sys, "get_int_max_str_digits", None)
+    limit = (getter() if callable(getter) else 0) or 4300
     huge = "9" * (limit + 50)
     assert parse_relative_posted_at(f"{huge} days ago", now=now) is None
 

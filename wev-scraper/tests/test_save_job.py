@@ -63,12 +63,15 @@ def test_save_job_skips_confident_near_duplicate(mock_sb, mock_row, mock_find, m
     }
     from utils.db import save_job
 
-    status, job_id = save_job(_make_job(), "source-id")
+    job = _make_job()
+    status, job_id = save_job(job, "source-id")
     assert status == "skipped"
     assert job_id is None
     mock_sb.table.return_value.insert.assert_not_called()
-    mock_near.assert_called_once()
-    assert mock_near.call_args.kwargs.get("source_id") == "source-id"
+    # organization_id comes from resolver (None without one); source_id is fixed.
+    mock_near.assert_called_once_with(
+        job, organization_id=ANY, source_id="source-id"
+    )
 
 
 @patch("utils.db.is_truthy_env", return_value=False)

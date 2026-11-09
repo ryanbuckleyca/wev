@@ -226,11 +226,7 @@ class TheirStackScraper(BaseApiScraper):
                 "internship": "internship",
             }.get(raw, raw)
 
-        remote = bool(record.get("remote"))
-        hybrid = bool(record.get("hybrid"))
-        work_type = "remote" if remote else ("hybrid" if hybrid else "onsite")
-
-        return {
+        fields: dict[str, Any] = {
             "job_title": title,
             "organization": organization,
             "listing_url": listing_url,
@@ -244,9 +240,22 @@ class TheirStackScraper(BaseApiScraper):
             "employment_type": employment,
             "date_posted": record.get("date_posted"),
             "website": website,
-            "is_remote": remote,
-            "work_type": work_type,
             "_source_job_id": record.get("id"),
             "_source_url": record.get("source_url"),
         }
+        # Only classify when TheirStack sent workplace flags; missing keys leave
+        # inference to location parsing instead of a false onsite default.
+        has_remote = "remote" in record
+        has_hybrid = "hybrid" in record
+        if has_remote or has_hybrid:
+            if record.get("remote") is True:
+                fields["is_remote"] = True
+                fields["work_type"] = "remote"
+            elif record.get("hybrid") is True:
+                fields["is_remote"] = False
+                fields["work_type"] = "hybrid"
+            else:
+                fields["is_remote"] = False
+                fields["work_type"] = "onsite"
+        return fields
 

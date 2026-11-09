@@ -418,6 +418,30 @@ def tag_esco_skills_vector(
 
         if job.get("is_sse") is not True:
             skipped_non_sse_embed += 1
+            # Demoted / non-SSE jobs must not keep stale ESCO tags. Clear when
+            # skills were previously written; leave skills=None (never tagged).
+            if (
+                not dry_run
+                and job.get("skills") is not None
+            ):
+                job_id = job["id"]
+                try:
+                    _with_supabase_retries(
+                        lambda jid=job_id: replace_job_skills(jid, []),
+                        label=f"job {job_id} clear job_skills (non-SSE)",
+                    )
+                    _with_supabase_retries(
+                        lambda jid=job_id: supabase.table("jobs")
+                        .update({"skills": []})
+                        .eq("id", jid)
+                        .execute(),
+                        label=f"job {job_id} clear jobs.skills (non-SSE)",
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"[vector-tagger] job {job_id}: clear on non-SSE demotion "
+                        f"failed — {e!r}"
+                    )
             continue
 
         jobs_with_phrases.append({

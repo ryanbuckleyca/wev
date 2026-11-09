@@ -791,6 +791,24 @@ def test_job_needs_skills_phrases_done_when_esco_off(monkeypatch):
     )
 
 
+def test_job_needs_skills_phrases_done_when_tag_env_unset(monkeypatch):
+    """Unset SHOULD_TAG_SKILLS must not depend on the process default."""
+    from utils.catch_up import job_needs_skills
+
+    monkeypatch.delenv("SHOULD_TAG_SKILLS", raising=False)
+    assert (
+        job_needs_skills(
+            {
+                "skills_raw": ["CRM"],
+                "skills": None,
+                "is_sse": True,
+                "description": "Full posting.",
+            }
+        )
+        is False
+    )
+
+
 def test_job_needs_skills_zero_match_array_is_durable():
     """skills=[] after a failed ESCO floor must not re-queue forever."""
     from utils.catch_up import job_needs_skills

@@ -130,13 +130,18 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
         return list(by_key.values())[:limit]
 
     def _prepare_date_posted(self, fields: dict[str, Any]) -> None:
-        """Prefer SerpApi relative strings like ``3 days ago`` before recency."""
+        """Resolve SerpApi relative strings to a full timestamp before recency.
+
+        Keep the time component so ``is_recent_job``'s inclusive cutoff is not
+        undermined by date-only truncation; ``normalize_date`` shortens to
+        ``YYYY-MM-DD`` only after the job is accepted.
+        """
         date_str = fields.get("date_posted")
         if not date_str:
             return
         relative = parse_relative_posted_at(str(date_str))
         if relative is not None:
-            fields["date_posted"] = relative.date().isoformat()
+            fields["date_posted"] = relative.isoformat()
 
     def parse_job(self, record: dict[str, Any]) -> dict[str, Any] | None:
         """Map one SerpApi Google Jobs result to Wev fields. Return None to skip."""
@@ -187,10 +192,10 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
                     break
 
         is_remote = bool(detected.get("work_from_home")) or (
-            location and location.lower() in {"anywhere", "remote", "canada (remote)"}
+            bool(location) and location.lower() in {"anywhere", "remote", "canada (remote)"}
         )
 
-        return {
+        fields: dict[str, Any] = {
             "job_title": title,
             "organization": organization,
             "listing_url": listing_url,
@@ -201,11 +206,15 @@ class SerpApiGoogleJobsScraper(BaseApiScraper):
             "wage": wage,
             "employment_type": self._employment_type(employment),
             "date_posted": posted,
-            "is_remote": is_remote,
-            "work_type": "remote" if is_remote else "onsite",
             "_via": record.get("via"),
             "_source_job_id": record.get("job_id"),
         }
+        # Only set workplace when SerpApi signals remote; otherwise leave unset
+        # so location inference can classify onsite/hybrid.
+        if is_remote:
+            fields["is_remote"] = True
+            fields["work_type"] = "remote"
+        return fields
 
     def _best_apply_url(self, record: dict[str, Any]) -> str | None:
         """Prefer the first concrete apply_options link, else share_link."""

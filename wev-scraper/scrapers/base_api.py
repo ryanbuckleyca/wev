@@ -156,9 +156,9 @@ class BaseApiScraper:
 
         try:
             fields = self.parse_job(record)
-        except (TypeError, AttributeError, ValueError) as e:
-            # Malformed provider fields (e.g. non-string employer) must not abort
-            # the whole source run — skip and keep processing siblings.
+        except (TypeError, AttributeError, ValueError, KeyError) as e:
+            # Malformed provider fields (e.g. non-string employer / bad location
+            # shape) must not abort the whole source run — skip siblings remain.
             scraper_log(
                 f"\t\tSkipping job {index + 1}: malformed record ({type(e).__name__}: {e})"
             )

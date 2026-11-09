@@ -68,15 +68,24 @@ def test_demote_org_job_sse():
     eq_sse = MagicMock(return_value=MagicMock(execute=execute))
     eq_org = MagicMock(return_value=MagicMock(eq=eq_sse))
     update = MagicMock(return_value=MagicMock(eq=eq_org))
-    table = MagicMock(return_value=MagicMock(update=update))
+
+    delete_execute = MagicMock(return_value=MagicMock(data=[]))
+    delete_in = MagicMock(return_value=MagicMock(execute=delete_execute))
+    delete = MagicMock(return_value=MagicMock(in_=delete_in))
+
+    def table_side_effect(name):
+        if name == "job_skills":
+            return MagicMock(delete=delete)
+        return MagicMock(update=update)
+
     supabase = MagicMock()
-    supabase.table = table
+    supabase.table.side_effect = table_side_effect
 
     assert demote_org_job_sse(supabase, 7) == 2
-    table.assert_called_with("jobs")
-    update.assert_called_with({"is_sse": False})
+    update.assert_called_with({"is_sse": False, "skills": []})
     eq_org.assert_called_with("organization_id", 7)
     eq_sse.assert_called_with("is_sse", True)
+    delete_in.assert_called_with("job_id", ["a", "b"])
 
     assert demote_org_job_sse(supabase, None) == 0
 
