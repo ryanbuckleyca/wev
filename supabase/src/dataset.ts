@@ -171,6 +171,46 @@ function createSourceFixtures(now: Date): SourceInsert[] {
       slug: "macb",
       url: "https://macommunaute.ca/benevolat",
     },
+    {
+      active: true,
+      created_at: toIsoTimestamp(daysAgo(now, 23)),
+      id: buildUuid(8),
+      name: "Headcount Labs",
+      slug: "headcount",
+      url: "https://api.headcountlabs.com/v1/jobs",
+    },
+    {
+      active: true,
+      created_at: toIsoTimestamp(daysAgo(now, 22)),
+      id: buildUuid(9),
+      name: "SerpApi Google Jobs",
+      slug: "serpapi",
+      url: "https://serpapi.com/google-jobs-api",
+    },
+    {
+      active: true,
+      created_at: toIsoTimestamp(daysAgo(now, 21)),
+      id: buildUuid(10),
+      name: "Apify (Canada Job Bank)",
+      slug: "apify",
+      url: "https://api.apify.com/v2/acts/getascraper~jobbank-scraper",
+    },
+    {
+      active: true,
+      created_at: toIsoTimestamp(daysAgo(now, 20)),
+      id: buildUuid(11),
+      name: "The Jobs API",
+      slug: "thejobsapi",
+      url: "https://api.thejobsapi.com/v1/jobs",
+    },
+    {
+      active: true,
+      created_at: toIsoTimestamp(daysAgo(now, 19)),
+      id: buildUuid(12),
+      name: "TheirStack",
+      slug: "theirstack",
+      url: "https://api.theirstack.com/v1/jobs/search",
+    },
   ];
 }
 

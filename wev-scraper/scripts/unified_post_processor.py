@@ -360,7 +360,10 @@ def process_jobs_unified(opts: ProcessingOptions | None = None) -> Dict[str, Any
                 if update_data:
                     try:
                         _try_db_write(job, update_data, supabase)
-                        if _touches_match_relevant(update_data):
+                        # Match / embedding index is SSE-only (same for web + API sources).
+                        if _touches_match_relevant(update_data) and _job_is_sse_for_match(
+                            job, update_data
+                        ):
                             _enqueue_job_match_recalc(job["id"], supabase)
                         if "summary" in update_data:
                             counts["updated"]["summary"] += 1
@@ -490,12 +493,24 @@ _MATCH_RELEVANT_KEYS = frozenset({
     "municipality",
     "province",
     "geocode_accuracy_type",
+    # Enqueue when SSE flips even before DB trigger watches is_sse.
+    "is_sse",
 })
 
 
 def _touches_match_relevant(update_data: dict) -> bool:
     """Return True if the update payload contains a field that affects scoring."""
     return any(k in _MATCH_RELEVANT_KEYS for k in update_data)
+
+
+def _job_is_sse_for_match(job: dict | None, update_data: dict) -> bool:
+    """Match recalc / vector index is only for SSE jobs.
+
+    Prefer the value about to be written; fall back to the persisted row.
+    """
+    if "is_sse" in update_data:
+        return update_data.get("is_sse") is True
+    return bool(job) and job.get("is_sse") is True
 
 
 def is_transient_db_error(e: Exception) -> bool:

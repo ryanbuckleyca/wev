@@ -200,4 +200,11 @@ def normalize_job_data(job_data: dict) -> dict | None:
     normalized["listing_url"] = normalize_text(job_data.get("listing_url"))
     website = job_data.get("website") or job_data.get("organization_website")
     normalized["website"] = normalize_text(website) if website else None
+    # Paid API scrapers attach the provider record under jobs.extra.source_dump.
+    # Public SELECT on jobs.extra is revoked (service_role only).
+    dump = job_data.get("source_dump")
+    if isinstance(dump, dict):
+        normalized["extra"] = {"source_dump": dump}
+    elif isinstance(job_data.get("extra"), dict):
+        normalized["extra"] = job_data["extra"]
     return normalized
