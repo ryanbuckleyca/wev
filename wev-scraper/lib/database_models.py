@@ -17,14 +17,11 @@ from pydantic import BaseModel, Field
 
 
 class Bookmarks(BaseModel):
+    created_at: str
     user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    job_id: UUID = Field(
-        ...,
-        description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `jobs.id`.<fk table='jobs' column='id'/>",
-    )
-    created_at: Optional[str] = 'now()'
+    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
     notes: Optional[str] = None
-    tags: Optional[List[str]] = None
+    tags: List[str]
 
 
 class ProfileSkills(BaseModel):
@@ -61,7 +58,10 @@ class ScrapeRuns(BaseModel):
     jobs_found: Optional[int] = 0
     jobs_added: Optional[int] = 0
     run_at: Optional[str] = 'now()'
-    source_id: Optional[UUID] = None
+    source_id: Optional[UUID] = Field(
+        None,
+        description="Note:\nThis is a Foreign Key to `sources.id`.<fk table='sources' column='id'/>",
+    )
 
 
 class JobSkills(BaseModel):
@@ -92,7 +92,10 @@ class Jobs(BaseModel):
     date_posted: Optional[str] = None
     employment_type: Optional[str] = None
     external_job_id: Optional[str] = None
-    extra: Any
+    extra: Any = Field(
+        ...,
+        description='Opaque scraper bag (API source_dump under extra.source_dump). SELECT revoked for anon/authenticated — service_role only.',
+    )
     scraped_at: str
     wage: Optional[str] = None
     close_date: Optional[date] = None
@@ -104,20 +107,19 @@ class Jobs(BaseModel):
     sse_details: Optional[Any] = None
     is_sse: Optional[bool] = False
     work_type: str = Field(..., description='remote | hybrid | office')
-    values: List[str]
-    skills: List[str] = Field(
-        ..., description='ESCO skill concept URIs tagged to this job (max 10).'
-    )
     language: str
+    skills: Optional[List[str]] = None
+    skills_rated: Optional[Any] = None
+    values: Optional[List[str]] = None
     values_rated: Optional[Any] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    geocode_accuracy_type: Optional[str] = None
     unit_text: Optional[str] = None
     min_value: Optional[int] = None
     max_value: Optional[int] = None
     hours_per_week: Optional[int] = None
     compensation_meta: Optional[Any] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    geocode_accuracy_type: Optional[str] = None
     fts: Optional[str] = None
     fts_en: Optional[str] = None
     fts_fr: Optional[str] = None
@@ -144,19 +146,14 @@ class Profiles(BaseModel):
     created_at: Optional[str] = 'now()'
     updated_at: Optional[str] = 'now()'
     skills: Optional[List[str]] = None
-    work_types: Optional[List[str]] = Field(
-        None, description='Preferred work types (remote | hybrid | office)'
-    )
     skills_rated: Optional[Any] = None
     values_rated: Optional[Any] = None
+    work_types: Optional[List[str]] = None
     lat: Optional[float] = None
     lng: Optional[float] = None
     location_display_name: Optional[str] = None
     municipality: Optional[str] = None
     province: Optional[str] = None
-    ideal_work_environment: Optional[str] = Field(
-        None, description='User-described ideal workplace environment (free text)'
-    )
     cv_import: Optional[Any] = Field(
         None,
         description='CV import metadata only: { filename, imported_at, source, locale }',
@@ -166,33 +163,18 @@ class Profiles(BaseModel):
 
 
 class EscoSkills(BaseModel):
-    concept_uri: str = Field(
-        ...,
-        description='Stable ESCO concept URI identifier.\n\nNote:\nThis is a Primary Key.<pk/>',
-    )
-    skill_type: str = Field(
-        ..., description='ESCO skill type tail value (e.g. skill, knowledge).'
-    )
-    reuse_level: str = Field(
-        ..., description='ESCO reuse level tail value (e.g. transversal, cross-sector).'
-    )
-    preferred_label_en: str = Field(
-        ..., description='Preferred ESCO skill label in English.'
-    )
-    preferred_label_fr: str = Field(
-        ..., description='Preferred ESCO skill label in French.'
-    )
-    alternative_label_en: List[str] = Field(
-        ..., description='Alternative labels in English.'
-    )
-    alternative_label_fr: List[str] = Field(
-        ..., description='Alternative labels in French.'
-    )
-    description_en: str = Field(..., description='Description in English.')
-    description_fr: str = Field(..., description='Description in French.')
-    scope_note_en: str = Field(..., description='Scope note in English.')
-    scope_note_fr: str = Field(..., description='Scope note in French.')
-    updated_at: str
+    concept_uri: str = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    skill_type: Optional[str] = None
+    reuse_level: Optional[str] = None
+    preferred_label_en: Optional[str] = None
+    preferred_label_fr: Optional[str] = None
+    alternative_label_en: Optional[List[str]] = None
+    alternative_label_fr: Optional[List[str]] = None
+    description_en: Optional[str] = None
+    description_fr: Optional[str] = None
+    scope_note_en: Optional[str] = None
+    scope_note_fr: Optional[str] = None
+    updated_at: Optional[str] = None
     embedding: Optional[str] = None
 
 
@@ -210,7 +192,6 @@ class MatchedJobs(BaseModel):
     date_posted: Optional[str] = None
     employment_type: Optional[str] = None
     external_job_id: Optional[str] = None
-    extra: Optional[Any] = None
     scraped_at: Optional[str] = None
     wage: Optional[str] = None
     close_date: Optional[date] = None
@@ -222,18 +203,19 @@ class MatchedJobs(BaseModel):
     sse_details: Optional[Any] = None
     is_sse: Optional[bool] = None
     work_type: Optional[str] = None
-    values: Optional[List[str]] = None
-    skills: Optional[List[str]] = None
     language: Optional[str] = None
+    skills: Optional[List[str]] = None
+    skills_rated: Optional[Any] = None
+    values: Optional[List[str]] = None
     values_rated: Optional[Any] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    geocode_accuracy_type: Optional[str] = None
     unit_text: Optional[str] = None
     min_value: Optional[int] = None
     max_value: Optional[int] = None
     hours_per_week: Optional[int] = None
     compensation_meta: Optional[Any] = None
-    lat: Optional[float] = None
-    lng: Optional[float] = None
-    geocode_accuracy_type: Optional[str] = None
     fts: Optional[str] = None
     fts_en: Optional[str] = None
     fts_fr: Optional[str] = None
@@ -279,32 +261,21 @@ class UserRoles(BaseModel):
 
 class JobMatches(BaseModel):
     user_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
-    job_id: UUID = Field(
-        ...,
-        description="Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `jobs.id`.<fk table='jobs' column='id'/>",
-    )
-    score: Optional[float] = None
+    job_id: UUID = Field(..., description='Note:\nThis is a Primary Key.<pk/>')
+    score: float
+    shared_skills: Optional[List[str]] = None
     shared_values: List[str]
-    updated_at: Optional[str] = 'now()'
-    value_score: Optional[float] = Field(
+    skill_score: Optional[float] = None
+    value_score: Optional[float] = None
+    location_score: Optional[float] = Field(
         None,
-        description='Match score based on shared values (0-1, null if no values present).',
-    )
-    skill_score: Optional[float] = Field(
-        None,
-        description='Match score based on shared skills (0-1, null if no skills present).',
-    )
-    shared_skills: List[str] = Field(
-        ..., description='ESCO concept URIs shared between user and job.'
+        description='Match score based on ideal_work_environment overlap with job text (0-1). Null when profile did not opt into location or did not provide an ideal_work_environment.',
     )
     work_type_score: Optional[float] = Field(
         None,
         description='Match score based on work type preference (0-1). Defaults to 1.0 when the profile has no work_types set.',
     )
-    location_score: Optional[float] = Field(
-        None,
-        description='Match score based on ideal_work_environment overlap with job text (0-1). Null when profile did not opt into location or did not provide an ideal_work_environment.',
-    )
+    updated_at: str
 
 
 class Cities(BaseModel):
@@ -345,7 +316,7 @@ class Organizations(BaseModel):
     sector_id: Optional[str] = None
     language: Optional[str] = Field(
         None,
-        description='Primary public language of the organization (en, fr, or bilingual). Distinct from jobs.language (role/posting requirements).',
+        description='Primary public language of the organization (en, fr, or bilingual). Existing values are preserved. New classifications use objective signals: the organization-owned website (declared en+fr materials yield bilingual) plus an LLM assessment of the official name; a research-derived public_language observation is only a tiebreaker when those are silent. Generated descriptions, mission text, and jobs.language are not classification evidence.',
     )
     description_en: Optional[str] = Field(
         None, description='Public organization description in English.'

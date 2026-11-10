@@ -117,6 +117,10 @@ def _job_row(job, source_id, *, organization_id=None):
         "language": job.get("language") or "en",
         "organization_id": organization_id,
     }
+    # Only set when present so web-scrape updates do not wipe a prior API dump.
+    extra = job.get("extra")
+    if isinstance(extra, dict) and extra:
+        row["extra"] = extra
 
     # Populate structured compensation fields via LLM extraction
     wage_text = job.get("wage")
@@ -208,46 +212,91 @@ def _find_existing_job(job):
 
 _NEAR_DUPE_CANDIDATE_COLUMNS = (
     "id, job_title, listing_url, date_posted, description, employment_type, "
-    "municipality, location, organization, organization_id"
+    "municipality, province, location, organization, organization_id, source_id"
 )
-_NEAR_DUPE_CANDIDATE_LIMIT = 40
+_NEAR_DUPE_CANDIDATE_PAGE = 100
+# Bound employer scans so one insert cannot walk every historical row.
+_NEAR_DUPE_CANDIDATE_MAX_PAGES = 5
+# Align with utils.job_near_dupes.dates_within default.
+_NEAR_DUPE_DATE_WINDOW_DAYS = 21
 
 
-def _find_confident_near_duplicate(job, *, organization_id=None):
+def _find_confident_near_duplicate(job, *, organization_id=None, source_id=None):
     """Return an existing job that is a high-confidence content clone (different URL).
 
     Used to stop board-side ID churn (e.g. Eco Canada re-listing the same req
     under new numeric IDs) from inserting duplicate rows. Raises on DB errors.
+
+    Pages employer candidates with a stable id keyset (newest ids first), an
+    optional date window, and a hard page cap — not an unbounded offset walk.
+
+    ``source_id`` is attached to the probe so cross-source evidence works when
+    two APIs land on the same listing host (e.g. LinkedIn via SerpApi vs TheirStack).
     """
-    from utils.job_near_dupes import is_confident_duplicate_pair
+    from datetime import timedelta
+
+    from utils.job_near_dupes import is_confident_duplicate_pair, parse_job_date
 
     title = (job.get("job_title") or "").strip()
     if not title or not (job.get("description") or "").strip():
         return None
 
-    query = (
-        supabase.table("jobs")
-        .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
-        .order("scraped_at", desc=True)
-        .limit(_NEAR_DUPE_CANDIDATE_LIMIT)
-    )
+    filters: dict = {}
     if organization_id is not None:
-        query = query.eq("organization_id", organization_id)
+        filters["organization_id"] = organization_id
     else:
         org_name = (job.get("organization") or "").strip()
         if not org_name:
             return None
-        query = query.eq("organization", org_name)
+        filters["organization"] = org_name
 
-    resp = query.execute()
-    rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
     probe = {
         **job,
         "organization_id": organization_id if organization_id is not None else job.get("organization_id"),
+        "source_id": source_id if source_id is not None else job.get("source_id"),
     }
-    for row in rows:
-        if is_confident_duplicate_pair(probe, row):
-            return row
+
+    # jobs.date_posted is text. Established writer formats (see
+    # try_parse_job_date_posted): YYYY-MM-DD and ISO datetimes. Lexicographic
+    # bounds work for those; exclusive upper bound keeps same-day timestamps.
+    # NULL dates must stay eligible (dates_within treats missing as a match).
+    date_filter = None
+    posted = parse_job_date(job.get("date_posted"))
+    if posted is not None:
+        date_lo = (posted - timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS)).isoformat()
+        date_hi_excl = (
+            posted + timedelta(days=_NEAR_DUPE_DATE_WINDOW_DAYS + 1)
+        ).isoformat()
+        date_filter = (
+            f"date_posted.is.null,"
+            f"and(date_posted.gte.{date_lo},date_posted.lt.{date_hi_excl})"
+        )
+
+    cursor_id = None
+    for _ in range(_NEAR_DUPE_CANDIDATE_MAX_PAGES):
+        query = (
+            supabase.table("jobs")
+            .select(_NEAR_DUPE_CANDIDATE_COLUMNS)
+            .eq("job_title", title)
+            .order("id", desc=True)
+            .limit(_NEAR_DUPE_CANDIDATE_PAGE)
+        )
+        for col, val in filters.items():
+            query = query.eq(col, val)
+        if date_filter is not None:
+            query = query.or_(date_filter)
+        if cursor_id is not None:
+            query = query.lt("id", cursor_id)
+        resp = query.execute()
+        rows = resp.data if isinstance(getattr(resp, "data", None), list) else []
+        for row in rows:
+            if is_confident_duplicate_pair(probe, row):
+                return row
+        if len(rows) < _NEAR_DUPE_CANDIDATE_PAGE:
+            return None
+        cursor_id = rows[-1].get("id")
+        if not cursor_id:
+            return None
     return None
 
 
@@ -346,7 +395,9 @@ def save_job(job, source_id, *, resolver=None):
     # next scrape; a duplicate insert is recoverable via unique constraints / later
     # near-dupe review.
     try:
-        near = _find_confident_near_duplicate(job, organization_id=organization_id)
+        near = _find_confident_near_duplicate(
+            job, organization_id=organization_id, source_id=source_id
+        )
     except Exception as e:
         scraper_log(f"Error checking for near-duplicate job (proceeding with insert): {e}")
         near = None

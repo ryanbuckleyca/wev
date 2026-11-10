@@ -63,6 +63,7 @@ from settings import get_supabase_settings  # noqa: E402
 from utils.catch_up import (  # noqa: E402
     find_unprocessed_jobs,
     find_unprocessed_organizations,
+    job_catch_up_lines,
 )
 from utils.db import supabase  # noqa: E402
 from utils.log import scraper_log as _log  # noqa: E402
@@ -235,8 +236,15 @@ def main():
         elif choice == "j":
             if unprocessed_jobs_raw:
                 _log("\n--- Re-processing Jobs ---")
-                ok, err = process_unprocessed_jobs(unprocessed_jobs_raw)
-                _log(f"Jobs: {ok} processed, {err} errors.")
+                job_result = process_unprocessed_jobs(unprocessed_jobs_raw)
+                original_ids = {job["id"] for job, _needs in unprocessed_jobs_raw}
+                remaining = [
+                    (job, needs)
+                    for job, needs in find_unprocessed_jobs()
+                    if job["id"] in original_ids
+                ]
+                for line in job_catch_up_lines(len(unprocessed_jobs_raw), job_result, remaining):
+                    _log(line)
             else:
                 print("No jobs to process.")
         elif choice == "o":

@@ -446,15 +446,120 @@ def determine_work_type(location: Optional[str], municipality: Optional[str] = N
     return "office"
 
 
-def parse_address_with_geocodio(location: Optional[str]) -> dict:
-    """Use Geocodio to extract municipality, province, lat, lng, and geocode_accuracy_type."""
+# Same name in more than one province. The query has to be one of these
+# cities; description and employer are only the tie-break, so a Toronto
+# posting that mentions St. Catharines in a list of offices stays Toronto.
+_AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?"
+            r"(?:st\.?\s*catharines|saint catharines|sainte-catherine|sainte catherine)"
+            r"(?:(?:\s*,\s*|\s+)(?:qc|quebec|on|ontario|canada|ca))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "St. Catharines",
+                "province": "ON",
+                "lat": 43.204152,
+                "lng": -79.23156,
+            },
+            {
+                "municipality": "Sainte-Catherine",
+                "province": "QC",
+                "lat": 45.400217,
+                "lng": -73.548143,
+            },
+        ),
+        # First match wins. An explicit "located in Ste. Catherine" stays in
+        # Quebec. Niagara, Brock University, and the Ontario spelling
+        # "St. Catharines" beat a geocoder label of Sainte-Catherine, QC.
+        "rules": (
+            (re.compile(r"located in (?:ste\.? catherine|sainte-catherine)"), 1),
+            (re.compile(r"niagara"), 0),
+            (re.compile(r"brock university"), 0),
+            (re.compile(r"stcatharines\.ca"), 0),
+            (re.compile(r"brocku\.ca"), 0),
+            (re.compile(r"firstontariopac"), 0),
+            (re.compile(r"firstontario"), 0),
+            (re.compile(r"\bst\.?\s*catharines\b"), 0),
+            (re.compile(r"(?:ste\.? catherine|sainte-catherine).{0,24}(?:qc|quebec)"), 1),
+            (re.compile(r"(?:qc|quebec).{0,24}(?:ste\.? catherine|sainte-catherine)"), 1),
+        ),
+    },
+)
+
+
+def ambiguous_city_for(location: Optional[str], context: str = "") -> dict | None:
+    """Choose a province when the place name exists in more than one.
+
+    Returns a municipality/province/lat/lng dict, or None when *location* is
+    not one of the ambiguous names. *context* is the employer and posting text.
+    """
+    if not location or not str(location).strip():
+        return None
+    folded_query = _alias_lookup_key(normalize_messy_location(location))
+    folded_context = _alias_lookup_key(normalize_messy_location(context or ""))
+    evidence = f"{folded_query}\n{folded_context}"
+    for group in _AMBIGUOUS_CITY_GROUPS:
+        if not group["query"].fullmatch(folded_query):
+            continue
+        for pattern, index in group["rules"]:
+            if pattern.search(evidence):
+                return dict(group["cities"][index])
+    return None
+
+
+def _apply_ambiguous_choice(result: dict | None, choice: dict) -> dict:
+    """Keep Geocodio coordinates when they agree; otherwise use the chosen city."""
+    if result and result.get("province") == choice["province"]:
+        agreed = dict(result)
+        agreed["municipality"] = choice["municipality"]
+        agreed["province"] = choice["province"]
+        return agreed
+    return {
+        "municipality": choice["municipality"],
+        "province": choice["province"],
+        "lat": choice["lat"],
+        "lng": choice["lng"],
+        "geocode_accuracy_type": "place",
+    }
+
+
+def _location_has_province(text: str) -> bool:
+    """True when the trailing token of *text* is a Canadian province (code or name)."""
+    for sep in (",", " "):
+        head, found, tail = text.rpartition(sep)
+        if found and head and _normalize_ca_province_code(tail.strip()):
+            return True
+    return False
+
+
+def parse_address_with_geocodio(
+    location: Optional[str], context: str = "", default_province: Optional[str] = None
+) -> dict:
+    """Use Geocodio to extract municipality, province, lat, lng, and geocode_accuracy_type.
+
+    *context* is employer and posting text. It only matters when *location* is a
+    city name that exists in more than one province.
+
+    *default_province* is the province every posting from the calling source belongs
+    to (e.g. ``"QC"`` for a Greater-Montréal board). It qualifies a bare city name —
+    ``"LaSalle"`` becomes ``"LaSalle, QC"`` — so Geocodio stops resolving it to a
+    same-named town in another province. A location that already names a province is
+    left untouched.
+    """
     _empty = {"municipality": None, "province": None, "lat": None, "lng": None, "geocode_accuracy_type": None}
     if not location or not location.strip():
         return _empty
 
     cleaned = normalize_messy_location(location)
-    aliased = apply_location_alias(cleaned)
-    query = aliased or cleaned
+    choice = ambiguous_city_for(cleaned, context)
+    aliased = None if choice else apply_location_alias(cleaned)
+    query = (
+        f"{choice['municipality']}, {choice['province']}"
+        if choice
+        else (aliased or cleaned)
+    )
 
     # Province-scoped phrases → fill province (+ optional centroid), no city.
     scoped = _province_scoped_from_phrase(cleaned)
@@ -510,6 +615,12 @@ def parse_address_with_geocodio(location: Optional[str]) -> dict:
         # Fall through to normal geocoding if checks fail
         pass
 
+    # A source that only covers one province qualifies its bare city names so Geocodio
+    # cannot drift to a same-named town elsewhere (e.g. LaSalle, QC → LaSalle, MB).
+    province_code = _normalize_ca_province_code(default_province) if default_province else None
+    if province_code and not choice and not aliased and not _location_has_province(query):
+        query = f"{query}, {province_code}"
+
     allow_us = _is_intentional_us_geocode_query(query)
 
     # US job strings must not be Canada-suffixed — Geocodio then returns lookalikes
@@ -522,6 +633,8 @@ def parse_address_with_geocodio(location: Optional[str]) -> dict:
 
     try:
         result = _geocode_with_geocodio(query, allow_us=allow_us)
+        if choice:
+            return _apply_ambiguous_choice(result, choice)
         if not result:
             return _empty
         # Prefer the alias city when Geocodio omits it (regions/counties) or
@@ -802,8 +915,11 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         # Try to find "City, Province" inside parentheses
         for province in provinces:
             # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            # NOTE: removed re.IGNORECASE to ensure [A-Z] only matches capital letters
-            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            # NOTE: removed re.IGNORECASE to ensure [A-Z] only matches capital letters.
+            # 2-letter codes need a LEFT boundary too, or "ON" matches the tail of
+            # "organisatiON" / "NS" the tail of "daNS", inventing a city+province.
+            province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{province_pattern}'
             match = re.search(pattern, inside_parens)
             if match:
                 city = match.group(1).strip()
@@ -818,8 +934,11 @@ def _extract_explicit_location(location: str) -> Optional[str]:
         text_before_paren = before_paren.group(1).strip()
         # Look for "City, Province" patterns (most common)
         for province in provinces:
-            # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces
-            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{re.escape(province)}\b'
+            # City: capital letter + letters/accents/hyphens, can be multiple words separated by spaces.
+            # 2-letter codes need a LEFT boundary too (see Pattern 0 note) so a province
+            # code at the end of a longer word cannot split that word into a fake city.
+            province_pattern = rf'\b{re.escape(province)}\b' if len(province) == 2 else rf'{re.escape(province)}\b'
+            pattern = rf'\b([A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+(?: +[A-Z][A-Za-z\u00c0-\u00ff\-\'\.]+)*)\s*,?\s*{province_pattern}'
             match = re.search(pattern, text_before_paren)
             if match:
                 city = match.group(1).strip()

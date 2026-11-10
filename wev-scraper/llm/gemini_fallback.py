@@ -30,7 +30,12 @@ from collections.abc import Callable
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.config import should_use_grounding
-from llm.cooldown import ProviderCooldownMixin, get_cooldown_minutes, is_quota_exhausted_error
+from llm.cooldown import (
+    ProviderCooldownMixin,
+    fallback_reason,
+    get_cooldown_minutes,
+    is_quota_exhausted_error,
+)
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
 from llm.local_grounded import LocalGroundedProvider
@@ -137,6 +142,8 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         # Maps provider name → timestamp when cooldown expires
         self._exhausted_until: dict[str, float] = {}
         self._cooldown_seconds = get_cooldown_minutes() * 60
+        # Skipped backends for this process, so catch-up can print why a model fell through.
+        self.fallback_notes: list[dict[str, str]] = []
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -256,6 +263,11 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             **provider_kwargs,
         )
 
+    def _remember_fallback(self, name: str, reason: str) -> None:
+        note = {"provider": name, "reason": reason}
+        if note not in self.fallback_notes:
+            self.fallback_notes.append(note)
+
     def _try_grounded_complete(
         self,
         prompt: str,
@@ -274,6 +286,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             # Skip providers in cooldown period after quota exhaustion
             if self._is_provider_in_cooldown(name):
                 failed.append(name)
+                self._remember_fallback(name, "rate-limit cooldown")
                 continue
 
             ev = evidence
@@ -307,6 +320,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 if not self._is_usable_result(result):
                     last_error = LLMProviderError(f"{name} returned empty response")
                     failed.append(name)
+                    self._remember_fallback(name, "empty response")
                     logger.warning("SSE provider %s returned empty response", name)
                     continue
                 if failed:
@@ -320,6 +334,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             except Exception as exc:
                 last_error = exc
                 failed.append(name)
+                self._remember_fallback(name, fallback_reason(exc))
 
                 # Mark provider as exhausted with time-bounded cooldown if quota error
                 if is_quota_exhausted_error(exc):
@@ -352,6 +367,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             # Skip providers in cooldown period after quota exhaustion
             if self._is_provider_in_cooldown(name):
                 failed.append(name)
+                self._remember_fallback(name, "rate-limit cooldown")
                 continue
 
             try:
@@ -367,6 +383,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 if not self._is_usable_result(result):
                     last_error = LLMProviderError(f"{name} returned empty response")
                     failed.append(name)
+                    self._remember_fallback(name, "empty response")
                     logger.warning("SSE provider %s returned empty response", name)
                     continue
                 if failed:
@@ -380,6 +397,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             except Exception as exc:
                 last_error = exc
                 failed.append(name)
+                self._remember_fallback(name, fallback_reason(exc))
 
                 # Mark provider as exhausted with time-bounded cooldown if quota error
                 if is_quota_exhausted_error(exc):

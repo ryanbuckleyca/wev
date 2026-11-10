@@ -8,6 +8,7 @@ from utils.date_utils import (
     _translate_french_date,
     get_within_weeks,
     is_recent_job,
+    parse_relative_posted_at,
 )
 
 
@@ -32,6 +33,40 @@ def test_translate_french_date():
     # Actually, let's just test that it translates the word.
     assert "february" in _translate_french_date("15 févr. 2024")
     assert _translate_french_date("mars") == "march"
+
+def test_parse_relative_posted_at():
+    """Cover parse relative posted at."""
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    assert parse_relative_posted_at("3 days ago", now=now) == now - timedelta(days=3)
+    assert parse_relative_posted_at("1 day ago", now=now) == now - timedelta(days=1)
+    assert parse_relative_posted_at("Posted 2 weeks ago", now=now) == now - timedelta(weeks=2)
+    assert parse_relative_posted_at("2026-11-01", now=now) is None
+
+
+def test_parse_relative_posted_at_overflow_returns_none():
+    """Cover parse relative posted at overflow returns none."""
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    assert parse_relative_posted_at(f"{10**12} days ago", now=now) is None
+
+
+def test_parse_relative_posted_at_oversized_digit_string_returns_none():
+    """Digit strings past sys.get_int_max_str_digits must not abort the scrape."""
+    import sys
+
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    # Python 3.10.0–3.10.6 lack get_int_max_str_digits; treat missing/0 as 4300.
+    getter = getattr(sys, "get_int_max_str_digits", None)
+    limit = (getter() if callable(getter) else 0) or 4300
+    huge = "9" * (limit + 50)
+    assert parse_relative_posted_at(f"{huge} days ago", now=now) is None
+
+
+def test_parse_localized_date_relative():
+    """Cover parse localized date relative."""
+    now = datetime(2026, 11, 4, 12, 0, tzinfo=timezone.utc)
+    dt = _parse_localized_date("5 days ago", now=now)
+    assert dt == now - timedelta(days=5)
+
 
 def test_parse_localized_date_english():
     dt = _parse_localized_date("2024-03-15")

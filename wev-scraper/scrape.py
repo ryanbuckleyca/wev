@@ -15,7 +15,14 @@ if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(line_buffering=True)
 
 # Note: Import database and scraper classes AFTER environment might have been modified by CLI args
-from scrapers.registry import get_scraper_class, source_matches_slug
+from scrapers.headcount import HeadcountLabsScraper
+from scrapers.registry import (
+    EXPLICIT_ONLY_SOURCE_SLUGS,
+    get_scraper_class,
+    is_explicit_only_source,
+    source_canonical_slug,
+    source_matches_slug,
+)
 from utils.db import fetch_all_rows, get_supabase_url, log_scrape_run, save_job, supabase
 from utils.env import is_truthy_env
 from utils.log import scraper_log as _log
@@ -38,10 +45,26 @@ def list_sources() -> None:
     for s in response.data:
         slug = s.get("slug")
         name = s.get("name", "Unknown Source")
+        opt_in = " [explicit --source only]" if is_explicit_only_source(s) else ""
         if slug:
-            print(f"  - {slug} ({name})")
+            print(f"  - {slug} ({name}){opt_in}")
         else:
-            print(f"  - <missing slug> ({name})")
+            print(f"  - <missing slug> ({name}){opt_in}")
+    explicit = ", ".join(sorted(EXPLICIT_ONLY_SOURCE_SLUGS))
+    print(
+        f"\nAPI sources skipped unless named: {explicit}\n"
+        "One API:  npm run scrape:local -- --source serpapi\n"
+        "All APIs: npm run scrape:local -- --apis"
+    )
+
+
+# Cost-waterfall order when running all opt-in APIs via --apis.
+API_SOURCE_RUN_ORDER: tuple[str, ...] = (
+    "serpapi",
+    "apify",
+    "thejobsapi",
+    "theirstack",
+)
 
 
 @dataclass
@@ -57,10 +80,19 @@ class ScraperResults:
 class ScraperOrchestrator:
     """Manages the lifecycle of a scraping session."""
 
-    def __init__(self, dry_run: bool = False, compare_only: bool = False, source_slug: str | None = None):
+    def __init__(
+        self,
+        dry_run: bool = False,
+        compare_only: bool = False,
+        source_slug: str | None = None,
+        *,
+        api_sources: bool = False,
+    ):
+        """Configure a scrape run (dry-run / compare / single source / ``--apis``)."""
         self.dry_run = dry_run
         self.compare_only = compare_only
         self.source_slug = source_slug.strip() if source_slug else None
+        self.api_sources = api_sources
         self.results = ScraperResults(is_dry_run=dry_run, is_compare_only=compare_only)
         self.existing_urls: Set[str] = set()
         self.source_attempts: Dict[str, int] = {}
@@ -68,18 +100,30 @@ class ScraperOrchestrator:
         self.resolver = None  # Initialized in run() to ensure env is loaded first
 
     def had_failures(self) -> bool:
-        """True when any source scrape or post-scrape step failed."""
+        """True when any source scrape or post-scrape step failed.
+
+        Fetch warnings (partial pagination / truncated APIs) count as failures
+        even when earlier pages still saved jobs.
+        """
         if self.post_scrape_errors > 0:
             return True
         if self.results.catch_up.get("orgs_errors", 0) > 0:
             return True
         if self.results.catch_up.get("jobs_errors", 0) > 0:
             return True
-        return any("error" in entry for entry in self.results.summary)
+        return any(
+            ("error" in entry) or bool(entry.get("warnings"))
+            for entry in self.results.summary
+        )
 
     def run(self):
         """Execute the full scraping lifecycle."""
         try:
+            # Propagate compare_only to API scrapers even when invoked without CLI
+            # (they read COMPARE_ONLY rather than orchestrator state).
+            if self.compare_only:
+                os.environ["COMPARE_ONLY"] = "1"
+
             self._log_environment_status()
 
             # 1. Setup
@@ -165,6 +209,8 @@ class ScraperOrchestrator:
         if not response.data:
             raise RuntimeError(f"Could not fetch sources: {response}")
         sources = response.data
+        if self.source_slug and self.api_sources:
+            raise RuntimeError("Use either --source <slug> or --apis, not both.")
         if self.source_slug:
             sources = [
                 s for s in sources if source_matches_slug(s, self.source_slug)
@@ -179,8 +225,73 @@ class ScraperOrchestrator:
                 raise RuntimeError(
                     f"Multiple sources match slug '{self.source_slug}': {slugs}"
                 )
+        elif self.api_sources:
+            # Opt-in paid APIs only, in cost-waterfall order.
+            # Stable sort keeps duplicate / null-slug rows; legacy ``jobbank``
+            # ranks with canonical ``apify`` via source_canonical_slug.
+            order_index = {slug: i for i, slug in enumerate(API_SOURCE_RUN_ORDER)}
+            fallback = len(API_SOURCE_RUN_ORDER)
+
+            def _api_run_sort_key(source: Dict[str, Any]) -> tuple:
+                canon = source_canonical_slug(source) or ""
+                return (
+                    order_index.get(canon, fallback),
+                    canon,
+                    source.get("slug") or "",
+                    str(source.get("id") or ""),
+                )
+
+            sources = sorted(
+                (s for s in sources if is_explicit_only_source(s)),
+                key=_api_run_sort_key,
+            )
+            if not sources:
+                raise RuntimeError(
+                    "No API sources found in the database. "
+                    f"Expected slugs: {', '.join(API_SOURCE_RUN_ORDER)}"
+                )
+            _log(
+                "Running API sources only: "
+                + ", ".join(s.get("slug") or "?" for s in sources)
+            )
+        else:
+            # Default scrape = niche/web boards only. Paid API sources
+            # (serpapi, apify, thejobsapi, theirstack) need --source or --apis.
+            skipped = [s for s in sources if is_explicit_only_source(s)]
+            sources = [s for s in sources if not is_explicit_only_source(s)]
+            if skipped:
+                names = ", ".join(
+                    sorted({(s.get("slug") or s.get("name") or "?") for s in skipped})
+                )
+                _log(
+                    f"Skipping {len(skipped)} API source(s) unless --source/--apis: {names}"
+                )
+        sources = self._filter_unconfigured_sources(sources)
         _log(f"Found {len(sources)} source(s).")
         return sources
+
+    def _filter_unconfigured_sources(
+        self, sources: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """Drop sources that cannot run with the current env (e.g. Headcount sans key)."""
+        kept: List[Dict[str, Any]] = []
+        for source in sources:
+            if source_canonical_slug(source) != "headcount":
+                kept.append(source)
+                continue
+            if HeadcountLabsScraper.is_configured():
+                kept.append(source)
+                continue
+            if self.source_slug:
+                raise RuntimeError(
+                    "Headcount Labs requires HEADCOUNTLABS_API_KEY "
+                    "(or HEADCOUNTLABS_SAMPLE_PATH for offline samples)."
+                )
+            _log(
+                "Skipping Headcount Labs: HEADCOUNTLABS_API_KEY not set "
+                "(set key or HEADCOUNTLABS_SAMPLE_PATH to enable)."
+            )
+        return kept
 
     def _fetch_existing_job_urls(self) -> Set[str]:
         _log("Fetching existing jobs for duplicate checking...")
@@ -240,6 +351,9 @@ class ScraperOrchestrator:
             _log(f"Found {len(jobs)} jobs.")
 
             source_summary = self._save_or_compare_jobs(jobs, source)
+            warnings = getattr(scraper, "fetch_warnings", None) or []
+            if warnings:
+                source_summary["warnings"] = list(warnings)
             self.results.summary.append(source_summary)
 
             if "job_ids" in source_summary:
@@ -375,29 +489,60 @@ class ScraperOrchestrator:
         _log("FINAL SUMMARY")
         _log("="*40)
         cu = self.results.catch_up or {}
-        if cu.get("orgs_total") or cu.get("jobs_total"):
+        if (
+            cu.get("org_lines")
+            or cu.get("job_lines")
+            or cu.get("review_lines")
+            or cu.get("orgs_total")
+            or cu.get("jobs_total")
+        ):
             _log("Catch-up pass (after scraping):")
-            if cu.get("orgs_total"):
+            if cu.get("org_lines"):
+                for line in cu["org_lines"]:
+                    _log(f"  {line}")
+            elif cu.get("orgs_total"):
                 o_ok = cu.get("orgs_processed", 0)
                 o_err = cu.get("orgs_errors", 0)
                 o_parked = cu.get("orgs_parked", 0)
                 _log(
-                    f"  Organizations: {o_ok}/{cu['orgs_total']} ok, "
-                    f"{o_parked} parked for review, {o_err} errors"
+                    f"  Organizations: {o_ok}/{cu['orgs_total']} completed, "
+                    f"{o_parked} parked, {o_err} errors"
                 )
-            if cu.get("jobs_total"):
+            if cu.get("review_lines"):
+                for line in cu["review_lines"]:
+                    _log(f"  {line}")
+            if cu.get("job_lines"):
+                for line in cu["job_lines"]:
+                    _log(f"  {line}")
+            elif cu.get("jobs_total"):
                 j_ok = cu.get("jobs_processed", 0)
                 j_err = cu.get("jobs_errors", 0)
-                _log(f"  Jobs:          {j_ok}/{cu['jobs_total']} processed, {j_err} errors")
+                j_still = cu.get("jobs_still", 0)
+                _log(
+                    f"  Jobs:          {j_ok}/{cu['jobs_total']} fully processed, "
+                    f"{j_still} still unprocessed, {j_err} errors"
+                )
             _log("-" * 40)
         for s in self.results.summary:
             source = s["source"]
+            warnings = s.get("warnings") or []
+            warn_suffix = ""
+            if warnings:
+                warn_suffix = f" ⚠️ {len(warnings)} warning(s): " + "; ".join(
+                    str(w) for w in warnings
+                )
             if "error" in s:
-                _log(f"- {source}: ❌ FAILED ({s['error']})")
+                _log(f"- {source}: ❌ FAILED ({s['error']}){warn_suffix}")
             elif self.dry_run or "jobs_added" not in s:
-                _log(f"- {source}: Found {s.get('jobs_found', '?')} jobs (Dry Run)")
+                _log(
+                    f"- {source}: Found {s.get('jobs_found', '?')} jobs (Dry Run)"
+                    f"{warn_suffix}"
+                )
             else:
-                _log(f"- {source}: Added {s['jobs_added']}, Updated {s['jobs_updated']}")
+                _log(
+                    f"- {source}: Added {s['jobs_added']}, Updated {s['jobs_updated']}"
+                    f"{warn_suffix}"
+                )
 
     def _handle_source_error(self, e: Exception, scraper, source_name: str):
         _log(f"❌ Error scraping {source_name}: {e}")
@@ -454,7 +599,9 @@ def parse_args():
             "npm aliases: scrape:local, scrape:staging, scrape:prod, scrape:publish\n"
             "(each runs: npm run scrape -- --env <name>)\n"
             "List slugs:  npm run scrape:list-sources\n"
-            "One source:  npm run scrape:prod -- --source mac"
+            "One source:  npm run scrape:prod -- --source mac\n"
+            "All APIs:    npm run scrape:local -- --apis\n"
+            "One API:     npm run scrape:local -- --source serpapi"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -486,7 +633,18 @@ def parse_args():
         "--source",
         dest="slug",
         metavar="SLUG",
-        help="Only run the scraper for this source slug (e.g. mac, goodwork)",
+        help=(
+            "Only run this source slug (e.g. mac, goodwork, serpapi). "
+            "Mutually exclusive with --apis."
+        ),
+    )
+    parser.add_argument(
+        "--apis",
+        action="store_true",
+        help=(
+            "Run all opt-in API sources only "
+            f"({', '.join(API_SOURCE_RUN_ORDER)}), in cost-waterfall order"
+        ),
     )
     parser.add_argument(
         "--list-sources",
@@ -542,6 +700,10 @@ def main():
         for flag in ["SHOULD_SUMMARIZE", "SHOULD_CLASSIFY", "SHOULD_TAG_VALUES", "SHOULD_TAG_SKILLS"]:
             if os.environ.get(flag) is None:
                 os.environ[flag] = "0"
+    if args.compare:
+        # Scrapers read COMPARE_ONLY so existing URLs stay in the job list for
+        # --compare (CLI flag alone never reached Headcount / base fetch loops).
+        os.environ["COMPARE_ONLY"] = "1"
 
     if args.list_sources:
         list_sources()
@@ -551,11 +713,16 @@ def main():
         os.environ["USE_PROD_DB"] = "1"
         confirm_prod_run(full_prod=(env == "prod"))
 
+    if args.slug and args.apis:
+        print("Error: use either --source <slug> or --apis, not both.", file=sys.stderr)
+        sys.exit(2)
+
     # 3. Orchestrate
     orchestrator = ScraperOrchestrator(
         dry_run=args.dry_run or args.compare,
         compare_only=args.compare,
         source_slug=args.slug,
+        api_sources=args.apis,
     )
     orchestrator.run()
 

@@ -360,10 +360,37 @@ def test_process_jobs_unified_rethrows_daily_quota_exhausted(mock_supabase, mock
      .limit.return_value
      .execute.return_value.data) = mock_jobs
 
-    with pytest.raises(DailyQuotaExhaustedError):
+    with pytest.raises(DailyQuotaExhaustedError) as caught:
         process_jobs_unified(ProcessingOptions(task="all", page_limit=2))
 
     assert mock_processor.process_jobs.call_count == 1
+    assert caught.value.partial["deferred"] == 2
+    assert caught.value.partial["processed"] == 0
+
+
+@patch("scripts.unified_post_processor.get_unified_processor")
+@patch("scripts.unified_post_processor.supabase")
+def test_process_jobs_unified_records_model_fallback(mock_supabase, mock_get_processor):
+    mock_processor = mock_get_processor.return_value
+    mock_processor.process_jobs.return_value = {
+        "results": [{"summary": "S1", "values": ["V1"], "is_sse": True, "language": "en"}],
+        "provider": "gemini-3.5-flash-lite",
+        "fallbacks": [{"provider": "gemini-3.6-flash", "reason": "free-tier daily quota"}],
+    }
+    mock_jobs = [{
+        "id": "j1", "summary": None, "values": None, "is_sse": None,
+        "sse_details": None, "language": None, "scraped_at": "2026-01-01T00:00:00",
+    }]
+    (mock_supabase.table.return_value
+     .select.return_value
+     .order.return_value
+     .limit.return_value
+     .execute.return_value.data) = mock_jobs
+
+    res = process_jobs_unified(ProcessingOptions(task="all", page_limit=1))
+
+    assert res["provider_used"] == "gemini-3.5-flash-lite"
+    assert res["fallbacks"] == [{"provider": "gemini-3.6-flash", "reason": "free-tier daily quota"}]
 
 
 @patch("scripts.unified_post_processor.process_jobs_unified")

@@ -1,6 +1,9 @@
+import json
 import re
+from pathlib import Path
 from typing import Dict, Type
 
+from scrapers.apify import ApifyJobBankScraper
 from scrapers.centraide import CentraideScraper
 from scrapers.chantier import ChantierScraper
 from scrapers.charityvillage import CharityVillageScraper
@@ -10,10 +13,32 @@ from scrapers.csi import CSIScraper
 from scrapers.cwc import CWCScraper
 from scrapers.ecocanada import EcoCanadaScraper
 from scrapers.goodwork import GoodWorkScraper
+from scrapers.headcount import HeadcountLabsScraper
 from scrapers.idealist import IdealistScraper
 from scrapers.macommunaute import MaCommunauteScraper
+from scrapers.serpapi_google_jobs import SerpApiGoogleJobsScraper
+from scrapers.theirstack import TheirStackScraper
+from scrapers.thejobsapi import TheJobsApiScraper
 from scrapers.winp import WinpScraper
 from scrapers.workinculture import WorkInCultureScraper
+
+# Paid / high-volume API sources — skipped on a full scrape unless passed via
+# ``--source <slug>`` / ``--apis``. Shared with scripts/list-sources.ts.
+_EXPLICIT_ONLY_PATH = Path(__file__).with_name("explicit_only_sources.json")
+EXPLICIT_ONLY_SOURCE_SLUGS: frozenset[str] = frozenset(
+    json.loads(_EXPLICIT_ONLY_PATH.read_text(encoding="utf-8"))
+)
+
+
+def is_explicit_only_source(source: dict | str | None) -> bool:
+    """True when this source must be opted into with ``--source``."""
+    if source is None:
+        return False
+    if isinstance(source, str):
+        return canonical_slug(source) in EXPLICIT_ONLY_SOURCE_SLUGS
+    slug = source_canonical_slug(source) or ""
+    return slug in EXPLICIT_ONLY_SOURCE_SLUGS
+
 
 # Canonical slug → scraper class.
 SCRAPER_MAP: Dict[str, Type] = {
@@ -33,6 +58,11 @@ SCRAPER_MAP: Dict[str, Type] = {
     "idealistintern": IdealistScraper,
     "coopcan": CooperationCanadaScraper,
     "chantier": ChantierScraper,
+    "headcount": HeadcountLabsScraper,
+    "apify": ApifyJobBankScraper,
+    "serpapi": SerpApiGoogleJobsScraper,
+    "thejobsapi": TheJobsApiScraper,
+    "theirstack": TheirStackScraper,
 }
 
 # Pre-migration slug values (local DBs, branches not yet migrated).
@@ -41,6 +71,8 @@ LEGACY_SLUG_ALIASES: Dict[str, str] = {
     "centraide": "cent",
     "ma_communaute": "mac",
     "ma_communaute_b": "macb",
+    # Early Canada API seeds used ``jobbank``; canonical slug is ``apify``.
+    "jobbank": "apify",
 }
 
 # Production source UUIDs — stable until prod has slug column populated.
@@ -93,6 +125,22 @@ SOURCE_NAME_TO_SLUG: Dict[str, str] = {
     "chantier": "chantier",
     "chantier de l'économie sociale": "chantier",
     "chantier de l economie sociale": "chantier",
+    "headcount": "headcount",
+    "headcount labs": "headcount",
+    "apify": "apify",
+    "apify job bank": "apify",
+    "apify (canada job bank)": "apify",
+    "jobbank": "apify",
+    "job bank": "apify",
+    "canada job bank": "apify",
+    "canada job bank (apify)": "apify",
+    "serpapi": "serpapi",
+    "google jobs": "serpapi",
+    "serpapi google jobs": "serpapi",
+    "thejobsapi": "thejobsapi",
+    "the jobs api": "thejobsapi",
+    "tja": "thejobsapi",
+    "theirstack": "theirstack",
 }
 
 SCRAPER_NAME_MAP: Dict[str, Type] = {

@@ -204,6 +204,32 @@ _SHARED_DOMAIN_SUFFIXES = frozenset({
     "myworkdayjobs.com",
     "dayforcehcm.com",
     "applytojob.com",
+    # Enterprise HCM / ATS career-portal hosts. These are the hiring platform,
+    # not the employer's own domain, so two records for the same org (one on its
+    # real site, one on the careers portal) must not look like different orgs.
+    "oraclecloud.com",  # Oracle Fusion/HCM recruiting, e.g. *.fa.ocs.oraclecloud.com
+    "taleo.net",  # Oracle Taleo
+    "successfactors.com",  # SAP SuccessFactors
+    "successfactors.eu",
+    "sapsf.com",
+    "sapsf.eu",
+    "myworkdaysite.com",  # Workday recruiting tenants
+    "myworkday.com",  # Workday recruiting tenants (not workday.com corporate)
+    "workforcenow.adp.com",  # ADP recruiting hosts (not adp.com corporate)
+    "myjobs.adp.com",
+    "recruiting.adp.com",
+    "avature.net",
+    "csod.com",  # Cornerstone OnDemand
+    "brassring.com",  # IBM/Kenexa BrassRing
+    "paycomonline.com",
+    "paylocity.com",
+    "ukg.com",  # UKG/UltiPro
+    "ultipro.com",
+    "recruitee.com",
+    "ashbyhq.com",
+    "breezy.hr",
+    "jazz.co",  # JazzHR
+    "ceridian.com",
     # Eco Canada / JBoard employer profile hosts (not the hiring org).
     "ecoworks.eco.ca",
     "eco.ca",
@@ -416,7 +442,14 @@ def classify_identity_type(identity: str | None) -> str:
             elif suffix in {"greenhouse.io", "lever.co", "workable.com",
                            "bamboohr.com", "smartrecruiters.com", "jobvite.com",
                            "icims.com", "myworkdayjobs.com", "dayforcehcm.com",
-                           "applytojob.com"}:
+                           "applytojob.com", "oraclecloud.com", "taleo.net",
+                           "successfactors.com", "successfactors.eu", "sapsf.com",
+                           "sapsf.eu", "myworkdaysite.com", "myworkday.com",
+                           "workforcenow.adp.com", "myjobs.adp.com", "recruiting.adp.com",
+                           "avature.net", "csod.com", "brassring.com",
+                           "paycomonline.com", "paylocity.com", "ukg.com",
+                           "ultipro.com", "recruitee.com", "ashbyhq.com",
+                           "breezy.hr", "jazz.co", "ceridian.com"}:
                 return "ats_board"
             else:
                 return "shared_hosting"
