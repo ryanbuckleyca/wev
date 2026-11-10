@@ -26,8 +26,10 @@ def test_fetch_sources(mock_supabase):
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
+def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase, monkeypatch):
     """Cover fetch sources skips explicit only apis by default."""
+    monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
             {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
@@ -35,6 +37,7 @@ def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
             {"id": "s3", "name": "Apify (Canada Job Bank)", "slug": "apify"},
             {"id": "s4", "name": "The Jobs API", "slug": "thejobsapi"},
             {"id": "s5", "name": "TheirStack", "slug": "theirstack"},
+            {"id": "s6", "name": "Headcount Labs", "slug": "headcount"},
         ]
     )
     orchestrator = ScraperOrchestrator()
@@ -44,34 +47,18 @@ def test_fetch_sources_skips_explicit_only_apis_by_default(mock_supabase):
 
 @patch("scrape.supabase")
 def test_fetch_sources_skips_headcount_without_api_key(mock_supabase, monkeypatch):
-    """Cover fetch sources skips headcount without api key."""
+    """Cover fetch sources skips headcount without api key on --apis."""
     monkeypatch.delenv("HEADCOUNTLABS_API_KEY", raising=False)
     monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
-            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
+            {"id": "s1", "name": "SerpApi Google Jobs", "slug": "serpapi"},
             {"id": "s2", "name": "Headcount Labs", "slug": "headcount"},
         ]
     )
-    orchestrator = ScraperOrchestrator()
+    orchestrator = ScraperOrchestrator(api_sources=True)
     sources = orchestrator._fetch_sources()
-    assert [s["slug"] for s in sources] == ["goodwork"]
-
-
-@patch("scrape.supabase")
-def test_fetch_sources_keeps_headcount_with_api_key(mock_supabase, monkeypatch):
-    """Cover fetch sources keeps headcount with api key."""
-    monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
-    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
-    mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
-        [
-            {"id": "s1", "name": "GoodWork", "slug": "goodwork"},
-            {"id": "s2", "name": "Headcount Labs", "slug": "headcount"},
-        ]
-    )
-    orchestrator = ScraperOrchestrator()
-    sources = orchestrator._fetch_sources()
-    assert [s["slug"] for s in sources] == ["goodwork", "headcount"]
+    assert [s["slug"] for s in sources] == ["serpapi"]
 
 
 @patch("scrape.supabase")
@@ -103,8 +90,10 @@ def test_fetch_sources_explicit_api_slug_still_runs(mock_supabase):
 
 
 @patch("scrape.supabase")
-def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
+def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase, monkeypatch):
     """Cover fetch sources apis flag runs all api sources in order."""
+    monkeypatch.setenv("HEADCOUNTLABS_API_KEY", "jc_live_.test")
+    monkeypatch.delenv("HEADCOUNTLABS_SAMPLE_PATH", raising=False)
     mock_supabase.table.return_value.select.return_value.execute.return_value = MockResponse(
         [
             {"id": "s0", "name": "GoodWork", "slug": "goodwork"},
@@ -112,11 +101,13 @@ def test_fetch_sources_apis_flag_runs_all_api_sources_in_order(mock_supabase):
             {"id": "s1", "name": "SerpApi Google Jobs", "slug": "serpapi"},
             {"id": "s4", "name": "TheirStack", "slug": "theirstack"},
             {"id": "s2", "name": "Apify (Canada Job Bank)", "slug": "apify"},
+            {"id": "s5", "name": "Headcount Labs", "slug": "headcount"},
         ]
     )
     orchestrator = ScraperOrchestrator(api_sources=True)
     sources = orchestrator._fetch_sources()
     assert [s["slug"] for s in sources] == [
+        "headcount",
         "serpapi",
         "apify",
         "thejobsapi",

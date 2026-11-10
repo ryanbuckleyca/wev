@@ -22,8 +22,9 @@ from scrapers.thejobsapi import TheJobsApiScraper
 from scrapers.winp import WinpScraper
 from scrapers.workinculture import WorkInCultureScraper
 
-# Paid / high-volume API sources — skipped on a full scrape unless passed via
-# ``--source <slug>`` / ``--apis``. Shared with scripts/list-sources.ts.
+# Paid / high-volume API sources (incl. Headcount) — skipped on a full scrape
+# unless passed via ``--source <slug>`` / ``--apis``. Shared with
+# scripts/list-sources.ts.
 _EXPLICIT_ONLY_PATH = Path(__file__).with_name("explicit_only_sources.json")
 EXPLICIT_ONLY_SOURCE_SLUGS: frozenset[str] = frozenset(
     json.loads(_EXPLICIT_ONLY_PATH.read_text(encoding="utf-8"))
