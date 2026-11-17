@@ -88,6 +88,11 @@ logger = logging.getLogger(__name__)
 # Fields the `governance` backfill is allowed to write. It fills governance and
 # the SSE gate governance is derived from; every other field on an already-
 # classified org is preserved (see the governance-mode branch in ``run``).
+# `sse_details` travels with `is_sse`/`sse_rating` so the SSE decision stays
+# internally coherent — writing a fresh rating while keeping stale reasoning /
+# confidence / classified_at would misrepresent the decision. Admin-reviewed
+# orgs are skipped before this point, so the fresh ``reviewed: False`` marker
+# only ever lands on orgs that were already un-reviewed.
 _GOVERNANCE_BACKFILL_FIELDS = (
     "governance_subtype",
     "governance_category",
@@ -95,6 +100,7 @@ _GOVERNANCE_BACKFILL_FIELDS = (
     "governance_reasoning",
     "is_sse",
     "sse_rating",
+    "sse_details",
 )
 
 _SELECT = (
@@ -449,12 +455,13 @@ def run(
                         skipped += 1
                     else:
                         if mode == "governance":
-                            # Additive backfill: only populate governance and the
-                            # SSE gate it is derived from. Established fields —
-                            # type, sector, values, descriptions, website,
-                            # language, sse_details — are preserved so a thinner
-                            # reassessment can never erase good data on an org
-                            # that only lacked governance.
+                            # Additive backfill: populate governance and the SSE
+                            # decision it is derived from (is_sse / sse_rating /
+                            # sse_details together, so the decision stays
+                            # coherent). Established fields — type, sector,
+                            # values, descriptions, website, language — are
+                            # preserved so a thinner reassessment can never erase
+                            # good data on an org that only lacked governance.
                             updates = {
                                 key: updates[key]
                                 for key in _GOVERNANCE_BACKFILL_FIELDS

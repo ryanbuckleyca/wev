@@ -153,12 +153,17 @@ def test_run_governance_mode_reassesses_previously_completed_org():
 
 def test_run_governance_mode_writes_only_governance_and_gate_fields():
     """Governance backfill is additive: a full reassessment payload is trimmed to
-    governance + the SSE gate so established fields can't be clobbered (esp. when
-    the model returns thinner values)."""
+    governance + the coherent SSE decision (rating/is_sse/details) so established
+    fields can't be clobbered (esp. when the model returns thinner values)."""
     org = {
         "id": 77,
         "name": "Legacy Coop",
         "governance_subtype": None,
+    }
+    sse_details = {
+        "classified_at": "2026-01-01T00:00:00+00:00",
+        "reasoning": "Worker-owned; labor controls the board.",
+        "reviewed": False,
     }
     # A full reassessment payload — thinner than what's already stored on the row.
     updates = {
@@ -168,6 +173,8 @@ def test_run_governance_mode_writes_only_governance_and_gate_fields():
         "governance_reasoning": "Worker-owned.",
         "is_sse": True,
         "sse_rating": "strong_yes",
+        # The SSE decision's metadata must stay with its rating.
+        "sse_details": sse_details,
         # Collateral fields that must NOT be written in governance mode.
         "type": None,
         "sector_id": None,
@@ -175,7 +182,6 @@ def test_run_governance_mode_writes_only_governance_and_gate_fields():
         "description": "",
         "website": "https://example.org",
         "language": "en",
-        "sse_details": {"classified_at": "2026-01-01T00:00:00+00:00"},
     }
 
     assessor = MagicMock()
@@ -204,6 +210,7 @@ def test_run_governance_mode_writes_only_governance_and_gate_fields():
         governance_reasoning="Worker-owned.",
         is_sse=True,
         sse_rating="strong_yes",
+        sse_details=sse_details,
     )
     assert summary["updated"] == 1
 
