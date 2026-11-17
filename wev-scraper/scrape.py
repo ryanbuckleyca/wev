@@ -60,6 +60,7 @@ def list_sources() -> None:
 
 # Cost-waterfall order when running all opt-in APIs via --apis.
 API_SOURCE_RUN_ORDER: tuple[str, ...] = (
+    "headcount",
     "serpapi",
     "apify",
     "thejobsapi",
@@ -256,7 +257,8 @@ class ScraperOrchestrator:
             )
         else:
             # Default scrape = niche/web boards only. Paid API sources
-            # (serpapi, apify, thejobsapi, theirstack) need --source or --apis.
+            # (headcount, serpapi, apify, thejobsapi, theirstack) need
+            # --source or --apis.
             skipped = [s for s in sources if is_explicit_only_source(s)]
             sources = [s for s in sources if not is_explicit_only_source(s)]
             if skipped:

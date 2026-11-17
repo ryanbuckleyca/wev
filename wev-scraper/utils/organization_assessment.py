@@ -23,6 +23,14 @@ from llm.base import LLMProviderError
 from llm.factory import get_sse_provider
 from llm.tavily_grounding import entity_require_terms
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
+from utils.governance_taxonomy import (
+    GOVERNANCE_TAXONOMY_VERSION,
+    format_governance_taxonomy_prompt,
+    normalize_category,
+    normalize_operational_tags,
+    normalize_subtype,
+    resolve_governance,
+)
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.location_parser import is_province_like_municipality, parse_address_with_geocodio
 from utils.organization_cache import evidence_domain, extract_domain
@@ -156,6 +164,11 @@ _JSON_FIELDS = """{
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
   "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "governance_subtype_code": "One subtype code from the GOVERNANCE TAXONOMY above, or EXCLUDED_NON_SSE, or null. Classify by ownership/voting control, not sector or platform.",
+  "governance_category_id": "Parent category of that subtype (GOV_1..GOV_5 or EXCLUDED).",
+  "governance_confidence": "0.0 to 1.0",
+  "governance_reasoning": "1–2 sentences (<300 chars) on the governance/ownership structure.",
+  "operational_tags": ["Optional delivery-mode tags (platform_coop, ...); NOT governance. [] if none."],
   "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
   "values_raw": "Organization values and principles copied from their own site (strictly under 800 chars / ~100 words). Use only when via=extracted. If you only inferred Knowdell labels, this MUST be null. Record provenance in flags as 'values via=extracted|inferred|absent'.",
   "values": ["3 to 5 Knowdell work values from the taxonomy below. Extract from a published values/principles list when Tavily/web evidence has one; otherwise INFER from that same research (about text, programs, sector, description written from search). Empty array only if there is no usable research evidence at all."],
@@ -313,6 +326,8 @@ ALLOWED SECTORS for the "sector_id" field:
 
 {sector_priority_rules}
 
+{governance_taxonomy}
+
 ALLOWED VALUES for the "values" field (use ONLY labels from this list):
 {taxonomy_formatted}
 
@@ -387,6 +402,14 @@ class AssessedOrgResult(TypedDict):
     geographic_scope: str | None
     headquarters_municipality: str | None
     headquarters_province: str | None
+    # Governance taxonomy (persisted source of truth; see governance_taxonomy.py).
+    # Raw model picks here are reconciled against the SSE gate in
+    # _result_to_db_fields before they reach the DB.
+    governance_subtype: str | None
+    governance_category: str | None
+    governance_confidence: float | None
+    governance_reasoning: str | None
+    operational_tags: List[str]
 
 
 # ── Skip reasons written by the assessor ────────────────────────────────────
@@ -462,6 +485,7 @@ def _build_assessment_prompt(
         source_description=source_block,
         json_fields=_JSON_FIELDS,
         sector_taxonomy_formatted=get_formatted_sector_taxonomy(),
+        governance_taxonomy=format_governance_taxonomy_prompt(),
         taxonomy_formatted=_format_taxonomy(),
         website_rules=_WEBSITE_RULES,
         bilingual_copy_rules=_BILINGUAL_COPY_RULES,
@@ -1425,6 +1449,11 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         geographic_scope=_validate_geographic_scope(data.get("geographic_scope")),
         headquarters_municipality=_parse_text_field(data, "headquarters_municipality"),
         headquarters_province=_validate_province_code(_parse_text_field(data, "headquarters_province")),
+        governance_subtype=normalize_subtype(data.get("governance_subtype_code")),
+        governance_category=normalize_category(data.get("governance_category_id")),
+        governance_confidence=_clamp_confidence(data.get("governance_confidence")),
+        governance_reasoning=_parse_text_field(data, "governance_reasoning"),
+        operational_tags=normalize_operational_tags(data.get("operational_tags")),
     )
     gated = _apply_org_sse_governance_guard(
         _enforce_provenance_nulls(
@@ -1626,6 +1655,31 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     reasoning_en = result["sse_reasoning_en"]
     reasoning_fr = result["sse_reasoning_fr"]
     website = result.get("website")
+    is_sse = result["sse_rating"] in ("strong_yes", "weak_yes")
+    # Governance is the new source of truth, but the legacy `type` column is
+    # still written during the transition: matched_jobs and the org-filter RPCs
+    # keep reading `type` until the follow-up migration swaps them to governance
+    # and drops the column. Dropping the write early would make freshly-assessed
+    # orgs disappear from the type facet, so `type` is retired atomically with
+    # its readers in that later migration — not here.
+    # Reconcile the model's governance pick against the SSE gate so the two can
+    # never disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a
+    # valid SSE subtype (category derived) or stays null for re-assessment.
+    governance_subtype, governance_category = resolve_governance(
+        result.get("governance_subtype"),
+        result.get("governance_category"),
+        is_sse=is_sse,
+    )
+    # Confidence/reasoning describe the model's *original* subtype. If the gate
+    # changed or dropped it, that metadata no longer matches the stored
+    # classification (e.g. a worker-coop rationale next to EXCLUDED_NON_SSE), so
+    # drop it rather than mislabel the resolved subtype.
+    if governance_subtype == result.get("governance_subtype"):
+        governance_confidence = result.get("governance_confidence")
+        governance_reasoning = result.get("governance_reasoning")
+    else:
+        governance_confidence = None
+        governance_reasoning = None
     fields = {
         "description_en": description_en,
         "description_fr": description_fr,
@@ -1634,13 +1688,19 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "mission_statement_en": mission_en,
         "mission_statement_fr": mission_fr,
         "mission_statement": mission_en or mission_fr,
+        # Legacy governance axis, retired by the governance-reader migration.
         "type": result["type"],
+        "governance_subtype": governance_subtype,
+        "governance_category": governance_category,
+        "governance_confidence": governance_confidence,
+        "governance_reasoning": governance_reasoning,
+        "operational_tags": result.get("operational_tags") or [],
         "sector_id": result["sector_id"],
         "values": result["values_raw"],
         "values_list": result["values"],
         "values_rated": [{"value": v, "rank": i + 1} for i, v in enumerate(result["values"])] if result["values"] else None,
         "sse_rating": result["sse_rating"],
-        "is_sse": result["sse_rating"] in ("strong_yes", "weak_yes"),
+        "is_sse": is_sse,
         "sse_details": {
             "confidence": result["sse_confidence"],
             "reasoning": reasoning_en or reasoning_fr,
@@ -1650,6 +1710,7 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
             "nice_to_haves_met": result["nice_to_haves_met"],
             "flags": result["flags"],
             "classified_at": datetime.now(timezone.utc).isoformat(),
+            "governance_taxonomy": GOVERNANCE_TAXONOMY_VERSION,
             "reviewed": False,
         },
     }
