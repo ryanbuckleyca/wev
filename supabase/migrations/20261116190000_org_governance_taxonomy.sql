@@ -72,8 +72,11 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
--- Category must match the subtype's GOV_n prefix (or be EXCLUDED for the
+-- Category must match the subtype's GOV_<n> parent (or be EXCLUDED for the
 -- excluded subtype). When either is NULL the pair is not yet classified.
+-- Deriving the parent as 'GOV_' || split_part(subtype, '_', 2) stays correct for
+-- any index width (GOV_1 … GOV_5 today, GOV_10+ later) rather than assuming a
+-- fixed 5-char prefix.
 DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_governance_category_subtype_match
@@ -86,7 +89,7 @@ DO $$ BEGIN
         )
         OR (
           governance_subtype <> 'EXCLUDED_NON_SSE'
-          AND governance_category = left(governance_subtype, 5)
+          AND governance_category = 'GOV_' || split_part(governance_subtype, '_', 2)
         )
       ) NOT VALID;
 EXCEPTION WHEN duplicate_object THEN NULL;

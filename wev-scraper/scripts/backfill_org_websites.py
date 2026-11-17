@@ -80,6 +80,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Columns every fetch mode reads. Intentionally omits the legacy `type` column:
+# no consumer here needs it — assess_and_build_update derives its inputs from
+# name/website/description/location/sse_details, and the dry-run preview reports
+# governance instead of type. `type` is still written by the assessor during the
+# transition, just not read back for re-assessment.
 _SELECT = (
     "id, name, location, municipality, province, website, description, "
     "mission_statement, sse_rating, is_sse, governance_subtype, governance_category, "
