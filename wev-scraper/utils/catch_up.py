@@ -295,20 +295,27 @@ def filter_assessment_update_fields(
         if preserved is not None:
             filtered["is_sse"] = preserved in ("strong_yes", "weak_yes")
 
-    # Governance in db_fields was resolved against the *model's* is_sse. When this
-    # write preserves a different SSE gate for the row — most importantly an admin-
-    # reviewed decision kept over the model's — governance must follow that gate so
-    # it can never contradict it (e.g. an EXCLUDED_NON_SSE subtype landing on an
-    # SSE-yes row). If no gate overrides the model's, the governance pair already
-    # matches and is left untouched. When the overriding gate leaves no usable
-    # subtype the keys drop: the row stays incomplete for a later, correct pass.
+    # Governance fields form one coherent classification (subtype, its category,
+    # confidence, reasoning). Two rules keep them honest:
+    #   1. A stored subtype is authoritative — never overwrite it, and don't fill
+    #      confidence/reasoning piecemeal with model metadata that may describe a
+    #      *different* subtype. So if the org already has a subtype, drop every
+    #      governance key from this write.
+    #   2. Otherwise reconcile the model's governance against the is_sse this write
+    #      actually leaves on the row (e.g. a preserved admin decision) so it can
+    #      never contradict that gate. If the gate changes the subtype, drop the
+    #      model confidence/reasoning that described the old one; if it leaves no
+    #      usable subtype, drop governance entirely so the row stays incomplete.
     _gov_keys = (
         "governance_subtype",
         "governance_category",
         "governance_confidence",
         "governance_reasoning",
     )
-    if any(key in filtered for key in _gov_keys):
+    if org.get("governance_subtype"):
+        for key in _gov_keys:
+            filtered.pop(key, None)
+    elif any(key in filtered for key in _gov_keys):
         if "is_sse" in filtered:
             override_is_sse = filtered["is_sse"]
         elif org.get("sse_rating") is not None:
@@ -316,8 +323,11 @@ def filter_assessment_update_fields(
         else:
             override_is_sse = None
         if override_is_sse is not None:
+            original_subtype = filtered.get(
+                "governance_subtype", db_fields.get("governance_subtype")
+            )
             subtype, category = resolve_governance(
-                filtered.get("governance_subtype", db_fields.get("governance_subtype")),
+                original_subtype,
                 filtered.get("governance_category", db_fields.get("governance_category")),
                 is_sse=override_is_sse,
             )
@@ -327,6 +337,9 @@ def filter_assessment_update_fields(
             else:
                 filtered["governance_subtype"] = subtype
                 filtered["governance_category"] = category
+                if subtype != original_subtype:
+                    filtered.pop("governance_confidence", None)
+                    filtered.pop("governance_reasoning", None)
 
     return filtered
 

@@ -378,6 +378,41 @@ def test_filter_forces_excluded_governance_for_preserved_non_sse_org():
     assert filtered["governance_category"] == "EXCLUDED"
 
 
+def test_filter_preserves_stored_subtype_when_only_confidence_missing():
+    """A stored subtype is authoritative: a partial re-fill (e.g. missing sector)
+    must not overwrite it or attach model metadata for a different subtype."""
+    org = _complete_org(
+        sector_id=None,  # the field that queues this org
+        governance_subtype="GOV_1_1_WORKER_COOP",
+        governance_category="GOV_1",
+        governance_confidence=None,
+        is_sse=True,
+        sse_rating="strong_yes",
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "sector_id": "housing",
+        # Model now disagrees and returns a different subtype + fresh metadata.
+        "governance_subtype": "GOV_1_2_CONSUMER_COOP",
+        "governance_category": "GOV_1",
+        "governance_confidence": 0.77,
+        "governance_reasoning": "Model reclassified as consumer co-op.",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    # Only the genuinely-missing sector is written; the stored subtype and its
+    # metadata are left untouched.
+    assert filtered == {"sector_id": "housing"}
+
+
 def test_filter_assessment_update_fields_attaches_language_from_name():
     org = _complete_org(language=None, values_list=["Community"])
     outcome = AssessmentOutcome(
