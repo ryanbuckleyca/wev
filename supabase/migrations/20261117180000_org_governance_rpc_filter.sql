@@ -202,6 +202,9 @@ GRANT EXECUTE ON FUNCTION public.get_active_organizations(
   text[], text[], text[], uuid, text, text[], text[], text[]
 ) TO anon, authenticated, service_role;
 
-COMMENT ON FUNCTION public.get_active_organizations IS
+COMMENT ON FUNCTION public.get_active_organizations(
+  timestamp with time zone, integer, integer, text, boolean,
+  text[], text[], text[], uuid, text, text[], text[], text[]
+) IS
   'Organization directory listing. Accepts optional p_sectors and p_governance_categories filters. Returns governance_subtype/category alongside legacy type.';
 

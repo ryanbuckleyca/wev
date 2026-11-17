@@ -128,6 +128,7 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
   const updates: Record<string, unknown> = buildOrgUpdateFields(data, {
     previousIsSse: existingOrg.is_sse,
     previousType: normalizeOrgType(existingOrg.type),
+    previousGovernanceSubtype: existingOrg.governance_subtype,
   });
 
   // Decide before the empty-updates check: clearing the reason can be the only

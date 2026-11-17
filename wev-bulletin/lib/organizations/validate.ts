@@ -169,6 +169,8 @@ export interface NormalizedOrgPayload {
   type: OrgType | null;
   governance_subtype: GovernanceSubtype | null;
   governance_category: GovernanceCategory | null;
+  governance_confidence: number | null;
+  governance_reasoning: string | null;
   sector_id: string | null;
   is_sse: boolean;
   language: OrgLanguage | null;
@@ -247,6 +249,9 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     type,
     governance_subtype: governance.governance_subtype,
     governance_category: governance.governance_category,
+    // Admin creates/edits don't carry model confidence/reasoning.
+    governance_confidence: null,
+    governance_reasoning: null,
     sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
     language: normalizeOrgLanguage(data.language),
@@ -257,7 +262,11 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
 
 export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
-  options: { previousIsSse?: boolean | null; previousType?: OrgType | null } = {},
+  options: {
+    previousIsSse?: boolean | null;
+    previousType?: OrgType | null;
+    previousGovernanceSubtype?: string | null;
+  } = {},
 ): Partial<NormalizedOrgPayload> {
   const updates: Partial<NormalizedOrgPayload> = {};
 
@@ -350,16 +359,27 @@ export function buildOrgUpdateFields(
     }
   }
 
-  // Write governance when the form sent a subtype, or when the SSE gate flips
-  // to false (must force EXCLUDED). Do not wipe an existing subtype just because
-  // is_sse stayed true and governance_subtype was omitted from a partial update.
-  if (data.governance_subtype !== undefined || nextIsSse === false) {
+  // Write governance when the form sent a subtype, or when the SSE gate changes:
+  // false → force EXCLUDED; true ← false with no subtype → clear EXCLUDED so a
+  // partial promotion cannot leave EXCLUDED_NON_SSE on an SSE-yes row. Do not
+  // wipe an existing subtype just because is_sse stayed true and governance
+  // was omitted from a partial update.
+  const effectiveIsSse = nextIsSse ?? options.previousIsSse ?? false;
+  const sseGateChanged =
+    nextIsSse !== undefined && Boolean(nextIsSse) !== Boolean(options.previousIsSse);
+  if (data.governance_subtype !== undefined || nextIsSse === false || sseGateChanged) {
     const governance = resolveGovernanceForSave({
       governance_subtype: data.governance_subtype,
-      is_sse: nextIsSse ?? options.previousIsSse ?? false,
+      is_sse: effectiveIsSse,
     });
     updates.governance_subtype = governance.governance_subtype;
     updates.governance_category = governance.governance_category;
+    const previousSubtype = options.previousGovernanceSubtype ?? null;
+    if (governance.governance_subtype !== previousSubtype) {
+      // Drop model metadata that described the previous subtype.
+      updates.governance_confidence = null;
+      updates.governance_reasoning = null;
+    }
   }
 
   return updates;
