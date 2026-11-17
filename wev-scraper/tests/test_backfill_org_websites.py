@@ -151,6 +151,63 @@ def test_run_governance_mode_reassesses_previously_completed_org():
     assert summary["skipped_completed"] == 0
 
 
+def test_run_governance_mode_writes_only_governance_and_gate_fields():
+    """Governance backfill is additive: a full reassessment payload is trimmed to
+    governance + the SSE gate so established fields can't be clobbered (esp. when
+    the model returns thinner values)."""
+    org = {
+        "id": 77,
+        "name": "Legacy Coop",
+        "governance_subtype": None,
+    }
+    # A full reassessment payload — thinner than what's already stored on the row.
+    updates = {
+        "governance_subtype": "GOV_1_1_WORKER_COOP",
+        "governance_category": "GOV_1",
+        "governance_confidence": 0.88,
+        "governance_reasoning": "Worker-owned.",
+        "is_sse": True,
+        "sse_rating": "strong_yes",
+        # Collateral fields that must NOT be written in governance mode.
+        "type": None,
+        "sector_id": None,
+        "values_list": [],
+        "description": "",
+        "website": "https://example.org",
+        "language": "en",
+        "sse_details": {"classified_at": "2026-01-01T00:00:00+00:00"},
+    }
+
+    assessor = MagicMock()
+    assessor.assess_and_build_update.return_value = updates
+    repo = MagicMock()
+
+    with patch("scripts.backfill_org_websites.OrganizationAssessor", return_value=assessor), \
+         patch("scripts.backfill_org_websites.OrganizationRepository", return_value=repo), \
+         patch(
+             "scripts.backfill_org_websites.fetch_orgs_missing_governance",
+             side_effect=[[org], []],
+         ):
+        summary = run(
+            mode="governance",
+            limit=5,
+            dry_run=False,
+            delay_seconds=0,
+            after_id=0,
+        )
+
+    repo.update_org.assert_called_once_with(
+        77,
+        governance_subtype="GOV_1_1_WORKER_COOP",
+        governance_category="GOV_1",
+        governance_confidence=0.88,
+        governance_reasoning="Worker-owned.",
+        is_sse=True,
+        sse_rating="strong_yes",
+    )
+    assert summary["updated"] == 1
+
+
 def test_run_governance_mode_preserves_admin_reviewed_sse():
     """Admin-reviewed SSE is skipped unless --force-reviewed, same as full mode."""
     org = {

@@ -1609,6 +1609,8 @@ def test_result_to_db_fields_forces_excluded_when_not_sse():
             sse_rating="no",
             governance_subtype_code="GOV_1_1_WORKER_COOP",  # model said co-op…
             governance_category_id="GOV_1",
+            governance_confidence=0.9,
+            governance_reasoning="Worker-owned; labor controls the board.",
         ),
         "Nature Visuals",
     )
@@ -1618,6 +1620,10 @@ def test_result_to_db_fields_forces_excluded_when_not_sse():
     assert fields["is_sse"] is False
     assert fields["governance_subtype"] == "EXCLUDED_NON_SSE"
     assert fields["governance_category"] == "EXCLUDED"
+    # The co-op confidence/reasoning described the discarded subtype — dropped so
+    # EXCLUDED_NON_SSE is never stored with a worker-coop rationale.
+    assert fields["governance_confidence"] is None
+    assert fields["governance_reasoning"] is None
 
 
 def test_result_to_db_fields_leaves_subtype_null_when_sse_but_unclassified():

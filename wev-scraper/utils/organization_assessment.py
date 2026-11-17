@@ -1670,6 +1670,16 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         result.get("governance_category"),
         is_sse=is_sse,
     )
+    # Confidence/reasoning describe the model's *original* subtype. If the gate
+    # changed or dropped it, that metadata no longer matches the stored
+    # classification (e.g. a worker-coop rationale next to EXCLUDED_NON_SSE), so
+    # drop it rather than mislabel the resolved subtype.
+    if governance_subtype == result.get("governance_subtype"):
+        governance_confidence = result.get("governance_confidence")
+        governance_reasoning = result.get("governance_reasoning")
+    else:
+        governance_confidence = None
+        governance_reasoning = None
     fields = {
         "description_en": description_en,
         "description_fr": description_fr,
@@ -1682,8 +1692,8 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "type": result["type"],
         "governance_subtype": governance_subtype,
         "governance_category": governance_category,
-        "governance_confidence": result.get("governance_confidence"),
-        "governance_reasoning": result.get("governance_reasoning"),
+        "governance_confidence": governance_confidence,
+        "governance_reasoning": governance_reasoning,
         "operational_tags": result.get("operational_tags") or [],
         "sector_id": result["sector_id"],
         "values": result["values_raw"],

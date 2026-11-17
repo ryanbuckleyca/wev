@@ -85,6 +85,18 @@ logger = logging.getLogger(__name__)
 # name/website/description/location/sse_details, and the dry-run preview reports
 # governance instead of type. `type` is still written by the assessor during the
 # transition, just not read back for re-assessment.
+# Fields the `governance` backfill is allowed to write. It fills governance and
+# the SSE gate governance is derived from; every other field on an already-
+# classified org is preserved (see the governance-mode branch in ``run``).
+_GOVERNANCE_BACKFILL_FIELDS = (
+    "governance_subtype",
+    "governance_category",
+    "governance_confidence",
+    "governance_reasoning",
+    "is_sse",
+    "sse_rating",
+)
+
 _SELECT = (
     "id, name, location, municipality, province, website, description, "
     "mission_statement, sse_rating, is_sse, governance_subtype, governance_category, "
@@ -425,7 +437,8 @@ def run(
                             repo.update_org(org_id, website=website)
                         updated += 1
                 else:
-                    # full + minimal: grounded reassess (SSE / type / values / …)
+                    # full + minimal + governance: grounded reassess
+                    # (SSE / type / values / governance / …)
                     updates = assessor.assess_and_build_update(org, force_lang=force_lang)
                     if updates is None:
                         logger.info(
@@ -435,6 +448,18 @@ def run(
                         )
                         skipped += 1
                     else:
+                        if mode == "governance":
+                            # Additive backfill: only populate governance and the
+                            # SSE gate it is derived from. Established fields —
+                            # type, sector, values, descriptions, website,
+                            # language, sse_details — are preserved so a thinner
+                            # reassessment can never erase good data on an org
+                            # that only lacked governance.
+                            updates = {
+                                key: updates[key]
+                                for key in _GOVERNANCE_BACKFILL_FIELDS
+                                if key in updates
+                            }
                         _log_full_preview(org, updates, dry_run=dry_run)
                         if not dry_run:
                             repo.update_org(org_id, **updates)
