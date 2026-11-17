@@ -63,6 +63,8 @@ export default function OrganizationFilters({
     setSelectedLanguages,
     selectedSectors,
     setSelectedSectors,
+    selectedGovernanceCategories,
+    setSelectedGovernanceCategories,
     setActivityWindow,
     setCurrentPage,
     hasAnyFilters,
@@ -95,6 +97,10 @@ export default function OrganizationFilters({
     },
     onRemoveSector: (sector) => {
       void setSelectedSectors(toggleArrayItem(sector, selectedSectors));
+      void setCurrentPage(1);
+    },
+    onRemoveGovernance: (category) => {
+      void setSelectedGovernanceCategories(toggleArrayItem(category, selectedGovernanceCategories));
       void setCurrentPage(1);
     },
     tOrgs: t,

@@ -88,6 +88,7 @@
     "location": "Emplacement",
     "description": "À propos",
     "orgType": "Type",
+    "orgGovernance": "Gouvernance",
     "missionStatement": "Mission",
     "values": "Valeurs",
     "sector": "Secteur",
@@ -95,7 +96,36 @@
     "noOrganizationSectors": "Aucun secteur disponible",
     "browseBySector": "Parcourir par secteur",
     "browseBySectorHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) par domaine d'activité.",
-    "browseSectors": "Parcourir tous les secteurs"
+    "browseSectors": "Parcourir tous les secteurs",
+    "browseByGovernance": "Parcourir par gouvernance",
+    "browseByGovernanceHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) selon qui détient la propriété et le contrôle démocratique.",
+    "governance": {
+      "category": {
+        "GOV_1": "Coopératives démocratiques à propriété collective",
+        "GOV_2": "Mutuelles et institutions financières",
+        "GOV_3": "Fiducies foncières et gestion d'actifs collectifs",
+        "GOV_4": "OBNL participatifs et entreprises sociales",
+        "GOV_5": "Collectifs de l'économie populaire et de terrain",
+        "EXCLUDED": "Exclu (hors ÉSS)"
+      },
+      "subtype": {
+        "GOV_1_1_WORKER_COOP": "Coopérative de travail",
+        "GOV_1_2_CONSUMER_COOP": "Coopérative de consommateurs",
+        "GOV_1_3_PRODUCER_COOP": "Coopérative de producteurs",
+        "GOV_1_4_SOLIDARITY_COOP": "Coopérative de solidarité",
+        "GOV_2_1_CREDIT_UNION": "Caisse populaire / Credit union",
+        "GOV_2_2_MUTUAL_INSURANCE": "Société mutuelle d'assurance",
+        "GOV_3_1_COMMUNITY_LAND_TRUST": "Fiducie foncière communautaire",
+        "GOV_3_2_INDIGENOUS_LAND_TRUST": "Fiducie foncière autochtone et souveraine",
+        "GOV_4_1_MEMBER_NPO": "Organisme sans but lucratif (OBNL)",
+        "GOV_4_2_WISE": "Entreprise d'insertion (WISE)",
+        "GOV_4_3_COMMUNITY_DEV_CORP": "Corporation de développement (CDEC)",
+        "GOV_5_1_MUTUAL_AID": "Réseau d'entraide mutuelle",
+        "GOV_5_2_POPULAR_COLLECTIVE": "Collectif d'économie populaire",
+        "GOV_5_3_DEMOCRATIC_UNION": "Syndicat démocratique local",
+        "EXCLUDED_NON_SSE": "Exclu (hors ÉSS)"
+      }
+    }
   },
   "home": {
     "heading": "Bulletin – Offres d'emploi",
@@ -895,6 +925,7 @@
         "website": "URL du site web",
         "location": "Emplacement",
         "type": "Type d'organisation",
+        "governance": "Forme de gouvernance",
         "sector": "Secteur",
         "language": "Langue publique",
         "isSse": "Organisation d'économie solidaire",
@@ -920,6 +951,7 @@
         "website": "https://exemple.org",
         "location": "Commencez à taper une ville…",
         "selectType": "Sélectionnez un type...",
+        "selectGovernance": "Sélectionnez une forme de gouvernance...",
         "selectSector": "Sélectionnez un secteur...",
         "selectLanguage": "Sélectionnez une langue...",
         "values": "Rechercher et sélectionner des valeurs professionnelles"
@@ -949,7 +981,7 @@
         "missingNone": "Tous les champs évalués sont maintenant remplis. L'enregistrement effacera cet avis.",
         "missingFields": {
           "sector": "Secteur",
-          "type": "Type d'organisation",
+          "governance": "Forme de gouvernance",
           "descriptionEn": "Description (anglais)",
           "descriptionFr": "Description (français)",
           "language": "Langue publique",
@@ -990,6 +1022,7 @@
         "descriptionTooLong": "La description est trop longue (max. 500 caractères)",
         "missionTooLong": "L'énoncé de mission est trop long (max. 500 caractères)",
         "invalidType": "Veuillez sélectionner un type d'organisation valide",
+        "invalidGovernance": "Veuillez sélectionner une forme de gouvernance valide",
         "invalidSector": "Veuillez sélectionner un secteur valide",
         "invalidLanguage": "Veuillez sélectionner une langue publique valide",
         "invalidValues": "Une ou plusieurs valeurs sélectionnées ne sont pas reconnues",

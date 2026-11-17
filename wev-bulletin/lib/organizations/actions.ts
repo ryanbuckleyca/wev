@@ -21,7 +21,7 @@ import { ORG_CACHE_TAG } from './constants';
 
 /** Columns needed to decide whether a save unparks the org. */
 const ORG_REVIEW_CONTEXT_COLUMNS =
-  'slug, is_sse, type, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list, name, website, municipality, province, location' as const;
+  'slug, is_sse, type, governance_subtype, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list, name, website, municipality, province, location' as const;
 
 function revalidateOrganizationRoutes(slug?: string, previousSlug?: string) {
   updateTag(ORG_CACHE_TAG);
@@ -128,6 +128,7 @@ export async function updateOrganization(id: number, data: OrgUpdateInput): Prom
   const updates: Record<string, unknown> = buildOrgUpdateFields(data, {
     previousIsSse: existingOrg.is_sse,
     previousType: normalizeOrgType(existingOrg.type),
+    previousGovernanceSubtype: existingOrg.governance_subtype,
   });
 
   // Decide before the empty-updates check: clearing the reason can be the only

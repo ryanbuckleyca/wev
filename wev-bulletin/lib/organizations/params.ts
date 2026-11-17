@@ -45,6 +45,7 @@ export interface OrgIndexParams {
   orgTypes: string[];
   languages: string[];
   sectors: string[];
+  governanceCategories: string[];
   sortBy: string;
   activityWindow: ActivityWindow;
   activityDays: number | null;
@@ -71,6 +72,7 @@ export function parseOrgIndexSearchParams(
   const orgTypes = searchParams.getAll('type');
   const languages = searchParams.getAll('language');
   const sectors = searchParams.getAll('sector');
+  const governanceCategories = searchParams.getAll('governance');
   const activityWindow = parseActivityWindow(searchParams.get('activity'));
   const activityDays = activityWindowToDays(activityWindow);
 
@@ -83,6 +85,7 @@ export function parseOrgIndexSearchParams(
     orgTypes,
     languages,
     sectors,
+    governanceCategories,
     sortBy,
     activityWindow,
     activityDays,

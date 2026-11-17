@@ -21,6 +21,7 @@ export interface OrganizationFilters {
   selectedTypes: string[];
   selectedLanguages: string[];
   selectedSectors: string[];
+  selectedGovernanceCategories: string[];
   /** Activity window: 'all' (default), '28d', or '90d'. */
   activityWindow: ActivityWindow;
 }
@@ -49,6 +50,8 @@ export interface OrganizationFilterControls {
   setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
   selectedSectors: string[];
   setSelectedSectors: (value: string[] | null) => Promise<unknown> | void;
+  selectedGovernanceCategories: string[];
+  setSelectedGovernanceCategories: (value: string[] | null) => Promise<unknown> | void;
   activityWindow: ActivityWindow;
   setActivityWindow: (value: ActivityWindow | null) => Promise<unknown> | void;
   currentPage: number;
@@ -85,6 +88,10 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'sector',
     parseAsNativeArrayOf(parseAsString).withDefault([]),
   );
+  const [selectedGovernanceCategories, setSelectedGovernanceCategories] = useQueryState(
+    'governance',
+    parseAsNativeArrayOf(parseAsString).withDefault([]),
+  );
   const [activityWindow, setActivityWindow] = useQueryState(
     'activity',
     parseAsStringEnum<ActivityWindow>(['all', '28d', '90d']).withDefault('all'),
@@ -104,6 +111,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes,
       selectedLanguages,
       selectedSectors,
+      selectedGovernanceCategories,
       activityWindow: typedActivityWindow,
     }),
     [
@@ -114,6 +122,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes,
       selectedLanguages,
       selectedSectors,
+      selectedGovernanceCategories,
       typedActivityWindow,
     ],
   );
@@ -128,6 +137,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes.length > 0 ||
       selectedLanguages.length > 0 ||
       selectedSectors.length > 0 ||
+      selectedGovernanceCategories.length > 0 ||
       typedActivityWindow !== 'all',
     [
       searchQuery,
@@ -137,6 +147,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes,
       selectedLanguages,
       selectedSectors,
+      selectedGovernanceCategories,
       typedActivityWindow,
     ],
   );
@@ -151,6 +162,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes.length === 0 &&
       selectedLanguages.length === 0 &&
       selectedSectors.length === 0 &&
+      selectedGovernanceCategories.length === 0 &&
       typedActivityWindow === 'all',
     [
       searchQuery,
@@ -160,6 +172,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       selectedTypes,
       selectedLanguages,
       selectedSectors,
+      selectedGovernanceCategories,
       typedActivityWindow,
     ],
   );
@@ -173,6 +186,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setSelectedTypes([]);
       void setSelectedLanguages([]);
       void setSelectedSectors([]);
+      void setSelectedGovernanceCategories([]);
       void setActivityWindow('all');
       void setCurrentPage(1);
     },
@@ -184,6 +198,7 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       setSelectedTypes,
       setSelectedLanguages,
       setSelectedSectors,
+      setSelectedGovernanceCategories,
       setActivityWindow,
       setCurrentPage,
     ],
@@ -218,6 +233,8 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedLanguages,
     selectedSectors,
     setSelectedSectors,
+    selectedGovernanceCategories,
+    setSelectedGovernanceCategories,
     activityWindow: typedActivityWindow,
     setActivityWindow: setActivityWindowAndResetPage,
     currentPage,

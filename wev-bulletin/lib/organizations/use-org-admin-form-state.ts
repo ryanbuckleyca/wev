@@ -3,6 +3,7 @@ import { generateSlug } from '@/lib/slug';
 import type { LocationSelection } from '@/components/profile/LocationAutocomplete';
 import type { OrgRecord } from '@/lib/organizations/types';
 import { normalizeOrgType } from '@/lib/organizations/org-type';
+import { EXCLUDED_SUBTYPE, isGovernanceSubtype } from '@/lib/organizations/governance-taxonomy';
 import type { OrgFormInput } from '@/lib/organizations/validate';
 
 function initialLocation(initialValues?: Partial<OrgRecord>): {
@@ -65,6 +66,10 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   );
   const [locationHasCoords, setLocationHasCoords] = useState(initialLocationState.hasCoords);
   const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');
+  const [governanceSubtype, setGovernanceSubtype] = useState(() => {
+    const raw = initialValues?.governance_subtype?.trim() || '';
+    return raw && isGovernanceSubtype(raw) ? raw : '';
+  });
   const [sectorId, setSectorId] = useState(initialValues?.sector_id || '');
   const [isSse, setIsSse] = useState(initialValues?.is_sse ?? false);
   const [language, setLanguage] = useState(initialValues?.language || '');
@@ -81,6 +86,16 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
   useEffect(() => {
     setValueCutoff(valuesList.length);
   }, [valuesList.length]);
+
+  // Keep governance coherent with the SSE gate: non-SSE → EXCLUDED; flipping
+  // back to SSE clears EXCLUDED so the admin must pick a real subtype.
+  const setIsSseAndReconcileGovernance = useCallback((next: boolean) => {
+    setIsSse(next);
+    setGovernanceSubtype((prev) => {
+      if (!next) return EXCLUDED_SUBTYPE;
+      return prev === EXCLUDED_SUBTYPE ? '' : prev;
+    });
+  }, []);
 
   const setLocationSelection = useCallback(
     (value: LocationSelection | null, hasCoords: boolean) => {
@@ -107,6 +122,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
       lng: hasCoords ? location!.lng : null,
       geocode_accuracy_type: hasCoords ? 'city' : null,
       type: type || null,
+      governance_subtype: governanceSubtype || null,
       sector_id: sectorId || null,
       is_sse: isSse,
       language: language || null,
@@ -123,6 +139,7 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     location,
     locationHasCoords,
     type,
+    governanceSubtype,
     sectorId,
     isSse,
     language,
@@ -149,10 +166,12 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setLocationSelection,
     type,
     setType,
+    governanceSubtype,
+    setGovernanceSubtype,
     sectorId,
     setSectorId,
     isSse,
-    setIsSse,
+    setIsSse: setIsSseAndReconcileGovernance,
     language,
     setLanguage,
     valuesList,

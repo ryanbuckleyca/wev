@@ -39,6 +39,7 @@ function buildFetchKey(
     filters.selectedTypes.join(','),
     filters.selectedLanguages.join(','),
     filters.selectedSectors.join(','),
+    filters.selectedGovernanceCategories.join(','),
     filters.activityWindow,
   ].join('|');
 }
@@ -64,6 +65,7 @@ function buildSearchParams(
   filters.selectedTypes.forEach((t) => params.append('type', t));
   filters.selectedLanguages.forEach((l) => params.append('language', l));
   filters.selectedSectors.forEach((s) => params.append('sector', s));
+  filters.selectedGovernanceCategories.forEach((g) => params.append('governance', g));
   return params;
 }
 
@@ -116,7 +118,12 @@ export function useOrganizationData(
   }, [sessionCookie]);
 
   useEffect(() => {
-    if (fetchKey === completedFetchKey) return;
+    // Reusing completed data (e.g. filter toggled on then off before the
+    // in-flight request settled): clear loading left true by the aborted fetch.
+    if (fetchKey === completedFetchKey) {
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
     let timedOut = false;

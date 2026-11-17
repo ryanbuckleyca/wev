@@ -26,6 +26,8 @@ export interface OrgIndexEntry {
   province: OrgRecord['province'];
   is_sse: OrgRecord['is_sse'];
   type: OrgRecord['type'];
+  governance_subtype: OrgRecord['governance_subtype'];
+  governance_category: OrgRecord['governance_category'];
   sector_id: OrgRecord['sector_id'];
   values_list: OrgRecord['values_list'];
   language: OrgRecord['language'];

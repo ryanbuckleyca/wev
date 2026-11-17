@@ -3,6 +3,7 @@ import {
   fetchOrganizationIndex,
   fetchOrganizationFilterOptions,
   fetchSectorIndexStats,
+  fetchGovernanceIndexStats,
 } from '@/lib/organizations/server-data';
 import { parseOrgIndexSearchParams } from '@/lib/organizations/params';
 import OrganizationIndexClient from '@/components/OrganizationIndexClient';
@@ -49,12 +50,13 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     orgTypes,
     languages,
     sectors,
+    governanceCategories,
     sortBy,
     activityDays,
   } = parseOrgIndexSearchParams(urlSearchParams, false);
 
-  // Match OrganizationIndexClient: sector cards only when no user filters are active.
-  const showSectorIndex =
+  // Match OrganizationIndexClient: browse cards only when no user filters are active.
+  const showBrowseIndex =
     !searchQuery &&
     sseOnly &&
     provinces.length === 0 &&
@@ -62,9 +64,10 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     orgTypes.length === 0 &&
     languages.length === 0 &&
     sectors.length === 0 &&
+    governanceCategories.length === 0 &&
     activityDays == null;
 
-  const [initialData, filterOptions, sectorIndex] = await Promise.all([
+  const [initialData, filterOptions, sectorIndex, governanceIndex] = await Promise.all([
     fetchOrganizationIndex({
       page,
       searchQuery,
@@ -74,12 +77,14 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       orgTypes,
       languages,
       sectors,
+      governanceCategories,
       userId: null,
       sortBy,
       activityDays,
     }),
     fetchOrganizationFilterOptions(activityDays),
-    showSectorIndex ? fetchSectorIndexStats({ sseOnly: true }) : Promise.resolve([]),
+    showBrowseIndex ? fetchSectorIndexStats({ sseOnly: true }) : Promise.resolve([]),
+    showBrowseIndex ? fetchGovernanceIndexStats({ sseOnly: true }) : Promise.resolve([]),
   ]);
 
   return (
@@ -93,6 +98,7 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
         initialData={initialData}
         filterOptions={filterOptions}
         sectorIndex={sectorIndex}
+        governanceIndex={governanceIndex}
         locale={locale}
         initialHasMatchScores={false}
       />

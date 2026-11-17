@@ -10,6 +10,7 @@ const VALIDATION_ERROR_KEYS: Record<string, string> = {
   description_too_long: 'errors.descriptionTooLong',
   mission_too_long: 'errors.missionTooLong',
   invalid_type: 'errors.invalidType',
+  invalid_governance: 'errors.invalidGovernance',
   invalid_values: 'errors.invalidValues',
   invalid_sector: 'errors.invalidSector',
   invalid_language: 'errors.invalidLanguage',

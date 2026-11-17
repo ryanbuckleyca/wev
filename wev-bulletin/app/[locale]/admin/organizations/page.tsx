@@ -27,7 +27,7 @@ const ORG_ADMIN_TABLE_SELECT =
   'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason' as const;
 
 const ORG_ADMIN_REVIEW_SELECT =
-  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, description, description_en, description_fr, language, values_list' as const;
+  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, governance_subtype, description, description_en, description_fr, language, values_list' as const;
 
 export async function generateMetadata({ params }: PageProps) {
   const { locale } = await params;

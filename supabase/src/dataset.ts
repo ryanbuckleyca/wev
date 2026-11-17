@@ -468,7 +468,10 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       description: "Partner 1 description",
       website: "https://wev-partner-1.example.com",
       location: "Montreal, QC",
+      // Legacy axis kept through Migration B; governance is the new source of truth.
       type: "non-profit",
+      governance_subtype: "GOV_4_1_MEMBER_NPO",
+      governance_category: "GOV_4",
       is_sse: true,
       mission_statement:
         "Empowering local communities through sustainable initiatives",
@@ -488,6 +491,8 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       website: "https://wev-partner-2.example.com",
       location: "Ottawa, ON",
       type: "cooperative",
+      governance_subtype: "GOV_1_1_WORKER_COOP",
+      governance_category: "GOV_1",
       is_sse: true,
       mission_statement:
         "Building worker-owned enterprises for shared prosperity",
@@ -507,6 +512,8 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       website: "https://wev-partner-3.example.com",
       location: "Toronto, ON",
       type: "non-profit",
+      governance_subtype: "EXCLUDED_NON_SSE",
+      governance_category: "EXCLUDED",
       is_sse: false,
       values_list: null,
       values_rated: null,
@@ -520,6 +527,8 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       website: "https://wev-partner-4.example.com",
       location: "Quebec City, QC",
       type: "private",
+      governance_subtype: "EXCLUDED_NON_SSE",
+      governance_category: "EXCLUDED",
       is_sse: false,
       values_list: null,
       values_rated: null,

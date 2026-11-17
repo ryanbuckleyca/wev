@@ -12,6 +12,7 @@ const emptyFilters: OrganizationFilters = {
   selectedTypes: [],
   selectedLanguages: [],
   selectedSectors: [],
+  selectedGovernanceCategories: [],
   activityWindow: 'all',
 };
 
@@ -72,6 +73,105 @@ describe('useOrganizationData', () => {
     expect(result.current.orgs).toEqual([]);
     expect(result.current.total).toBe(0);
     expect(result.current.loading).toBe(true);
+  });
+
+  it('refetches when selected governance categories change', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        urls.push(String(input));
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ orgs: [], total: 0, totalAvailable: 0 }),
+        });
+      }),
+    );
+
+    const { rerender } = renderHook(
+      ({ filters }) =>
+        useOrganizationData(
+          'en',
+          {
+            filters,
+            currentPage: 1,
+            sortBy: 'org-asc',
+            sessionCookie: false,
+          },
+          { orgs: [ssrOrg], total: 1 },
+        ),
+      { initialProps: { filters: emptyFilters } },
+    );
+
+    await act(async () => {
+      rerender({
+        filters: {
+          ...emptyFilters,
+          selectedGovernanceCategories: ['GOV_1'],
+        },
+      });
+    });
+
+    expect(urls.some((url) => url.includes('governance=GOV_1'))).toBe(true);
+  });
+
+  it('clears loading when a governance filter is removed before its request completes', async () => {
+    let rejectPending: ((err: Error) => void) | null = null;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          rejectPending = reject;
+          init?.signal?.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        });
+      }),
+    );
+
+    const { result, rerender } = renderHook(
+      ({ filters }) =>
+        useOrganizationData(
+          'en',
+          {
+            filters,
+            currentPage: 1,
+            sortBy: 'org-asc',
+            sessionCookie: false,
+          },
+          { orgs: [ssrOrg], total: 1 },
+        ),
+      { initialProps: { filters: emptyFilters } },
+    );
+
+    await act(async () => {
+      rerender({
+        filters: {
+          ...emptyFilters,
+          selectedGovernanceCategories: ['GOV_1'],
+        },
+      });
+    });
+    expect(result.current.loading).toBe(true);
+
+    await act(async () => {
+      rerender({ filters: emptyFilters });
+    });
+
+    // Aborted in-flight promise may still settle after the key reverts.
+    await act(async () => {
+      if (rejectPending) {
+        const err = new Error('The operation was aborted');
+        err.name = 'AbortError';
+        rejectPending(err);
+      }
+      await Promise.resolve();
+    });
+
+    expect(result.current.loading).toBe(false);
+    expect(result.current.orgs).toEqual([ssrOrg]);
   });
 
   it('surfaces a timeout error and stops loading when the fetch aborts from timeout', async () => {

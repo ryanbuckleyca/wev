@@ -30,6 +30,8 @@ function makeOrg(overrides: Partial<OrgIndexEntry> = {}): OrgIndexEntry {
     province: null,
     is_sse: false,
     type: null,
+    governance_subtype: null,
+    governance_category: null,
     sector_id: null,
     values_list: null,
     mission_statement: null,

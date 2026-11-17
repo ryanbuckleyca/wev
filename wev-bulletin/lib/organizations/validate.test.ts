@@ -123,9 +123,57 @@ describe('buildOrgUpdateFields', () => {
       is_sse: true,
     });
 
-    const changed = buildOrgUpdateFields({ is_sse: false }, { previousIsSse: true });
+    const changed = buildOrgUpdateFields(
+      { is_sse: false },
+      { previousIsSse: true, previousGovernanceSubtype: 'GOV_1_1_WORKER_COOP' },
+    );
     expect(changed.sse_rating).toBe('no');
     expect(changed.sse_details).toMatchObject({ flags: ['admin_override'] });
+    expect(changed.governance_subtype).toBe('EXCLUDED_NON_SSE');
+    expect(changed.governance_category).toBe('EXCLUDED');
+    expect(changed.governance_confidence).toBeNull();
+    expect(changed.governance_reasoning).toBeNull();
+  });
+
+  it('clears EXCLUDED governance on partial SSE promotion without a new subtype', () => {
+    const changed = buildOrgUpdateFields(
+      { is_sse: true },
+      {
+        previousIsSse: false,
+        previousGovernanceSubtype: 'EXCLUDED_NON_SSE',
+      },
+    );
+    expect(changed.is_sse).toBe(true);
+    expect(changed.governance_subtype).toBeNull();
+    expect(changed.governance_category).toBeNull();
+    expect(changed.governance_confidence).toBeNull();
+    expect(changed.governance_reasoning).toBeNull();
+  });
+
+  it('clears stale confidence/reasoning when the subtype changes', () => {
+    const changed = buildOrgUpdateFields(
+      { governance_subtype: 'GOV_4_1_MEMBER_NPO' },
+      {
+        previousIsSse: true,
+        previousGovernanceSubtype: 'GOV_1_1_WORKER_COOP',
+      },
+    );
+    expect(changed.governance_subtype).toBe('GOV_4_1_MEMBER_NPO');
+    expect(changed.governance_category).toBe('GOV_4');
+    expect(changed.governance_confidence).toBeNull();
+    expect(changed.governance_reasoning).toBeNull();
+  });
+
+  it('does not touch governance on a partial update that leaves SSE unchanged', () => {
+    const changed = buildOrgUpdateFields(
+      { sector_id: 'housing' },
+      {
+        previousIsSse: true,
+        previousGovernanceSubtype: 'GOV_1_1_WORKER_COOP',
+      },
+    );
+    expect(changed).not.toHaveProperty('governance_subtype');
+    expect(changed).not.toHaveProperty('governance_confidence');
   });
 
   it('clears is_sse when type becomes government', () => {
@@ -136,6 +184,7 @@ describe('buildOrgUpdateFields', () => {
     expect(changed.type).toBe('government');
     expect(changed.is_sse).toBe(false);
     expect(changed.sse_rating).toBe('no');
+    expect(changed.governance_subtype).toBe('EXCLUDED_NON_SSE');
   });
 
   it('rejects is_sse true while type remains government', () => {

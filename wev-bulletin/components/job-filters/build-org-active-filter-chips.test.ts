@@ -38,6 +38,7 @@ describe('buildOrgActiveFilterChips', () => {
     selectedTypes: [],
     selectedLanguages: [],
     selectedSectors: [],
+    selectedGovernanceCategories: [],
     activityWindow: 'all',
   };
 
@@ -52,6 +53,7 @@ describe('buildOrgActiveFilterChips', () => {
     onRemoveType: vi.fn(),
     onRemoveLanguage: vi.fn(),
     onRemoveSector: vi.fn(),
+    onRemoveGovernance: vi.fn(),
     tOrgs: mockTOrgs,
     tFilters: mockTFilters,
     tSectors: mockTSectors,
@@ -183,6 +185,20 @@ describe('buildOrgActiveFilterChips', () => {
     expect(onRemove).toHaveBeenCalledWith('en');
   });
 
+  it('creates a chip for governance category', () => {
+    const onRemove = vi.fn();
+    const chips = buildOrgActiveFilterChips({
+      filters: { ...baseFilters, selectedGovernanceCategories: ['GOV_1'] },
+      ...baseChipHandlers,
+      onRemoveGovernance: onRemove,
+    });
+
+    expect(chips).toHaveLength(1);
+    expect(chips[0].id).toBe('governance-GOV_1');
+    chips[0]!.onRemove!();
+    expect(onRemove).toHaveBeenCalledWith('GOV_1');
+  });
+
   it('creates chips for all filter types combined', () => {
     const chips = buildOrgActiveFilterChips({
       filters: {
@@ -193,12 +209,13 @@ describe('buildOrgActiveFilterChips', () => {
         selectedTypes: ['nonprofit'],
         selectedLanguages: ['bilingual'],
         selectedSectors: ['tech'],
+        selectedGovernanceCategories: ['GOV_4'],
         activityWindow: '90d',
       },
       ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(8);
+    expect(chips).toHaveLength(9);
     expect(chips[0].id).toBe('activity');
     expect(chips[1].id).toBe('nonSse');
     expect(chips[2].id).toBe('q');
