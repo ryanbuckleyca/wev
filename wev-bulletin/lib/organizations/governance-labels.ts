@@ -45,7 +45,11 @@ export function getGovernanceSubtypeLabel(
 export function hasPublicGovernanceSubtype(
   subtype: string | null | undefined,
 ): boolean {
-  return Boolean(subtype) && isGovernanceSubtype(subtype) && subtype !== EXCLUDED_SUBTYPE;
+  return (
+    typeof subtype === 'string' &&
+    isGovernanceSubtype(subtype) &&
+    subtype !== EXCLUDED_SUBTYPE
+  );
 }
 
 /**
