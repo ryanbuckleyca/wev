@@ -53,3 +53,24 @@ $$;
 COMMENT ON FUNCTION public.normalize_org_name(text) IS
   'Normalize an organization name for equality matching (mirrors Python '
   'organization_cache.make_cache_key; strips hiring-count suffixes and trailing acronyms).';
+
+-- STORED generated columns (name_normalized / alternative_names_normalized) are
+-- not recomputed when an IMMUTABLE function is replaced. Clean dirty display
+-- names and force a rewrite so stored norms match the new function.
+UPDATE public.organizations
+SET name = btrim(regexp_replace(
+  name,
+  '(\s*[\(\[]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*[\)\]]|\s*[\-–—]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?))\s*$',
+  '',
+  'i'
+))
+WHERE name ~* '(\([0-9]+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\)|[\-–—]\s*[0-9]+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*$)';
+
+UPDATE public.organizations
+SET name = name
+WHERE name_normalized IS DISTINCT FROM public.normalize_org_name(name);
+
+UPDATE public.organizations
+SET alternative_names = alternative_names
+WHERE alternative_names_normalized
+  IS DISTINCT FROM public.normalize_org_names(alternative_names);
