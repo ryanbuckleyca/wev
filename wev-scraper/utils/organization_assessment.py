@@ -949,8 +949,9 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 
 # Explicit private / commercial ownership signals in model text.
 # Shareholders: positive ownership only — do not match "without shareholders".
+# "for-profit" must not match inside "not-for-profit" / "not for profit".
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
-    r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
+    r"(?<!not[- ])for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
     r"founder[- ]owned|owner[- ]operated|"
     r"(?:with|has|have)\s+(?:private\s+)?shareholders?|shareholder[- ]owned|"
     r"commercial (?:music|arts|education|school|program|enterprise)|"
@@ -980,7 +981,9 @@ _SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
     r"volunteer board|without (?:private )?shareholders?|"
     r"volunteer[- ](?:run|led|based|driven|center|centre|organization)|"
     r"(?:staffed|composed|operated)\s+(?:by|mainly by|primarily by)\s+volunteers?|"
-    r"non[- ]?profit(?:able)?(?:\s+organization)?|charitable\s+(?:mission|purpose|aims?)|"
+    r"non[- ]?profit(?:able)?(?:\s+organization)?|"
+    r"not[- ]for[- ]profit(?:able)?(?:\s+organization)?|"
+    r"charitable\s+(?:mission|purpose|aims?)|"
     r"community[- ]based\s+(?:organization|service)|social\s+(?:mission|purpose)|"
     r"serves?\s+the\s+(?:community|public)|community\s+solidarity",
     re.IGNORECASE,

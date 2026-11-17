@@ -949,6 +949,56 @@ def test_private_company_gate_demotes_explicit_for_profit_evidence():
     assert any("private_company_gate" in f for f in result["flags"])
 
 
+def test_private_company_gate_keeps_not_for_profit_wording():
+    """'not-for-profit' must not trip the for-profit private-company demotion.
+
+    Regression: Arc Poetry Society was flipped strong_yes → no because
+    ``for[- ]profits?`` matched inside ``not-for-profit``.
+    """
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Arc Poetry Society",
+            slug="arc-poetry-society",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                "As a not-for-profit cultural society publishing contemporary "
+                "poetry and supporting the arts, it serves a clear public "
+                "benefit beyond profit."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Arc Poetry Society",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_still_demotes_bare_for_profit():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Acme Services",
+            slug="acme-services",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en=(
+                "A conventional for-profit consultancy with CSR language."
+            ),
+        ),
+        "Acme Services",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
 def test_private_company_gate_keeps_inc_with_charity_registration_evidence():
     result = _parse_response(
         _assessment_json(
