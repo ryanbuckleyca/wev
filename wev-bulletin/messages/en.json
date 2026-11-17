@@ -116,12 +116,13 @@
         "GOV_2_1_CREDIT_UNION": "Credit Union / Caisse Populaire",
         "GOV_2_2_MUTUAL_INSURANCE": "Mutual Insurance Society",
         "GOV_3_1_COMMUNITY_LAND_TRUST": "Community Land Trust (CLT)",
+        "GOV_3_2_INDIGENOUS_LAND_TRUST": "Indigenous & Sovereign Land Trust",
         "GOV_4_1_MEMBER_NPO": "Member-Governed Non-Profit",
         "GOV_4_2_WISE": "Work Integration Social Enterprise",
         "GOV_4_3_COMMUNITY_DEV_CORP": "Community Development Corporation",
         "GOV_5_1_MUTUAL_AID": "Mutual Aid Network",
         "GOV_5_2_POPULAR_COLLECTIVE": "Popular Economy Collective",
-        "GOV_5_3_DEMOCRATIC_UNION": "Democratic Labor Union / Worker Center",
+        "GOV_5_3_DEMOCRATIC_UNION": "Democratic Labor Union Local",
         "EXCLUDED_NON_SSE": "Excluded (non-SSE)"
       }
     }

@@ -116,12 +116,13 @@
         "GOV_2_1_CREDIT_UNION": "Caisse populaire / Credit union",
         "GOV_2_2_MUTUAL_INSURANCE": "Société mutuelle d'assurance",
         "GOV_3_1_COMMUNITY_LAND_TRUST": "Fiducie foncière communautaire",
+        "GOV_3_2_INDIGENOUS_LAND_TRUST": "Fiducie foncière autochtone et souveraine",
         "GOV_4_1_MEMBER_NPO": "Organisme sans but lucratif (OBNL)",
         "GOV_4_2_WISE": "Entreprise d'insertion (WISE)",
         "GOV_4_3_COMMUNITY_DEV_CORP": "Corporation de développement (CDEC)",
         "GOV_5_1_MUTUAL_AID": "Réseau d'entraide mutuelle",
         "GOV_5_2_POPULAR_COLLECTIVE": "Collectif d'économie populaire",
-        "GOV_5_3_DEMOCRATIC_UNION": "Syndicat démocratique",
+        "GOV_5_3_DEMOCRATIC_UNION": "Syndicat démocratique local",
         "EXCLUDED_NON_SSE": "Exclu (hors ÉSS)"
       }
     }

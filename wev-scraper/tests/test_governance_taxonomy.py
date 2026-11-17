@@ -22,17 +22,23 @@ from utils.governance_taxonomy import (
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_MIGRATION = (
-    _REPO_ROOT
-    / "supabase"
-    / "migrations"
-    / "20261116190000_org_governance_taxonomy.sql"
-)
+_MIGRATIONS_DIR = _REPO_ROOT / "supabase" / "migrations"
+
+
+def _latest_migration_defining_check(constraint_name: str) -> Path:
+    """Newest migration that adds/replaces a named CHECK ... IN (...) list."""
+    matches: list[Path] = []
+    for path in sorted(_MIGRATIONS_DIR.glob("*.sql")):
+        text = path.read_text()
+        if re.search(rf"{constraint_name}\b.*?IN \(", text, re.DOTALL):
+            matches.append(path)
+    assert matches, f"No migration defines CHECK ... IN (...) for {constraint_name}"
+    return matches[-1]
 
 
 def _codes_in_check(constraint_name: str) -> set[str]:
     """Return the quoted codes listed in a named CHECK ... IN (...) block."""
-    sql = _MIGRATION.read_text()
+    sql = _latest_migration_defining_check(constraint_name).read_text()
     # Grab from the constraint name up to the IN (...) closing paren.
     match = re.search(
         rf"{constraint_name}\b.*?IN \((.*?)\)",

@@ -6,7 +6,7 @@
  * always derived from subtype; never invent a category independently.
  */
 
-export const GOVERNANCE_TAXONOMY_VERSION = 'v1';
+export const GOVERNANCE_TAXONOMY_VERSION = 'v1.1';
 
 export const EXCLUDED_CATEGORY = 'EXCLUDED' as const;
 export const EXCLUDED_SUBTYPE = 'EXCLUDED_NON_SSE' as const;
@@ -77,6 +77,11 @@ export const GOVERNANCE_SUBTYPES = {
     label_en: 'Community Land Trust (CLT)',
     label_fr: 'Fiducie foncière communautaire',
   },
+  GOV_3_2_INDIGENOUS_LAND_TRUST: {
+    category: 'GOV_3',
+    label_en: 'Indigenous & Sovereign Land Trust',
+    label_fr: 'Fiducie foncière autochtone et souveraine',
+  },
   GOV_4_1_MEMBER_NPO: {
     category: 'GOV_4',
     label_en: 'Member-Governed Non-Profit',
@@ -104,8 +109,8 @@ export const GOVERNANCE_SUBTYPES = {
   },
   GOV_5_3_DEMOCRATIC_UNION: {
     category: 'GOV_5',
-    label_en: 'Democratic Labor Union / Worker Center',
-    label_fr: 'Syndicat démocratique',
+    label_en: 'Democratic Labor Union Local',
+    label_fr: 'Syndicat démocratique local',
   },
 } as const;
 
