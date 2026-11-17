@@ -99,6 +99,19 @@ def test_org_place_name_not_government_for_community_arts():
     assert "community arts / orchestra / choir" in ORG_RATING_GUIDELINES
 
 
+def test_org_publicly_funded_charity_hospitals_remain_nonprofit():
+    """OHIP/Medicare funding alone must not force government / EXCLUDED."""
+    assert "public funding is NOT government (charity / teaching hospitals)" in (
+        ORG_EVALUATION_CRITERIA
+    )
+    assert "Holland Bloorview-style" in ORG_EVALUATION_CRITERIA
+    assert "public funding ≠ government" in ORG_EVALUATION_CRITERIA
+    assert "hospital *authorities*" in ORG_EVALUATION_CRITERIA
+    assert "Never type \"government\" / \"no\" solely because a registered-charity hospital" in (
+        ORG_RATING_GUIDELINES
+    )
+
+
 def test_job_rating_prefers_strong_yes_for_popular_education_nonprofits():
     assert "popular education" in RATING_GUIDELINES
     assert "associative-life training" in RATING_GUIDELINES

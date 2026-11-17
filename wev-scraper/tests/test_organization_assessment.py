@@ -619,6 +619,23 @@ def test_org_assessment_prompt_keeps_citizens_advocacy_nonprofits():
     assert "never EXCLUDED_NON_SSE for 'not an enterprise'" in gov
 
 
+def test_org_assessment_prompt_keeps_publicly_funded_charity_hospitals():
+    from utils.organization_assessment import _build_assessment_prompt
+    from utils.governance_taxonomy import format_governance_taxonomy_prompt
+
+    prompt = _build_assessment_prompt(
+        "Holland Bloorview Kids Rehabilitation Hospital", "Toronto", "ON", "", ""
+    )
+    assert "public funding is NOT government" in prompt
+    assert "Holland Bloorview-style" in prompt
+    assert "OHIP/Medicare" in prompt
+    assert "non-profit teaching or rehabilitation hospitals" in prompt
+    assert "public funding is not government" in prompt
+    gov = format_governance_taxonomy_prompt()
+    assert "independent registered-charity / non-profit hospitals" in gov
+    assert "hospital authorities and ministry-run" in gov
+
+
 def test_governance_gate_keeps_charity_nonprofit_weak_yes():
     """Simulates corrected charity assessment: nonprofit + weak_yes survives gate."""
     result = _parse_response(
