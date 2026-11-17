@@ -17,6 +17,13 @@ def test_normalize_organization_strips_apply_link_suffix():
     assert normalize_organization("veritree | Apply") == "veritree"
 
 
+def test_normalize_organization_strips_linktree_suffix():
+    assert (
+        normalize_organization("The Kindness and Smile Zone | Linktree")
+        == "The Kindness and Smile Zone"
+    )
+
+
 def _no_geocode(monkeypatch):
     # Force the reuse-existing path so no Geocodio/network call happens.
     monkeypatch.delenv("SHOULD_GEOCODE", raising=False)
