@@ -150,8 +150,11 @@ def find_missing_org_fields(org: Dict[str, Any]) -> List[str]:
     needs: List[str] = []
     if not org.get("sector_id"):
         needs.append("sector_id")
-    if not org.get("type"):
-        needs.append("type")
+    # Governance taxonomy replaced the legacy `type` axis as the required
+    # governance field. EXCLUDED_NON_SSE counts as classified (non-SSE orgs are
+    # complete); only a genuinely unclassified org (null subtype) needs assessment.
+    if not org.get("governance_subtype"):
+        needs.append("governance_subtype")
     desc_en = org.get("description_en") or org.get("description")
     if not (desc_en or "").strip():
         needs.append("description_en")
@@ -186,7 +189,7 @@ def find_unprocessed_organizations(
             raise
         orgs = fetch_all_rows(
             "organizations",
-            "id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,"
+            "id,name,sector_id,governance_subtype,description,description_en,description_fr,website,location,is_sse,sse_rating,"
             "mission_statement,values_list,values_rated,language,municipality,province,"
             "lat,lng,geocode_accuracy_type,created_at,updated_at,slug,assessment_skip_reason",
             order_by="id",
@@ -945,7 +948,7 @@ def _load_parked_org_rows() -> List[dict]:
         supabase.table("organizations")
         .select(
             "id, name, municipality, province, location, website, assessment_skip_reason, "
-            "sector_id, type, description, description_en, description_fr, language, values_list"
+            "sector_id, governance_subtype, description, description_en, description_fr, language, values_list"
         )
         .not_.is_("assessment_skip_reason", "null")
         .order("id")

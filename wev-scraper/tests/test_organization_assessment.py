@@ -1550,3 +1550,87 @@ def test_assess_with_outcome_keeps_first_parse_when_retry_omits_descriptions():
     assert outcome.result["description_en"]
     assert outcome.result["values"] == []
     assert mock_provider.complete.call_count >= 2
+
+
+# ---------------------------------------------------------------------------
+# Governance taxonomy
+# ---------------------------------------------------------------------------
+
+
+def test_parse_response_reads_governance_fields():
+    result = _parse_response(
+        _assessment_json(
+            governance_subtype_code="gov_1_1_worker_coop",  # casing tolerated
+            governance_category_id="GOV_9_BOGUS",  # invalid → dropped
+            governance_confidence=0.82,
+            governance_reasoning="Worker-owned; labor controls the board.",
+            operational_tags=["Platform Co-op!", "b2b_procurement"],
+        ),
+        "Nature Visuals",
+    )
+    assert result["governance_subtype"] == "GOV_1_1_WORKER_COOP"
+    assert result["governance_category"] is None  # bogus category rejected at parse
+    assert result["governance_confidence"] == 0.82
+    assert result["operational_tags"] == ["platform_co_op", "b2b_procurement"]
+
+
+def test_result_to_db_fields_persists_governance_and_drops_type():
+    from utils.governance_taxonomy import GOVERNANCE_TAXONOMY_VERSION
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(
+            sse_rating="strong_yes",
+            governance_subtype_code="GOV_1_1_WORKER_COOP",
+            governance_category_id="GOV_2",  # wrong; derived from subtype instead
+            governance_confidence=0.9,
+            operational_tags=["platform_coop"],
+        ),
+        "Nature Visuals",
+    )
+    fields = _result_to_db_fields(result)
+
+    assert "type" not in fields  # legacy axis no longer persisted
+    assert fields["governance_subtype"] == "GOV_1_1_WORKER_COOP"
+    assert fields["governance_category"] == "GOV_1"  # derived from subtype
+    assert fields["is_sse"] is True
+    assert fields["operational_tags"] == ["platform_coop"]
+    assert fields["sse_details"]["governance_taxonomy"] == GOVERNANCE_TAXONOMY_VERSION
+
+
+def test_result_to_db_fields_forces_excluded_when_not_sse():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(
+            sse_rating="no",
+            governance_subtype_code="GOV_1_1_WORKER_COOP",  # model said co-op…
+            governance_category_id="GOV_1",
+        ),
+        "Nature Visuals",
+    )
+    fields = _result_to_db_fields(result)
+
+    # …but the SSE gate wins: non-SSE is always EXCLUDED.
+    assert fields["is_sse"] is False
+    assert fields["governance_subtype"] == "EXCLUDED_NON_SSE"
+    assert fields["governance_category"] == "EXCLUDED"
+
+
+def test_result_to_db_fields_leaves_subtype_null_when_sse_but_unclassified():
+    from utils.organization_assessment import _result_to_db_fields
+
+    result = _parse_response(
+        _assessment_json(
+            sse_rating="weak_yes",
+            governance_subtype_code=None,
+            governance_category_id=None,
+        ),
+        "Nature Visuals",
+    )
+    fields = _result_to_db_fields(result)
+
+    # SSE yes but no usable subtype → null so catch-up re-assesses (never invented).
+    assert fields["is_sse"] is True
+    assert fields["governance_subtype"] is None
+    assert fields["governance_category"] is None

@@ -34,7 +34,7 @@ def _complete_org(**overrides):
         "id": 1,
         "name": "Riverside Housing Co-op",
         "sector_id": "housing",
-        "type": "cooperative",
+        "governance_subtype": "GOV_1_2_CONSUMER_COOP",
         "description_en": "Member-owned housing.",
         "description_fr": "Logement détenu par les membres.",
         "language": "en",
@@ -58,7 +58,7 @@ def test_complete_org_has_no_missing_fields():
     "overrides,expected",
     [
         ({"sector_id": None}, "sector_id"),
-        ({"type": None}, "type"),
+        ({"governance_subtype": None}, "governance_subtype"),
         ({"description_en": None, "description": None}, "description_en"),
         ({"description_fr": "   "}, "description_fr"),
         ({"language": "es"}, "language"),
@@ -181,8 +181,10 @@ def test_result_with_no_usable_fields_parks_as_no_new_fields():
 
 def test_partially_filled_org_parks_as_partial_fill():
     outcome = AssessmentOutcome({"canonical_name": "X"}, None)
-    org = _complete_org(sector_id=None, type=None)
-    assert resolve_org_skip_reason(org, outcome, {"type": "nonprofit"}) == SKIP_REASON_PARTIAL_FILL
+    org = _complete_org(sector_id=None, governance_subtype=None)
+    assert resolve_org_skip_reason(
+        org, outcome, {"governance_subtype": "GOV_4_1_MEMBER_NPO"}
+    ) == SKIP_REASON_PARTIAL_FILL
 
 
 def test_completed_org_clears_the_reason():
@@ -539,15 +541,15 @@ def test_assessment_with_nothing_new_parks_as_no_new_fields():
 
 
 def test_partial_fill_writes_fields_and_parks():
-    org = _complete_org(id=10, sector_id=None, type=None)
+    org = _complete_org(id=10, sector_id=None, governance_subtype=None)
     (success, errors, parked, *_rest), payloads = _run_processing(
         [org],
         [AssessmentOutcome({"canonical_name": "X"}, None)],
-        db_fields={"type": "nonprofit"},
+        db_fields={"governance_subtype": "GOV_4_1_MEMBER_NPO"},
     )
 
     assert payloads == [
-        {"type": "nonprofit", "assessment_skip_reason": SKIP_REASON_PARTIAL_FILL}
+        {"governance_subtype": "GOV_4_1_MEMBER_NPO", "assessment_skip_reason": SKIP_REASON_PARTIAL_FILL}
     ]
     assert (success, errors, parked) == (0, 0, 1)
 
