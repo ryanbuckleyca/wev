@@ -362,6 +362,9 @@ RULES for the "values" field:
 
 {JSON_INSTRUCTIONS}
 
+Return a JSON object with exactly these fields:
+{json_fields}
+
 ORGANIZATION DATA:
   Raw name:    {raw_name}
   Municipality: {municipality}
@@ -374,8 +377,8 @@ ORGANIZATION DATA:
 SOURCE DESCRIPTION (for description_* only — omit if none):
 {source_description}
 
-Return a JSON object with exactly these fields:
-{json_fields}
+Evaluate the organization in ORGANIZATION DATA above. Return one JSON object
+using the schema fields (canonical_name required; follow the field list above).
 """
 
 

@@ -160,8 +160,10 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         known_website="https://parkpeople.ca",
     )
     assert "ORGANIZATION DATA" in prompt
-    # Entity block must sit near the end so head+tail truncation keeps it.
+    # Entity block must sit after taxonomies AND the JSON schema so head+tail
+    # truncation (small head, large tail) keeps the org identity.
     assert prompt.rfind("ORGANIZATION DATA") > prompt.find("ALLOWED VALUES")
+    assert prompt.rfind("ORGANIZATION DATA") > prompt.find('"canonical_name"')
     truncated = truncate_keep_ends(prompt, max_chars=8000)
     assert "Park People" in truncated
     assert "canonical_name" in truncated
