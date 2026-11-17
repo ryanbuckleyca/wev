@@ -34,7 +34,7 @@ def _complete_org(**overrides):
         "id": 1,
         "name": "Riverside Housing Co-op",
         "sector_id": "housing",
-        "type": "cooperative",
+        "governance_subtype": "GOV_1_2_CONSUMER_COOP",
         "description_en": "Member-owned housing.",
         "description_fr": "Logement détenu par les membres.",
         "language": "en",
@@ -58,7 +58,7 @@ def test_complete_org_has_no_missing_fields():
     "overrides,expected",
     [
         ({"sector_id": None}, "sector_id"),
-        ({"type": None}, "type"),
+        ({"governance_subtype": None}, "governance_subtype"),
         ({"description_en": None, "description": None}, "description_en"),
         ({"description_fr": "   "}, "description_fr"),
         ({"language": "es"}, "language"),
@@ -181,8 +181,10 @@ def test_result_with_no_usable_fields_parks_as_no_new_fields():
 
 def test_partially_filled_org_parks_as_partial_fill():
     outcome = AssessmentOutcome({"canonical_name": "X"}, None)
-    org = _complete_org(sector_id=None, type=None)
-    assert resolve_org_skip_reason(org, outcome, {"type": "nonprofit"}) == SKIP_REASON_PARTIAL_FILL
+    org = _complete_org(sector_id=None, governance_subtype=None)
+    assert resolve_org_skip_reason(
+        org, outcome, {"governance_subtype": "GOV_4_1_MEMBER_NPO"}
+    ) == SKIP_REASON_PARTIAL_FILL
 
 
 def test_completed_org_clears_the_reason():
@@ -308,6 +310,107 @@ def test_filter_co_writes_is_sse_false_when_rating_is_no():
 
     assert filtered["sse_rating"] == "no"
     assert filtered["is_sse"] is False
+
+
+def test_filter_drops_governance_that_contradicts_preserved_sse_gate():
+    """A reviewed SSE-yes org must not receive an EXCLUDED governance subtype.
+
+    Catch-up queues it because governance_subtype is null, but the preserved SSE
+    decision (is_sse True) wins over the model's not-SSE verdict. Governance is
+    re-resolved against that gate: EXCLUDED_NON_SSE is not a valid SSE subtype, so
+    the keys drop and the row stays incomplete for a later (correct) pass.
+    """
+    org = _complete_org(
+        governance_subtype=None,
+        is_sse=True,
+        sse_rating="strong_yes",
+        sse_details={"reviewed": True},
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        # Model disagreed and called it non-SSE, so _result_to_db_fields produced
+        # the excluded governance pair.
+        "governance_subtype": "EXCLUDED_NON_SSE",
+        "governance_category": "EXCLUDED",
+        "governance_confidence": 0.4,
+        "governance_reasoning": "Model thought it was a private firm.",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert "governance_subtype" not in filtered
+    assert "governance_category" not in filtered
+    assert "governance_confidence" not in filtered
+    assert "governance_reasoning" not in filtered
+
+
+def test_filter_forces_excluded_governance_for_preserved_non_sse_org():
+    """A reviewed non-SSE org gets EXCLUDED governance even if the model guessed a coop."""
+    org = _complete_org(
+        governance_subtype=None,
+        is_sse=False,
+        sse_rating="no",
+        sse_details={"reviewed": True},
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "governance_subtype": "GOV_1_1_WORKER_COOP",
+        "governance_category": "GOV_1",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["governance_subtype"] == "EXCLUDED_NON_SSE"
+    assert filtered["governance_category"] == "EXCLUDED"
+
+
+def test_filter_preserves_stored_subtype_when_only_confidence_missing():
+    """A stored subtype is authoritative: a partial re-fill (e.g. missing sector)
+    must not overwrite it or attach model metadata for a different subtype."""
+    org = _complete_org(
+        sector_id=None,  # the field that queues this org
+        governance_subtype="GOV_1_1_WORKER_COOP",
+        governance_category="GOV_1",
+        governance_confidence=None,
+        is_sse=True,
+        sse_rating="strong_yes",
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "sector_id": "housing",
+        # Model now disagrees and returns a different subtype + fresh metadata.
+        "governance_subtype": "GOV_1_2_CONSUMER_COOP",
+        "governance_category": "GOV_1",
+        "governance_confidence": 0.77,
+        "governance_reasoning": "Model reclassified as consumer co-op.",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    # Only the genuinely-missing sector is written; the stored subtype and its
+    # metadata are left untouched.
+    assert filtered == {"sector_id": "housing"}
 
 
 def test_filter_assessment_update_fields_attaches_language_from_name():
@@ -539,15 +642,15 @@ def test_assessment_with_nothing_new_parks_as_no_new_fields():
 
 
 def test_partial_fill_writes_fields_and_parks():
-    org = _complete_org(id=10, sector_id=None, type=None)
+    org = _complete_org(id=10, sector_id=None, governance_subtype=None)
     (success, errors, parked, *_rest), payloads = _run_processing(
         [org],
         [AssessmentOutcome({"canonical_name": "X"}, None)],
-        db_fields={"type": "nonprofit"},
+        db_fields={"governance_subtype": "GOV_4_1_MEMBER_NPO"},
     )
 
     assert payloads == [
-        {"type": "nonprofit", "assessment_skip_reason": SKIP_REASON_PARTIAL_FILL}
+        {"governance_subtype": "GOV_4_1_MEMBER_NPO", "assessment_skip_reason": SKIP_REASON_PARTIAL_FILL}
     ]
     assert (success, errors, parked) == (0, 0, 1)
 

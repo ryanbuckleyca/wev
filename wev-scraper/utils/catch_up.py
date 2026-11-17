@@ -4,8 +4,8 @@ Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocesse
 - An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills,
   or organization_id. Skills uses the skills_raw / jobs.skills contract — see
   job_needs_skills. organization_id is resolved here, not left for a separate backfill.
-- An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
-  valid language, or values_list
+- An "unprocessed organization" lacks any of: sector_id, governance_subtype,
+  description_en/description_fr, valid language, or values_list
 
 Organizations are assessed at most once per catch-up. Any attempt that does not
 complete the org writes organizations.assessment_skip_reason, which parks the row
@@ -23,6 +23,7 @@ from typing import Any, Dict, List, NamedTuple, Tuple
 
 from utils.db import fetch_all_rows, supabase
 from utils.env import is_truthy_env
+from utils.governance_taxonomy import resolve_governance
 from utils.log import scraper_log as _log
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
@@ -150,8 +151,11 @@ def find_missing_org_fields(org: Dict[str, Any]) -> List[str]:
     needs: List[str] = []
     if not org.get("sector_id"):
         needs.append("sector_id")
-    if not org.get("type"):
-        needs.append("type")
+    # Governance taxonomy replaced the legacy `type` axis as the required
+    # governance field. EXCLUDED_NON_SSE counts as classified (non-SSE orgs are
+    # complete); only a genuinely unclassified org (null subtype) needs assessment.
+    if not org.get("governance_subtype"):
+        needs.append("governance_subtype")
     desc_en = org.get("description_en") or org.get("description")
     if not (desc_en or "").strip():
         needs.append("description_en")
@@ -186,7 +190,7 @@ def find_unprocessed_organizations(
             raise
         orgs = fetch_all_rows(
             "organizations",
-            "id,name,sector_id,type,description,description_en,description_fr,website,location,is_sse,sse_rating,"
+            "id,name,sector_id,governance_subtype,description,description_en,description_fr,website,location,is_sse,sse_rating,"
             "mission_statement,values_list,values_rated,language,municipality,province,"
             "lat,lng,geocode_accuracy_type,created_at,updated_at,slug,assessment_skip_reason",
             order_by="id",
@@ -290,6 +294,52 @@ def filter_assessment_update_fields(
         preserved = org.get("sse_rating")
         if preserved is not None:
             filtered["is_sse"] = preserved in ("strong_yes", "weak_yes")
+
+    # Governance fields form one coherent classification (subtype, its category,
+    # confidence, reasoning). Two rules keep them honest:
+    #   1. A stored subtype is authoritative — never overwrite it, and don't fill
+    #      confidence/reasoning piecemeal with model metadata that may describe a
+    #      *different* subtype. So if the org already has a subtype, drop every
+    #      governance key from this write.
+    #   2. Otherwise reconcile the model's governance against the is_sse this write
+    #      actually leaves on the row (e.g. a preserved admin decision) so it can
+    #      never contradict that gate. If the gate changes the subtype, drop the
+    #      model confidence/reasoning that described the old one; if it leaves no
+    #      usable subtype, drop governance entirely so the row stays incomplete.
+    _gov_keys = (
+        "governance_subtype",
+        "governance_category",
+        "governance_confidence",
+        "governance_reasoning",
+    )
+    if org.get("governance_subtype"):
+        for key in _gov_keys:
+            filtered.pop(key, None)
+    elif any(key in filtered for key in _gov_keys):
+        if "is_sse" in filtered:
+            override_is_sse = filtered["is_sse"]
+        elif org.get("sse_rating") is not None:
+            override_is_sse = org.get("sse_rating") in ("strong_yes", "weak_yes")
+        else:
+            override_is_sse = None
+        if override_is_sse is not None:
+            original_subtype = filtered.get(
+                "governance_subtype", db_fields.get("governance_subtype")
+            )
+            subtype, category = resolve_governance(
+                original_subtype,
+                filtered.get("governance_category", db_fields.get("governance_category")),
+                is_sse=override_is_sse,
+            )
+            if subtype is None:
+                for key in _gov_keys:
+                    filtered.pop(key, None)
+            else:
+                filtered["governance_subtype"] = subtype
+                filtered["governance_category"] = category
+                if subtype != original_subtype:
+                    filtered.pop("governance_confidence", None)
+                    filtered.pop("governance_reasoning", None)
 
     return filtered
 
@@ -945,7 +995,7 @@ def _load_parked_org_rows() -> List[dict]:
         supabase.table("organizations")
         .select(
             "id, name, municipality, province, location, website, assessment_skip_reason, "
-            "sector_id, type, description, description_en, description_fr, language, values_list"
+            "sector_id, governance_subtype, description, description_en, description_fr, language, values_list"
         )
         .not_.is_("assessment_skip_reason", "null")
         .order("id")
