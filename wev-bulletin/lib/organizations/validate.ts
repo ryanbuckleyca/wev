@@ -11,7 +11,10 @@ import {
   type OrgType,
 } from './constants';
 import { normalizeOrgType } from './org-type';
+import { resolveGovernanceForSave } from './governance-labels';
+import { isGovernanceSubtype } from './governance-taxonomy';
 import { buildAdminSseFields } from './sse-admin-fields';
+import type { GovernanceCategory, GovernanceSubtype } from './governance-taxonomy';
 
 export interface OrgFormInput {
   name: string;
@@ -30,6 +33,7 @@ export interface OrgFormInput {
   lng?: number | null;
   geocode_accuracy_type?: string | null;
   type?: string | null;
+  governance_subtype?: string | null;
   sector_id?: string | null;
   is_sse?: boolean;
   values_list?: string[] | null;
@@ -121,6 +125,10 @@ export function validateOrgInput(
     return { field: 'type', error: 'invalid_type' };
   }
 
+  if (data.governance_subtype?.trim() && !isGovernanceSubtype(data.governance_subtype)) {
+    return { field: 'governance_subtype', error: 'invalid_governance' };
+  }
+
   if (data.sector_id?.trim() && !isValidSector(data.sector_id)) {
     return { field: 'sector_id', error: 'invalid_sector' };
   }
@@ -159,6 +167,8 @@ export interface NormalizedOrgPayload {
   lng: number | null;
   geocode_accuracy_type: string | null;
   type: OrgType | null;
+  governance_subtype: GovernanceSubtype | null;
+  governance_category: GovernanceCategory | null;
   sector_id: string | null;
   is_sse: boolean;
   language: OrgLanguage | null;
@@ -213,6 +223,10 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   // Government orgs are never SSE (type is allowed; SSE flag is not).
   const isSse = type === 'government' ? false : (data.is_sse ?? false);
   const sseFields = buildAdminSseFields(isSse);
+  const governance = resolveGovernanceForSave({
+    governance_subtype: data.governance_subtype,
+    is_sse: isSse,
+  });
 
   const descriptionEn = data.description_en?.trim() || data.description?.trim() || null;
   const descriptionFr = data.description_fr?.trim() || null;
@@ -231,6 +245,8 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
     type,
+    governance_subtype: governance.governance_subtype,
+    governance_category: governance.governance_category,
     sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
     is_sse: isSse,
     language: normalizeOrgLanguage(data.language),
@@ -318,9 +334,11 @@ export function buildOrgUpdateFields(
   if (data.language !== undefined) updates.language = normalizeOrgLanguage(data.language);
 
   const governmentBlocksSse = nextType === 'government';
+  let nextIsSse: boolean | undefined;
   if (data.is_sse !== undefined || (typeChanging && governmentBlocksSse)) {
     const requested = data.is_sse ?? options.previousIsSse ?? false;
     const isSse = governmentBlocksSse ? false : Boolean(requested);
+    nextIsSse = isSse;
     updates.is_sse = isSse;
     const requestOverridden = data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
     if (
@@ -330,6 +348,18 @@ export function buildOrgUpdateFields(
     ) {
       Object.assign(updates, buildAdminSseFields(isSse));
     }
+  }
+
+  // Write governance when the form sent a subtype, or when the SSE gate flips
+  // to false (must force EXCLUDED). Do not wipe an existing subtype just because
+  // is_sse stayed true and governance_subtype was omitted from a partial update.
+  if (data.governance_subtype !== undefined || nextIsSse === false) {
+    const governance = resolveGovernanceForSave({
+      governance_subtype: data.governance_subtype,
+      is_sse: nextIsSse ?? options.previousIsSse ?? false,
+    });
+    updates.governance_subtype = governance.governance_subtype;
+    updates.governance_category = governance.governance_category;
   }
 
   return updates;

@@ -7,6 +7,10 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE, ORG_CACHE_TAG } from './constants';
 import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
+import {
+  buildGovernanceIndexCards,
+  type GovernanceIndexCard,
+} from './governance-index';
 import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
@@ -41,6 +45,7 @@ export interface FetchOrganizationIndexOptions {
   orgTypes?: string[];
   languages?: string[];
   sectors?: string[];
+  governanceCategories?: string[];
   userId?: string | null;
   sortBy?: string | null;
   /** null/undefined = all orgs (full directory), 28 = last 4 weeks, 90 = last 3 months */
@@ -58,6 +63,7 @@ function serializeAnonymousOrgIndexOptions(options: FetchOrganizationIndexOption
     orgTypes: options.orgTypes ?? [],
     languages: options.languages ?? [],
     sectors: options.sectors ?? [],
+    governanceCategories: options.governanceCategories ?? [],
     sortBy: options.sortBy ?? null,
     activityDays: options.activityDays ?? null,
   });
@@ -77,6 +83,7 @@ async function fetchOrganizationIndexUncached(
     orgTypes = [],
     languages = [],
     sectors = [],
+    governanceCategories = [],
     userId = null,
     sortBy = null,
     activityDays = null,
@@ -96,7 +103,8 @@ async function fetchOrganizationIndexUncached(
     municipalities.length > 0 ||
     orgTypes.length > 0 ||
     languages.length > 0 ||
-    sectors.length > 0;
+    sectors.length > 0 ||
+    governanceCategories.length > 0;
 
   // Run main query and baseline denominator count in parallel.
   // The denominator call uses p_limit:1 to return exactly one row carrying the
@@ -116,6 +124,9 @@ async function fetchOrganizationIndexUncached(
     p_sort: 'org-asc' as const,
   };
 
+  // Only pass p_governance_categories when filtering — older RPCs (pre
+  // 20261117180000) reject the unknown arg. Empty = omit so the default
+  // directory still works before that migration is applied.
   const mainParams = {
     min_date: minDate,
     p_search: searchQuery || null,
@@ -125,6 +136,9 @@ async function fetchOrganizationIndexUncached(
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
     p_languages: languages.length > 0 ? languages : null,
     p_sectors: sectors.length > 0 ? sectors : null,
+    ...(governanceCategories.length > 0
+      ? { p_governance_categories: governanceCategories }
+      : {}),
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,
@@ -454,5 +468,48 @@ export const fetchSectorIndexStats = cache(
   async (opts: { sseOnly?: boolean } = {}): Promise<SectorIndexCard[]> => {
     const sseOnly = opts.sseOnly ?? true;
     return fetchSectorIndexStatsCached(sseOnly ? 'true' : 'false');
+  },
+);
+
+// ---------------------------------------------------------------------------
+// fetchGovernanceIndexStats
+// ---------------------------------------------------------------------------
+
+const fetchGovernanceIndexStatsCached = unstable_cache(
+  async (sseOnlyKey: string): Promise<GovernanceIndexCard[]> => {
+    const sseOnly = sseOnlyKey !== 'false';
+
+    let rows: Array<{ name: string | null; governance_category: string | null }>;
+    try {
+      rows = await fetchAllPagedRows(async (from, to) => {
+        let query = supabaseServer
+          .from('organizations')
+          .select('name, governance_category')
+          .not('governance_category', 'is', null)
+          .neq('governance_category', 'EXCLUDED')
+          .order('id', { ascending: true });
+
+        if (sseOnly) {
+          query = query.eq('is_sse', true);
+        }
+
+        return query.range(from, to);
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`fetchGovernanceIndexStats error: ${message}`);
+    }
+
+    return buildGovernanceIndexCards(rows);
+  },
+  ['org-governance-index'],
+  { revalidate: 60, tags: [ORG_CACHE_TAG] },
+);
+
+/** Governance-category front door for the org index (SSE-only by default). */
+export const fetchGovernanceIndexStats = cache(
+  async (opts: { sseOnly?: boolean } = {}): Promise<GovernanceIndexCard[]> => {
+    const sseOnly = opts.sseOnly ?? true;
+    return fetchGovernanceIndexStatsCached(sseOnly ? 'true' : 'false');
   },
 );

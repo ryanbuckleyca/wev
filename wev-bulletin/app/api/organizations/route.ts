@@ -23,6 +23,7 @@ export async function GET(request: Request) {
     orgTypes,
     languages,
     sectors,
+    governanceCategories,
     sortBy,
     activityDays,
   } = parseOrgIndexSearchParams(searchParams, Boolean(user));
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
           orgTypes,
           languages,
           sectors,
+          governanceCategories,
           userId: user?.id ?? null,
           sortBy,
           activityDays,

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
@@ -42,7 +43,7 @@ interface CardHeaderProps {
   hasFooter: boolean;
   isExpanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  getTypeLabel: (type: string | null) => string;
+  getGovernanceLabel: (entry: OrgIndexEntry) => string;
   getSectorLabel: (sectorId: string | null) => string;
 }
 
@@ -57,16 +58,16 @@ function OrganizationCardHeader({
   hasFooter,
   isExpanded,
   onExpandedChange,
-  getTypeLabel,
+  getGovernanceLabel,
   getSectorLabel,
 }: CardHeaderProps) {
   const description =
     pickOrgLocalizedText(org, 'description', locale) ||
     pickOrgLocalizedText(org, 'mission_statement', locale) ||
     noDescriptionLabel;
-  const typeLabel = getTypeLabel(org.type);
+  const governanceLabel = getGovernanceLabel(org);
   const sectorLabel = getSectorLabel(org.sector_id);
-  const metadata = [sectorLabel, typeLabel].filter(Boolean).join(' • ');
+  const metadata = [sectorLabel, governanceLabel].filter(Boolean).join(' • ');
 
   const shouldTruncate = description.length > DESCRIPTION_PREVIEW_LENGTH;
   const preview = shouldTruncate
@@ -185,7 +186,10 @@ export default function OrganizationCard({
   const tOrgs = useTranslations('organizations');
   const tSectors = useTranslations('taxonomy.sectors');
 
-  const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, tOrgs) ?? '';
+  const getGovernanceLabel = (entry: OrgIndexEntry) =>
+    getOrgGovernanceDisplayLabel(entry, tOrgs, (type) =>
+      getOrganizationTypeLabel(type, tOrgs),
+    ) ?? '';
   const getSectorLabel = (sectorId: string | null) =>
     sectorId ? tSectors(`${sectorId}.label`) : '';
 
@@ -206,7 +210,7 @@ export default function OrganizationCard({
         hasFooter={hasFooter}
         isExpanded={isExpanded}
         onExpandedChange={setIsExpanded}
-        getTypeLabel={getTypeLabel}
+        getGovernanceLabel={getGovernanceLabel}
         getSectorLabel={getSectorLabel}
       />
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import type { OrgRecord } from '@/lib/organizations/types';
@@ -50,6 +51,9 @@ export default function OrganizationProfileHeader({
   const locationLabel = formatOrgLocationLabel(org);
   const description = pickOrgLocalizedText(org, 'description', locale);
   const mission = pickOrgLocalizedText(org, 'mission_statement', locale);
+  const governanceLabel = getOrgGovernanceDisplayLabel(org, t, (type) =>
+    getOrganizationTypeLabel(type, t),
+  );
 
   return (
     <div className="mb-8">
@@ -60,10 +64,12 @@ export default function OrganizationProfileHeader({
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-x-6 gap-y-2 text-muted-foreground mt-4">
-            {org.type && (
+            {governanceLabel && (
               <div className="flex flex-col items-start gap-1.5">
-                <span className="font-medium text-foreground">{t('orgType')}:</span>{' '}
-                {getOrganizationTypeLabel(org.type, t)}
+                <span className="font-medium text-foreground">
+                  {org.governance_subtype ? t('orgGovernance') : t('orgType')}:
+                </span>{' '}
+                {governanceLabel}
               </div>
             )}
 

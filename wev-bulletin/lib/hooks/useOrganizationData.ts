@@ -64,6 +64,7 @@ function buildSearchParams(
   filters.selectedTypes.forEach((t) => params.append('type', t));
   filters.selectedLanguages.forEach((l) => params.append('language', l));
   filters.selectedSectors.forEach((s) => params.append('sector', s));
+  filters.selectedGovernanceCategories.forEach((g) => params.append('governance', g));
   return params;
 }
 

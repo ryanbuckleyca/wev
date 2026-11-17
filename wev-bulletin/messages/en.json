@@ -88,6 +88,7 @@
     "location": "Location",
     "description": "About",
     "orgType": "Type",
+    "orgGovernance": "Governance",
     "missionStatement": "Mission",
     "values": "Values",
     "sector": "Sector",
@@ -95,7 +96,35 @@
     "noOrganizationSectors": "No sectors available",
     "browseBySector": "Browse by sector",
     "browseBySectorHint": "Explore solidarity economy (SSE) organizations by field of work.",
-    "browseSectors": "Browse all sectors"
+    "browseSectors": "Browse all sectors",
+    "browseByGovernance": "Browse by governance",
+    "browseByGovernanceHint": "Explore solidarity economy (SSE) organizations by who holds ownership and democratic control.",
+    "governance": {
+      "category": {
+        "GOV_1": "Democratic Member-Owned Cooperatives",
+        "GOV_2": "Mutual Benefit & Financial Institutions",
+        "GOV_3": "Collective Asset Stewardship & Land Trusts",
+        "GOV_4": "Participatory Non-Profits & Social Enterprises",
+        "GOV_5": "Grassroots & Popular Economy Collectives",
+        "EXCLUDED": "Excluded (non-SSE)"
+      },
+      "subtype": {
+        "GOV_1_1_WORKER_COOP": "Worker Cooperative",
+        "GOV_1_2_CONSUMER_COOP": "Consumer / Customer Cooperative",
+        "GOV_1_3_PRODUCER_COOP": "Producer / Supplier Cooperative",
+        "GOV_1_4_SOLIDARITY_COOP": "Multi-Stakeholder / Solidarity Cooperative",
+        "GOV_2_1_CREDIT_UNION": "Credit Union / Caisse Populaire",
+        "GOV_2_2_MUTUAL_INSURANCE": "Mutual Insurance Society",
+        "GOV_3_1_COMMUNITY_LAND_TRUST": "Community Land Trust (CLT)",
+        "GOV_4_1_MEMBER_NPO": "Member-Governed Non-Profit",
+        "GOV_4_2_WISE": "Work Integration Social Enterprise",
+        "GOV_4_3_COMMUNITY_DEV_CORP": "Community Development Corporation",
+        "GOV_5_1_MUTUAL_AID": "Mutual Aid Network",
+        "GOV_5_2_POPULAR_COLLECTIVE": "Popular Economy Collective",
+        "GOV_5_3_DEMOCRATIC_UNION": "Democratic Labor Union / Worker Center",
+        "EXCLUDED_NON_SSE": "Excluded (non-SSE)"
+      }
+    }
   },
   "home": {
     "heading": "Bulletin – Job Postings",
@@ -909,6 +938,7 @@
         "website": "Website URL",
         "location": "Location",
         "type": "Organization Type",
+        "governance": "Governance Form",
         "sector": "Sector",
         "language": "Public Language",
         "isSse": "Solidarity Economy Organization",
@@ -934,6 +964,7 @@
         "website": "https://example.org",
         "location": "Start typing a city…",
         "selectType": "Select a type...",
+        "selectGovernance": "Select a governance form...",
         "selectSector": "Select a sector...",
         "selectLanguage": "Select a language...",
         "values": "Search and select work values"
@@ -963,7 +994,7 @@
         "missingNone": "Every assessed field is now filled in. Saving will clear this notice.",
         "missingFields": {
           "sector": "Sector",
-          "type": "Organization Type",
+          "governance": "Governance Form",
           "descriptionEn": "Description (English)",
           "descriptionFr": "Description (French)",
           "language": "Public Language",
@@ -1004,6 +1035,7 @@
         "descriptionTooLong": "Description is too long (max 500 characters)",
         "missionTooLong": "Mission statement is too long (max 500 characters)",
         "invalidType": "Please select a valid organization type",
+        "invalidGovernance": "Please select a valid governance form",
         "invalidSector": "Please select a valid sector",
         "invalidLanguage": "Please select a valid public language",
         "invalidValues": "One or more selected values are not recognized",
