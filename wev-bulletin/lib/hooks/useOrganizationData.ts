@@ -118,7 +118,12 @@ export function useOrganizationData(
   }, [sessionCookie]);
 
   useEffect(() => {
-    if (fetchKey === completedFetchKey) return;
+    // Reusing completed data (e.g. filter toggled on then off before the
+    // in-flight request settled): clear loading left true by the aborted fetch.
+    if (fetchKey === completedFetchKey) {
+      setLoading(false);
+      return;
+    }
 
     const controller = new AbortController();
     let timedOut = false;

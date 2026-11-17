@@ -26,8 +26,8 @@ ALTER TABLE public.organizations
       'EXCLUDED_NON_SSE'
     )) NOT VALID;
 
-ALTER TABLE public.organizations
-  VALIDATE CONSTRAINT organizations_governance_subtype_check;
+-- VALIDATE CONSTRAINT runs in 20261117200000 so this migration can commit
+-- before the longer validation lock begins.
 
 COMMENT ON COLUMN public.organizations.governance_category IS
   'SSE governance parent category (GOV_1..GOV_5, or EXCLUDED). Source of truth: '
