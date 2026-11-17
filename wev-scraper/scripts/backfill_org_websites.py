@@ -12,7 +12,12 @@ minimal  Only never-assessed / minimal-fallback rows (``sse_rating IS NULL``),
          These are created when the assessor fails during scrape (or when a
          bad type label is cleared); later scrapes reuse them by name and
          never re-trigger assessment. This mode is the targeted fix for that set.
-full     Re-assess description / mission / values / type / sector / SSE / website
+governance  Only orgs with ``governance_subtype IS NULL`` — the one-time
+         backfill after the governance-taxonomy migration. Unlike the other
+         modes it does NOT skip rows with a completed assessment, since every
+         org classified before the taxonomy existed needs a subtype. Admin-
+         reviewed SSE is still preserved unless ``--force-reviewed``.
+full     Re-assess description / mission / values / governance / sector / SSE / website
          for all orgs. Overwrites existing assessment fields, except
          admin-reviewed SSE (``sse_details.reviewed`` / ``admin_override``)
          unless ``--force-reviewed``.
@@ -27,6 +32,10 @@ Usage:
     # Re-assess minimal-fallback / unrated orgs only
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
         --prod --mode minimal --dry-run --limit 10
+
+    # Governance taxonomy backfill dry-run (first 5 orgs missing a subtype)
+    CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
+        --prod --mode governance --dry-run --limit 5
 
     # Full reassess dry-run (first 3); skips already-classified orgs
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
@@ -73,7 +82,8 @@ logger = logging.getLogger(__name__)
 
 _SELECT = (
     "id, name, location, municipality, province, website, description, "
-    "mission_statement, sse_rating, is_sse, type, sector_id, language, values_list, sse_details"
+    "mission_statement, sse_rating, is_sse, governance_subtype, governance_category, "
+    "sector_id, language, values_list, sse_details"
 )
 
 
@@ -111,6 +121,27 @@ def fetch_orgs_minimal(*, limit: int, after_id: int = 0) -> list[dict]:
     return resp.data or []
 
 
+def fetch_orgs_missing_governance(*, limit: int, after_id: int = 0) -> list[dict]:
+    """Orgs with no governance_subtype yet — the taxonomy backfill target.
+
+    After the governance taxonomy migration every row starts null here, so this
+    is the precise selector for the one-time backfill. Unlike ``minimal`` /
+    ``full``, governance mode does **not** skip rows with a prior completed
+    assessment: those rows are exactly the ones classified before the taxonomy
+    existed and still need a subtype.
+    """
+    resp = (
+        supabase.table("organizations")
+        .select(_SELECT)
+        .is_("governance_subtype", "null")
+        .gt("id", after_id)
+        .order("id")
+        .limit(limit)
+        .execute()
+    )
+    return resp.data or []
+
+
 def fetch_orgs_any(*, limit: int, after_id: int = 0) -> list[dict]:
     """Any orgs ordered by id (for full reassess)."""
     resp = (
@@ -127,6 +158,7 @@ def fetch_orgs_any(*, limit: int, after_id: int = 0) -> list[dict]:
 _FETCHERS = {
     "website": "fetch_orgs_missing_website",
     "minimal": "fetch_orgs_minimal",
+    "governance": "fetch_orgs_missing_governance",
     "full": "fetch_orgs_any",
 }
 
@@ -181,7 +213,8 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
 
     add_field("sse", org.get("sse_rating"), updates.get("sse_rating"))
     add_field("is_sse", org.get("is_sse"), updates.get("is_sse"))
-    add_field("type", org.get("type"), updates.get("type"))
+    add_field("governance", org.get("governance_subtype"), updates.get("governance_subtype"))
+    add_field("governance_category", org.get("governance_category"), updates.get("governance_category"))
     add_field("sector", org.get("sector_id"), updates.get("sector_id"))
     add_field("language", org.get("language"), updates.get("language"))
     add_field("website", org.get("website"), updates.get("website"))
@@ -289,7 +322,12 @@ def run(
             "Mode minimal: re-assessing orgs with sse_rating IS NULL "
             "(bypasses resolver alias-cache short-circuit)"
         )
-    if overwrite_recent_hours is not None and overwrite_recent_hours > 0:
+    if mode == "governance":
+        logger.info(
+            "Mode governance: re-assessing orgs with governance_subtype IS NULL "
+            "(completed-skip disabled — these were classified before the taxonomy existed)"
+        )
+    elif overwrite_recent_hours is not None and overwrite_recent_hours > 0:
         logger.info(
             "Overwriting orgs assessed within the last %s hours "
             "(older completed assessments still skipped)",
@@ -300,7 +338,7 @@ def run(
             "Skipping completed assessments (sse_details.classified_at set); "
             "pass --overwrite-recent-hours N to re-do recent ones"
         )
-    if mode == "full" and not force_reviewed:
+    if mode in ("full", "governance") and not force_reviewed:
         logger.info(
             "Skipping admin-reviewed orgs (sse_details.reviewed / admin_override); "
             "pass --force-reviewed to overwrite"
@@ -323,7 +361,7 @@ def run(
             name = org.get("name") or ""
             cursor = org_id
 
-            if _should_skip_completed(
+            if mode != "governance" and _should_skip_completed(
                 org, overwrite_recent_hours=overwrite_recent_hours,
             ):
                 classified_at = _parse_classified_at(org)
@@ -337,7 +375,7 @@ def run(
                 continue
 
             if (
-                mode == "full"
+                mode in ("full", "governance")
                 and not force_reviewed
                 and _has_admin_sse_override(org)
             ):
@@ -436,12 +474,14 @@ def main() -> None:
     parser.add_argument("--prod", action="store_true", help="Use production database.")
     parser.add_argument(
         "--mode",
-        choices=("website", "minimal", "full"),
+        choices=("website", "minimal", "governance", "full"),
         default="website",
         help=(
             "website = fill missing sites only; "
             "minimal = reassess never-assessed / minimal-fallback rows "
             "(sse_rating IS NULL); "
+            "governance = reassess orgs with governance_subtype IS NULL "
+            "(taxonomy backfill; does not skip completed assessments); "
             "full = reassess SSE/mission/values/etc. for all orgs."
         ),
     )
