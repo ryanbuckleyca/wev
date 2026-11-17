@@ -1,6 +1,6 @@
 -- Strip career-page apply CTAs from org-name normalization so
 -- "Clean Energy Canada | Apply" matches "Clean Energy Canada".
--- Mirrors Python utils.organization_cache._strip_apply_link_suffix.
+-- Mirrors Python utils.organization_cache._strip_page_chrome_suffix (apply-CTA part).
 
 CREATE OR REPLACE FUNCTION public.normalize_org_name(p_name text)
 RETURNS text
