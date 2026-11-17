@@ -187,9 +187,8 @@ export default function OrganizationCard({
   const tSectors = useTranslations('taxonomy.sectors');
 
   const getGovernanceLabel = (entry: OrgIndexEntry) =>
-    getOrgGovernanceDisplayLabel(entry, tOrgs, (type) =>
-      getOrganizationTypeLabel(type, tOrgs),
-    ) ?? '';
+    getOrgGovernanceDisplayLabel(entry, tOrgs, (type) => getOrganizationTypeLabel(type, tOrgs)) ??
+    '';
   const getSectorLabel = (sectorId: string | null) =>
     sectorId ? tSectors(`${sectorId}.label`) : '';
 

@@ -7,10 +7,7 @@ import { supabaseServer } from '@/lib/supabase-server';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE, ORG_CACHE_TAG } from './constants';
 import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
-import {
-  buildGovernanceIndexCards,
-  type GovernanceIndexCard,
-} from './governance-index';
+import { buildGovernanceIndexCards, type GovernanceIndexCard } from './governance-index';
 import { fetchAllPagedRows } from '@/lib/supabase/fetch-all-rows';
 import type { OrgIndexEntry, OrgJobPosting, OrgRecord } from './types';
 
@@ -136,9 +133,7 @@ async function fetchOrganizationIndexUncached(
     p_org_types: orgTypes.length > 0 ? orgTypes : null,
     p_languages: languages.length > 0 ? languages : null,
     p_sectors: sectors.length > 0 ? sectors : null,
-    ...(governanceCategories.length > 0
-      ? { p_governance_categories: governanceCategories }
-      : {}),
+    ...(governanceCategories.length > 0 ? { p_governance_categories: governanceCategories } : {}),
     p_limit: limit,
     p_offset: offset,
     p_user_id: userId,

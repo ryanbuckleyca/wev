@@ -3,10 +3,7 @@ import { generateSlug } from '@/lib/slug';
 import type { LocationSelection } from '@/components/profile/LocationAutocomplete';
 import type { OrgRecord } from '@/lib/organizations/types';
 import { normalizeOrgType } from '@/lib/organizations/org-type';
-import {
-  EXCLUDED_SUBTYPE,
-  isGovernanceSubtype,
-} from '@/lib/organizations/governance-taxonomy';
+import { EXCLUDED_SUBTYPE, isGovernanceSubtype } from '@/lib/organizations/governance-taxonomy';
 import type { OrgFormInput } from '@/lib/organizations/validate';
 
 function initialLocation(initialValues?: Partial<OrgRecord>): {

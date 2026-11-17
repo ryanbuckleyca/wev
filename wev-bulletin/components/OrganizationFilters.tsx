@@ -100,9 +100,7 @@ export default function OrganizationFilters({
       void setCurrentPage(1);
     },
     onRemoveGovernance: (category) => {
-      void setSelectedGovernanceCategories(
-        toggleArrayItem(category, selectedGovernanceCategories),
-      );
+      void setSelectedGovernanceCategories(toggleArrayItem(category, selectedGovernanceCategories));
       void setCurrentPage(1);
     },
     tOrgs: t,

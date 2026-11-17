@@ -22,7 +22,7 @@ export const GOVERNANCE_CATEGORIES = {
   },
   GOV_3: {
     label_en: 'Collective Asset Stewardship & Land Trusts',
-    label_fr: 'Fiducies foncières et gestion d\'actifs collectifs',
+    label_fr: "Fiducies foncières et gestion d'actifs collectifs",
   },
   GOV_4: {
     label_en: 'Participatory Non-Profits & Social Enterprises',
@@ -30,7 +30,7 @@ export const GOVERNANCE_CATEGORIES = {
   },
   GOV_5: {
     label_en: 'Grassroots & Popular Economy Collectives',
-    label_fr: 'Collectifs de l\'économie populaire et de terrain',
+    label_fr: "Collectifs de l'économie populaire et de terrain",
   },
   [EXCLUDED_CATEGORY]: {
     label_en: 'Excluded (non-SSE)',
@@ -70,7 +70,7 @@ export const GOVERNANCE_SUBTYPES = {
   GOV_2_2_MUTUAL_INSURANCE: {
     category: 'GOV_2',
     label_en: 'Mutual Insurance Society',
-    label_fr: 'Société mutuelle d\'assurance',
+    label_fr: "Société mutuelle d'assurance",
   },
   GOV_3_1_COMMUNITY_LAND_TRUST: {
     category: 'GOV_3',
@@ -120,14 +120,9 @@ export const SSE_SUBTYPES = Object.keys(GOVERNANCE_SUBTYPES) as Array<
   keyof typeof GOVERNANCE_SUBTYPES
 >;
 
-export const VALID_SUBTYPES: readonly GovernanceSubtype[] = [
-  ...SSE_SUBTYPES,
-  EXCLUDED_SUBTYPE,
-];
+export const VALID_SUBTYPES: readonly GovernanceSubtype[] = [...SSE_SUBTYPES, EXCLUDED_SUBTYPE];
 
-export const VALID_CATEGORIES = Object.keys(
-  GOVERNANCE_CATEGORIES,
-) as GovernanceCategory[];
+export const VALID_CATEGORIES = Object.keys(GOVERNANCE_CATEGORIES) as GovernanceCategory[];
 
 export const SUBTYPE_TO_CATEGORY: Record<GovernanceSubtype, GovernanceCategory> = {
   ...(Object.fromEntries(
@@ -136,9 +131,7 @@ export const SUBTYPE_TO_CATEGORY: Record<GovernanceSubtype, GovernanceCategory> 
   [EXCLUDED_SUBTYPE]: EXCLUDED_CATEGORY,
 };
 
-export function categoryForSubtype(
-  subtype: string | null | undefined,
-): GovernanceCategory | null {
+export function categoryForSubtype(subtype: string | null | undefined): GovernanceCategory | null {
   if (!subtype) return null;
   return SUBTYPE_TO_CATEGORY[subtype as GovernanceSubtype] ?? null;
 }
