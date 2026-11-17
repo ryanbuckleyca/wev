@@ -1656,10 +1656,16 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     reasoning_fr = result["sse_reasoning_fr"]
     website = result.get("website")
     is_sse = result["sse_rating"] in ("strong_yes", "weak_yes")
-    # Governance is the persisted source of truth (legacy `type` is no longer
-    # written). Reconcile the model's pick against the SSE gate so the two can
-    # never disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a
-    # valid SSE subtype (category derived) or stays null for re-assessment.
+    # Governance is the persisted source of truth; the legacy `type` column is
+    # intentionally no longer written here and is retired by the follow-up
+    # migration that swaps matched_jobs / the org-filter RPCs to governance and
+    # drops `type`. In the transitional window those readers still reference
+    # `type`; it is nullable and every reader guards `WHERE type IS NOT NULL`, so
+    # a freshly-assessed org simply carries its prior `type` (or NULL for new
+    # rows) until that migration lands — no reader breaks.
+    # Reconcile the model's pick against the SSE gate so the two can never
+    # disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a valid
+    # SSE subtype (category derived) or stays null for re-assessment.
     governance_subtype, governance_category = resolve_governance(
         result.get("governance_subtype"),
         result.get("governance_category"),
