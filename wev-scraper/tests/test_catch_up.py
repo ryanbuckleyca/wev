@@ -312,6 +312,72 @@ def test_filter_co_writes_is_sse_false_when_rating_is_no():
     assert filtered["is_sse"] is False
 
 
+def test_filter_drops_governance_that_contradicts_preserved_sse_gate():
+    """A reviewed SSE-yes org must not receive an EXCLUDED governance subtype.
+
+    Catch-up queues it because governance_subtype is null, but the preserved SSE
+    decision (is_sse True) wins over the model's not-SSE verdict. Governance is
+    re-resolved against that gate: EXCLUDED_NON_SSE is not a valid SSE subtype, so
+    the keys drop and the row stays incomplete for a later (correct) pass.
+    """
+    org = _complete_org(
+        governance_subtype=None,
+        is_sse=True,
+        sse_rating="strong_yes",
+        sse_details={"reviewed": True},
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        # Model disagreed and called it non-SSE, so _result_to_db_fields produced
+        # the excluded governance pair.
+        "governance_subtype": "EXCLUDED_NON_SSE",
+        "governance_category": "EXCLUDED",
+        "governance_confidence": 0.4,
+        "governance_reasoning": "Model thought it was a private firm.",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert "governance_subtype" not in filtered
+    assert "governance_category" not in filtered
+    assert "governance_confidence" not in filtered
+    assert "governance_reasoning" not in filtered
+
+
+def test_filter_forces_excluded_governance_for_preserved_non_sse_org():
+    """A reviewed non-SSE org gets EXCLUDED governance even if the model guessed a coop."""
+    org = _complete_org(
+        governance_subtype=None,
+        is_sse=False,
+        sse_rating="no",
+        sse_details={"reviewed": True},
+    )
+    outcome = AssessmentOutcome({"canonical_name": "X"}, None)
+    db_fields = {
+        "governance_subtype": "GOV_1_1_WORKER_COOP",
+        "governance_category": "GOV_1",
+    }
+
+    with patch(
+        "utils.organization_assessment._result_to_db_fields",
+        return_value=db_fields,
+    ), patch(
+        "utils.organization_assessment._attach_org_language",
+        side_effect=lambda row, *a, **k: row,
+    ):
+        filtered = filter_assessment_update_fields(org, outcome)
+
+    assert filtered["governance_subtype"] == "EXCLUDED_NON_SSE"
+    assert filtered["governance_category"] == "EXCLUDED"
+
+
 def test_filter_assessment_update_fields_attaches_language_from_name():
     org = _complete_org(language=None, values_list=["Community"])
     outcome = AssessmentOutcome(

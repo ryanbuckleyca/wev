@@ -1574,13 +1574,14 @@ def test_parse_response_reads_governance_fields():
     assert result["operational_tags"] == ["platform_co_op", "b2b_procurement"]
 
 
-def test_result_to_db_fields_persists_governance_and_drops_type():
+def test_result_to_db_fields_persists_governance_and_keeps_type():
     from utils.governance_taxonomy import GOVERNANCE_TAXONOMY_VERSION
     from utils.organization_assessment import _result_to_db_fields
 
     result = _parse_response(
         _assessment_json(
             sse_rating="strong_yes",
+            type="cooperative",
             governance_subtype_code="GOV_1_1_WORKER_COOP",
             governance_category_id="GOV_2",  # wrong; derived from subtype instead
             governance_confidence=0.9,
@@ -1590,7 +1591,9 @@ def test_result_to_db_fields_persists_governance_and_drops_type():
     )
     fields = _result_to_db_fields(result)
 
-    assert "type" not in fields  # legacy axis no longer persisted
+    # Legacy `type` is still written during the transition (retired atomically
+    # with its readers in the governance-reader migration).
+    assert fields["type"] == "cooperative"
     assert fields["governance_subtype"] == "GOV_1_1_WORKER_COOP"
     assert fields["governance_category"] == "GOV_1"  # derived from subtype
     assert fields["is_sse"] is True

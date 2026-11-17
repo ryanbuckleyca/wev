@@ -1656,16 +1656,15 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     reasoning_fr = result["sse_reasoning_fr"]
     website = result.get("website")
     is_sse = result["sse_rating"] in ("strong_yes", "weak_yes")
-    # Governance is the persisted source of truth; the legacy `type` column is
-    # intentionally no longer written here and is retired by the follow-up
-    # migration that swaps matched_jobs / the org-filter RPCs to governance and
-    # drops `type`. In the transitional window those readers still reference
-    # `type`; it is nullable and every reader guards `WHERE type IS NOT NULL`, so
-    # a freshly-assessed org simply carries its prior `type` (or NULL for new
-    # rows) until that migration lands — no reader breaks.
-    # Reconcile the model's pick against the SSE gate so the two can never
-    # disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a valid
-    # SSE subtype (category derived) or stays null for re-assessment.
+    # Governance is the new source of truth, but the legacy `type` column is
+    # still written during the transition: matched_jobs and the org-filter RPCs
+    # keep reading `type` until the follow-up migration swaps them to governance
+    # and drops the column. Dropping the write early would make freshly-assessed
+    # orgs disappear from the type facet, so `type` is retired atomically with
+    # its readers in that later migration — not here.
+    # Reconcile the model's governance pick against the SSE gate so the two can
+    # never disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a
+    # valid SSE subtype (category derived) or stays null for re-assessment.
     governance_subtype, governance_category = resolve_governance(
         result.get("governance_subtype"),
         result.get("governance_category"),
@@ -1679,6 +1678,8 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
         "mission_statement_en": mission_en,
         "mission_statement_fr": mission_fr,
         "mission_statement": mission_en or mission_fr,
+        # Legacy governance axis, retired by the governance-reader migration.
+        "type": result["type"],
         "governance_subtype": governance_subtype,
         "governance_category": governance_category,
         "governance_confidence": result.get("governance_confidence"),

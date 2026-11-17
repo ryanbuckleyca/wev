@@ -4,8 +4,8 @@ Reusable helpers used by scrape.py and by ad-hoc scripts like process_unprocesse
 - An "unprocessed job" lacks any of: summary, values, is_sse, valid language, skills,
   or organization_id. Skills uses the skills_raw / jobs.skills contract — see
   job_needs_skills. organization_id is resolved here, not left for a separate backfill.
-- An "unprocessed organization" lacks any of: sector_id, type, description_en/description_fr,
-  valid language, or values_list
+- An "unprocessed organization" lacks any of: sector_id, governance_subtype,
+  description_en/description_fr, valid language, or values_list
 
 Organizations are assessed at most once per catch-up. Any attempt that does not
 complete the org writes organizations.assessment_skip_reason, which parks the row
@@ -23,6 +23,7 @@ from typing import Any, Dict, List, NamedTuple, Tuple
 
 from utils.db import fetch_all_rows, supabase
 from utils.env import is_truthy_env
+from utils.governance_taxonomy import resolve_governance
 from utils.log import scraper_log as _log
 
 VALID_LANGUAGES = frozenset({"en", "fr", "bilingual"})
@@ -293,6 +294,39 @@ def filter_assessment_update_fields(
         preserved = org.get("sse_rating")
         if preserved is not None:
             filtered["is_sse"] = preserved in ("strong_yes", "weak_yes")
+
+    # Governance in db_fields was resolved against the *model's* is_sse. When this
+    # write preserves a different SSE gate for the row — most importantly an admin-
+    # reviewed decision kept over the model's — governance must follow that gate so
+    # it can never contradict it (e.g. an EXCLUDED_NON_SSE subtype landing on an
+    # SSE-yes row). If no gate overrides the model's, the governance pair already
+    # matches and is left untouched. When the overriding gate leaves no usable
+    # subtype the keys drop: the row stays incomplete for a later, correct pass.
+    _gov_keys = (
+        "governance_subtype",
+        "governance_category",
+        "governance_confidence",
+        "governance_reasoning",
+    )
+    if any(key in filtered for key in _gov_keys):
+        if "is_sse" in filtered:
+            override_is_sse = filtered["is_sse"]
+        elif org.get("sse_rating") is not None:
+            override_is_sse = org.get("sse_rating") in ("strong_yes", "weak_yes")
+        else:
+            override_is_sse = None
+        if override_is_sse is not None:
+            subtype, category = resolve_governance(
+                filtered.get("governance_subtype", db_fields.get("governance_subtype")),
+                filtered.get("governance_category", db_fields.get("governance_category")),
+                is_sse=override_is_sse,
+            )
+            if subtype is None:
+                for key in _gov_keys:
+                    filtered.pop(key, None)
+            else:
+                filtered["governance_subtype"] = subtype
+                filtered["governance_category"] = category
 
     return filtered
 

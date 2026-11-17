@@ -24,14 +24,21 @@ ALTER TABLE public.organizations
   ADD COLUMN IF NOT EXISTS governance_reasoning  text,
   ADD COLUMN IF NOT EXISTS operational_tags      text[] NOT NULL DEFAULT '{}';
 
--- ── 2. CHECK constraints (idempotent; Postgres has no ADD CONSTRAINT IF NOT EXISTS) ─
+-- ── 2. CHECK constraints ─────────────────────────────────────────────────────
+-- Added NOT VALID first (a fast metadata-only step that skips the existing-row
+-- scan), then validated in a second pass. Every existing row has NULL in these
+-- brand-new columns, so validation is trivially satisfied, but keeping the
+-- two-step shape avoids holding the stronger lock across a scan and matches the
+-- repo's migration-safety convention. Idempotent: Postgres has no
+-- ADD CONSTRAINT IF NOT EXISTS, so the adds swallow duplicate_object and the
+-- VALIDATE calls are no-ops once a constraint is already valid.
 
 DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_governance_category_check
       CHECK (governance_category IS NULL OR governance_category IN (
         'GOV_1', 'GOV_2', 'GOV_3', 'GOV_4', 'GOV_5', 'EXCLUDED'
-      ));
+      )) NOT VALID;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -53,7 +60,7 @@ DO $$ BEGIN
         'GOV_5_2_POPULAR_COLLECTIVE',
         'GOV_5_3_DEMOCRATIC_UNION',
         'EXCLUDED_NON_SSE'
-      ));
+      )) NOT VALID;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -61,7 +68,7 @@ DO $$ BEGIN
   ALTER TABLE public.organizations
     ADD CONSTRAINT organizations_governance_confidence_range
       CHECK (governance_confidence IS NULL
-             OR (governance_confidence >= 0 AND governance_confidence <= 1));
+             OR (governance_confidence >= 0 AND governance_confidence <= 1)) NOT VALID;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
@@ -81,9 +88,18 @@ DO $$ BEGIN
           governance_subtype <> 'EXCLUDED_NON_SSE'
           AND governance_category = left(governance_subtype, 5)
         )
-      );
+      ) NOT VALID;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+ALTER TABLE public.organizations
+  VALIDATE CONSTRAINT organizations_governance_category_check;
+ALTER TABLE public.organizations
+  VALIDATE CONSTRAINT organizations_governance_subtype_check;
+ALTER TABLE public.organizations
+  VALIDATE CONSTRAINT organizations_governance_confidence_range;
+ALTER TABLE public.organizations
+  VALIDATE CONSTRAINT organizations_governance_category_subtype_match;
 
 -- ── 3. Indexes for facet filtering / browse-by-governance counts ─────────────
 
