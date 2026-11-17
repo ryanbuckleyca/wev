@@ -606,6 +606,19 @@ def test_org_assessment_prompt_political_parties_are_other_not_government():
     )
 
 
+def test_org_assessment_prompt_keeps_citizens_advocacy_nonprofits():
+    from utils.organization_assessment import _build_assessment_prompt
+    from utils.governance_taxonomy import format_governance_taxonomy_prompt
+
+    prompt = _build_assessment_prompt("Leadnow", "Vancouver", "BC", "", "")
+    assert "citizens' advocacy / campaign nonprofits are NOT political parties" in prompt
+    assert "Leadnow-style" in prompt
+    assert "trading social enterprise" in prompt
+    gov = format_governance_taxonomy_prompt()
+    assert "Do NOT exclude citizens' advocacy" in gov
+    assert "never EXCLUDED_NON_SSE for 'not an enterprise'" in gov
+
+
 def test_governance_gate_keeps_charity_nonprofit_weak_yes():
     """Simulates corrected charity assessment: nonprofit + weak_yes survives gate."""
     result = _parse_response(

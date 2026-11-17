@@ -257,6 +257,17 @@ CRITICAL — charities are never "other" for lacking cooperative governance:
 There is no "social enterprise" type. Mission-driven private businesses are "other".
 Political parties and electoral organizations → type "other", rating "no" (never SSE;
 never "government"; do not store as nonprofit Yes even if incorporated as a society).
+CRITICAL — citizens' advocacy / campaign nonprofits are NOT political parties:
+- Independent non-profit citizens' advocacy, civic campaign, and public-interest
+  movement organizations (e.g. Leadnow-style democracy / climate / justice campaigns)
+  → type "nonprofit", SSE-eligible Yes when must-haves hold.
+- Do NOT rate "no" or type "other" merely because the org does advocacy, lobbying,
+  civic campaigns, or "political" issue work, or because it is "not a cooperative,
+  mutual, or trading social enterprise." Advocacy OBNLs / charities with a clear
+  people/community/planet mission are SSE — they are not excluded for lacking an
+  enterprise / coop business model.
+- Only registered parties, riding associations, and electoral campaign organizations
+  that exist to elect candidates → type "other", rating "no".
 Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
 Mission-driven private enterprise is not SSE.
 
@@ -281,6 +292,8 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 - Government / public-sector employer (any level) — never SSE
   (Do NOT trigger from a city/town name in the org title alone — see place-name rule)
 - Political party / electoral organization — never SSE (type "other", not "government")
+- Do NOT automatic-no citizens' advocacy / civic campaign nonprofits (they are
+  nonprofit Yes when must-haves hold — only parties/electoral orgs are out)
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - Privately owned / founder-owned business or private school/program with a social
   or environmental mission but no nonprofit, cooperative, or union governance
@@ -339,6 +352,8 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
   NEVER government or other.
 - "no" = government, other/conventional for-profit / privately owned mission business
   / political party (type "other"), or no substantive social/environmental mission
+- Never "no" solely because a clear nonprofit does advocacy / civic campaigns /
+  democracy or justice organizing rather than operating a coop or trading enterprise
 - Greenwashing test: environmental, nature, outdoor-education, wellness, or
   "community" mission without nonprofit/coop/union governance → "no" (type "other")
   — but a registered charity or clear community nonprofit with that mission is

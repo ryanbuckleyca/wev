@@ -303,8 +303,13 @@ def format_governance_taxonomy_prompt() -> str:
         "donor/corporate boards and no worker or voting-member power; "
         "government / state entities (public hospitals, universities, colleges, "
         "Crown corporations, municipal bodies); corporate trade associations "
-        "(chambers of commerce, industry lobbies); and extractive co-ops that "
-        "violate SSE decent-work or ecological criteria.",
+        "(chambers of commerce, industry lobbies); registered political parties "
+        "/ electoral campaign organizations; and extractive co-ops that "
+        "violate SSE decent-work or ecological criteria. Do NOT exclude "
+        "citizens' advocacy, civic campaign, or public-interest movement "
+        "nonprofits merely because they advocate rather than trade — those "
+        "are typically GOV_4_1_MEMBER_NPO (or another GOV_4/GOV_5 subtype) "
+        "when SSE Yes, never EXCLUDED_NON_SSE for 'not an enterprise'.",
         "",
         "CONTROLLED SUBTYPE DICTIONARY (choose exactly one subtype code):",
     ]
