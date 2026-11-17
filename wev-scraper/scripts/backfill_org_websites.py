@@ -33,7 +33,11 @@ Usage:
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
         --prod --mode minimal --dry-run --limit 10
 
-    # Governance taxonomy backfill dry-run (first 5 orgs missing a subtype)
+    # Governance taxonomy backfill dry-run on staging (first 5 missing subtype)
+    python scripts/backfill_org_websites.py \\
+        --staging --mode governance --dry-run --limit 5
+
+    # Governance taxonomy backfill dry-run on prod (first 5 orgs missing a subtype)
     CONFIRM_PROD_RUN=YES python scripts/backfill_org_websites.py \\
         --prod --mode governance --dry-run --limit 5
 
@@ -60,12 +64,23 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from utils.prod_env import bootstrap_prod_from_argv, confirm_prod_run
+from utils.prod_env import (  # noqa: E402
+    bootstrap_prod_from_argv,
+    bootstrap_staging_from_argv,
+    confirm_prod_run,
+)
 
 if "--prod" in sys.argv[1:]:
     confirm_prod_run(full_prod=True)
-    bootstrap_prod_from_argv(sys.argv[1:], Path(__file__))
+
+# Staging / prod overrides must load before utils.db reads SUPABASE_*.
+bootstrap_staging_from_argv(sys.argv, Path(__file__))
+bootstrap_prod_from_argv(sys.argv, Path(__file__))
+
+if "--prod" in sys.argv[1:]:
     print("Using PRODUCTION database")
+elif "--staging" in sys.argv[1:]:
+    print("Using STAGING database")
 else:
     print("Using TEST database")
 
@@ -508,6 +523,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Re-assess org websites and/or SSE/mission/values via grounded LLM."
     )
+    parser.add_argument("--staging", action="store_true", help="Use staging database.")
     parser.add_argument("--prod", action="store_true", help="Use production database.")
     parser.add_argument(
         "--mode",
