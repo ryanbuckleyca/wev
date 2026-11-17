@@ -12,6 +12,11 @@ def test_normalize_organization_strips_hiring_count_suffix():
     assert normalize_organization("Org (2 postes)") == "Org"
 
 
+def test_normalize_organization_strips_apply_link_suffix():
+    assert normalize_organization("Clean Energy Canada | Apply") == "Clean Energy Canada"
+    assert normalize_organization("veritree | Apply") == "veritree"
+
+
 def _no_geocode(monkeypatch):
     # Force the reuse-existing path so no Geocodio/network call happens.
     monkeypatch.delenv("SHOULD_GEOCODE", raising=False)

@@ -144,6 +144,17 @@ class TestMakeCacheKey:
         assert make_cache_key(dirty) == make_cache_key(clean)
         assert "positions" not in make_cache_key(dirty)
 
+    def test_apply_link_suffix_stripped_from_key_and_display(self):
+        dirty = "Clean Energy Canada | Apply"
+        clean = "Clean Energy Canada"
+        assert clean_organization_display_name(dirty) == clean
+        assert clean_organization_display_name("Town of East Gwillimbury | Apply Now") == (
+            "Town of East Gwillimbury"
+        )
+        assert clean_organization_display_name("Org – Postuler") == "Org"
+        assert make_cache_key(dirty) == make_cache_key(clean)
+        assert "apply" not in make_cache_key(dirty)
+
     def test_trailing_place_paren_not_stripped(self):
         """Location qualifiers stay part of the key; only all-caps acronyms drop."""
         assert make_cache_key("Canadian Cancer Society (Ontario)") != make_cache_key(

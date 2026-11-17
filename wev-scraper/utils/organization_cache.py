@@ -35,6 +35,18 @@ _HIRING_COUNT_SUFFIX = re.compile(
     re.IGNORECASE,
 )
 
+# Apply-CTA noise from career-page titles, e.g. "Clean Energy Canada | Apply".
+_APPLY_LINK_SUFFIX = re.compile(
+    r"\s*[|\/]\s*"
+    r"(?:apply(?:\s+now)?|postuler|postulez|candidat(?:ure|er)?|"
+    r"submit(?:\s+(?:an?\s+)?application)?)"
+    r"\s*$"
+    r"|"
+    r"\s*[\-–—]\s*"
+    r"(?:apply(?:\s+now)?|postuler|postulez)\s*$",
+    re.IGNORECASE,
+)
+
 
 class OrganizationCache:
     """In-process LRU cache mapping normalized org keys to organization IDs.
@@ -92,9 +104,15 @@ def _strip_hiring_count_suffix(name: str) -> str:
     return _HIRING_COUNT_SUFFIX.sub("", name).rstrip()
 
 
+def _strip_apply_link_suffix(name: str) -> str:
+    """Drop trailing apply-CTA clutter from employer names."""
+    return _APPLY_LINK_SUFFIX.sub("", name).rstrip()
+
+
 def clean_organization_display_name(name: str | None) -> str:
     """Strip scrape noise that must never become the canonical org name."""
-    cleaned = _strip_hiring_count_suffix((name or "").strip())
+    cleaned = _strip_apply_link_suffix((name or "").strip())
+    cleaned = _strip_hiring_count_suffix(cleaned)
     return cleaned.strip()
 
 
@@ -102,10 +120,11 @@ def _normalize(s: str) -> str:
     """Normalize an org name for equality / cache keys.
 
     Collapses common scrape noise: accents, ``&``/``et`` ↔ and, hyphens/slashes,
-    hiring-count suffixes, trailing ``(ACRONYM)``, punctuation, and whitespace.
+    apply-CTA / hiring-count suffixes, trailing ``(ACRONYM)``, punctuation, and
+    whitespace.
     """
     stripped = _strip_trailing_acronym(
-        _strip_hiring_count_suffix((s or "").strip())
+        _strip_hiring_count_suffix(_strip_apply_link_suffix((s or "").strip()))
     )
     ascii_str = nfkd_to_ascii(stripped).lower()
     ascii_str = ascii_str.replace("&", " and ")
