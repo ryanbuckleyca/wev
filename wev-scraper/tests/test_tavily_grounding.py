@@ -160,11 +160,12 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         known_website="https://parkpeople.ca",
     )
     assert "ORGANIZATION DATA" in prompt
-    # Entity block must sit after taxonomies AND the JSON schema so head+tail
-    # truncation (small head, large tail) keeps the org identity.
+    # Entity + JSON schema sit at the end so head+tail truncation keeps both
+    # (Ollama default budget and the 8k stress case).
     assert prompt.rfind("ORGANIZATION DATA") > prompt.find("ALLOWED VALUES")
-    assert prompt.rfind("ORGANIZATION DATA") > prompt.find('"canonical_name"')
-    truncated = truncate_keep_ends(prompt, max_chars=8000)
-    assert "Park People" in truncated
-    assert "canonical_name" in truncated
-    assert "parkpeople.ca" in truncated.lower()
+    assert prompt.rfind('"canonical_name"') > prompt.rfind("ORGANIZATION DATA")
+    for budget in (8000, 10000):
+        truncated = truncate_keep_ends(prompt, max_chars=budget)
+        assert "Park People" in truncated
+        assert "Official organization name" in truncated
+        assert "parkpeople.ca" in truncated.lower()

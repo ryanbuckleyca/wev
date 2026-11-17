@@ -71,7 +71,7 @@ SET name = btrim(regexp_replace(
   '',
   'i'
 ))
-WHERE name ~* '(\|\s*apply|\|\s*postuler|[\-–—]\s*apply)';
+WHERE name ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)';
 
 UPDATE public.organizations
 SET name = name
@@ -89,4 +89,4 @@ SET organization = btrim(regexp_replace(
   '',
   'i'
 ))
-WHERE organization ~* '(\|\s*apply|\|\s*postuler|[\-–—]\s*apply)';
+WHERE organization ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)';

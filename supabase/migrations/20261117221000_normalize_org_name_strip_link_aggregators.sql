@@ -72,7 +72,7 @@ SET name = btrim(regexp_replace(
   '',
   'i'
 ))
-WHERE name ~* '(\|\s*(apply|postuler|linktree|linktr\.ee|carrd|bio\.link|lnk\.bio)|[\-–—]\s*(apply|linktree))';
+WHERE name ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?|linktree|linktr\.ee|carrd(\.co)?|bio\.link|lnk\.bio|beacons\.ai|solo\.to|allmylinks)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez|linktree|linktr\.ee|carrd(\.co)?|bio\.link|lnk\.bio)\s*$)';
 
 UPDATE public.organizations
 SET name = name
@@ -90,4 +90,4 @@ SET organization = btrim(regexp_replace(
   '',
   'i'
 ))
-WHERE organization ~* '(\|\s*(apply|postuler|linktree|linktr\.ee|carrd|bio\.link|lnk\.bio)|[\-–—]\s*(apply|linktree))';
+WHERE organization ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?|linktree|linktr\.ee|carrd(\.co)?|bio\.link|lnk\.bio|beacons\.ai|solo\.to|allmylinks)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez|linktree|linktr\.ee|carrd(\.co)?|bio\.link|lnk\.bio)\s*$)';

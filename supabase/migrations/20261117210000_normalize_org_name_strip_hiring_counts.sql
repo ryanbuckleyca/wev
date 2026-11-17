@@ -64,7 +64,7 @@ SET name = btrim(regexp_replace(
   '',
   'i'
 ))
-WHERE name ~* '(\([0-9]+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\)|[\-–—]\s*[0-9]+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*$)';
+WHERE name ~* '(\s*[\(\[]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*[\)\]]\s*$|\s*[\-–—]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*$)';
 
 UPDATE public.organizations
 SET name = name

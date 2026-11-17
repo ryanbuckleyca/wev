@@ -117,11 +117,23 @@ def _strip_page_chrome_suffix(name: str) -> str:
     return _PAGE_CHROME_SUFFIX.sub("", name).rstrip()
 
 
+def _strip_scrape_noise_suffixes(name: str) -> str:
+    """Strip page-chrome and hiring-count suffixes until the name stabilizes.
+
+    Order can stack either way (``Org | Apply (2 positions)`` vs
+    ``Org (2 positions) | Apply``), so one pass of each is not enough.
+    """
+    prev = None
+    while prev != name:
+        prev = name
+        name = _strip_page_chrome_suffix(name)
+        name = _strip_hiring_count_suffix(name)
+    return name
+
+
 def clean_organization_display_name(name: str | None) -> str:
     """Strip scrape noise that must never become the canonical org name."""
-    cleaned = _strip_page_chrome_suffix((name or "").strip())
-    cleaned = _strip_hiring_count_suffix(cleaned)
-    return cleaned.strip()
+    return _strip_scrape_noise_suffixes((name or "").strip()).strip()
 
 
 def _normalize(s: str) -> str:
@@ -131,9 +143,7 @@ def _normalize(s: str) -> str:
     page-chrome / hiring-count suffixes, trailing ``(ACRONYM)``, punctuation, and
     whitespace.
     """
-    stripped = _strip_trailing_acronym(
-        _strip_hiring_count_suffix(_strip_page_chrome_suffix((s or "").strip()))
-    )
+    stripped = _strip_trailing_acronym(_strip_scrape_noise_suffixes((s or "").strip()))
     ascii_str = nfkd_to_ascii(stripped).lower()
     ascii_str = ascii_str.replace("&", " and ")
     ascii_str = re.sub(r"\bet\b", " and ", ascii_str)

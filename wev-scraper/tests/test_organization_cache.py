@@ -164,6 +164,13 @@ class TestMakeCacheKey:
         assert make_cache_key(dirty) == make_cache_key(clean)
         assert "linktree" not in make_cache_key(dirty)
 
+    def test_stacked_scrape_noise_suffixes_strip_in_either_order(self):
+        """Hiring-count and apply chrome can appear in either order."""
+        assert clean_organization_display_name("Org | Apply (2 positions)") == "Org"
+        assert clean_organization_display_name("Org (2 positions) | Apply") == "Org"
+        assert make_cache_key("Org | Apply (2 positions)") == make_cache_key("Org")
+        assert make_cache_key("Org (2 positions) | Apply") == make_cache_key("Org")
+
     def test_trailing_place_paren_not_stripped(self):
         """Location qualifiers stay part of the key; only all-caps acronyms drop."""
         assert make_cache_key("Canadian Cancer Society (Ontario)") != make_cache_key(

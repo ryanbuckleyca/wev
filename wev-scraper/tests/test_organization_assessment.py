@@ -629,8 +629,7 @@ def test_org_assessment_prompt_keeps_publicly_funded_charity_hospitals():
     assert "public funding is NOT government" in prompt
     assert "Holland Bloorview-style" in prompt
     assert "OHIP/Medicare" in prompt
-    assert "non-profit teaching or rehabilitation hospitals" in prompt
-    assert "public funding is not government" in prompt
+    assert "non-profit teaching / rehabilitation" in prompt
     gov = format_governance_taxonomy_prompt()
     assert "independent registered-charity / non-profit hospitals" in gov
     assert "hospital authorities and ministry-run" in gov
@@ -979,22 +978,28 @@ def test_private_company_gate_demotes_explicit_for_profit_evidence():
     assert any("private_company_gate" in f for f in result["flags"])
 
 
-def test_private_company_gate_keeps_not_for_profit_wording():
-    """'not-for-profit' must not trip the for-profit private-company demotion.
+@pytest.mark.parametrize(
+    "nonprofit_phrase",
+    ("not-for-profit", "not for profit"),
+)
+def test_private_company_gate_keeps_not_for_profit_wording(nonprofit_phrase):
+    """Hyphenated / spaced 'not for profit' must not trip for-profit demotion.
 
-    Regression: Arc Poetry Society was flipped strong_yes → no because
-    ``for[- ]profits?`` matched inside ``not-for-profit``.
+    Uses an Inc. canonical name and no other keep cues so only the lookbehind
+    protects the rating. Regression: Arc Poetry Society was flipped
+    strong_yes → no because ``for[- ]profits?`` matched inside
+    ``not-for-profit``.
     """
     result = _parse_response(
         _assessment_json(
-            canonical_name="Arc Poetry Society",
+            canonical_name="Arc Poetry Society Inc.",
             slug="arc-poetry-society",
             type="nonprofit",
             sse_rating="strong_yes",
             sse_reasoning_en=(
-                "As a not-for-profit cultural society publishing contemporary "
-                "poetry and supporting the arts, it serves a clear public "
-                "benefit beyond profit."
+                f"As a {nonprofit_phrase} cultural society publishing "
+                "contemporary poetry and supporting the arts, it serves a "
+                "clear public benefit."
             ),
             must_haves_met=[
                 "Clear purpose beyond profit",
@@ -1002,7 +1007,7 @@ def test_private_company_gate_keeps_not_for_profit_wording():
                 "Organization's work contributes to social/community/environmental good",
             ],
         ),
-        "Arc Poetry Society",
+        "Arc Poetry Society Inc.",
     )
     assert result is not None
     assert result["type"] == "nonprofit"
@@ -1018,7 +1023,7 @@ def test_private_company_gate_still_demotes_bare_for_profit():
             type="nonprofit",
             sse_rating="weak_yes",
             sse_reasoning_en=(
-                "A conventional for-profit consultancy with CSR language."
+                "A for-profit consultancy with CSR language."
             ),
         ),
         "Acme Services",
