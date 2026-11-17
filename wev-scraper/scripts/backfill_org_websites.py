@@ -207,6 +207,12 @@ def _preview_text(value: str | None, *, max_len: int | None = None) -> str | Non
 
 
 def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
+    """Log only fields present in ``updates`` (the write payload).
+
+    Governance mode trims the assessor payload before write; missing keys must
+    not be logged as ``[UPDATE] … -> (none)`` or operators will think established
+    mission/description/sector rows were cleared.
+    """
     old_details = org.get("sse_details") or {}
     new_details = updates.get("sse_details") or {}
     if not isinstance(old_details, dict):
@@ -215,7 +221,18 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
         new_details = {}
 
     lines = [f"\n{'='*60}\n{'would update' if dry_run else 'update'} org_id={org['id']} ({org.get('name')})"]
-    def add_field(label: str, old_val: Any, new_val: Any, max_len: int | None = None, is_long: bool = False) -> None:
+
+    def add_field(
+        label: str,
+        old_val: Any,
+        new_val: Any,
+        *,
+        included: bool,
+        max_len: int | None = None,
+        is_long: bool = False,
+    ) -> None:
+        if not included:
+            return
         if new_val is None and old_val is None:
             lines.append(f"  [KEEP] {label}: (none)")
             return
@@ -234,21 +251,56 @@ def _log_full_preview(org: dict, updates: dict, *, dry_run: bool) -> None:
             else:
                 lines.append(f"  [UPDATE] {label}: {old_str} -> {new_str}")
 
-    add_field("sse", org.get("sse_rating"), updates.get("sse_rating"))
-    add_field("is_sse", org.get("is_sse"), updates.get("is_sse"))
-    add_field("governance", org.get("governance_subtype"), updates.get("governance_subtype"))
-    add_field("governance_category", org.get("governance_category"), updates.get("governance_category"))
-    add_field("sector", org.get("sector_id"), updates.get("sector_id"))
-    add_field("language", org.get("language"), updates.get("language"))
-    add_field("website", org.get("website"), updates.get("website"))
-    add_field("values", org.get("values_list"), updates.get("values_list"))
-    add_field("mission", org.get("mission_statement"), updates.get("mission_statement"), max_len=200, is_long=True)
-    add_field("description", org.get("description"), updates.get("description"), max_len=200, is_long=True)
+    add_field("sse", org.get("sse_rating"), updates.get("sse_rating"), included="sse_rating" in updates)
+    add_field("is_sse", org.get("is_sse"), updates.get("is_sse"), included="is_sse" in updates)
+    add_field(
+        "governance",
+        org.get("governance_subtype"),
+        updates.get("governance_subtype"),
+        included="governance_subtype" in updates,
+    )
+    add_field(
+        "governance_category",
+        org.get("governance_category"),
+        updates.get("governance_category"),
+        included="governance_category" in updates,
+    )
+    add_field("sector", org.get("sector_id"), updates.get("sector_id"), included="sector_id" in updates)
+    add_field("language", org.get("language"), updates.get("language"), included="language" in updates)
+    add_field("website", org.get("website"), updates.get("website"), included="website" in updates)
+    add_field("values", org.get("values_list"), updates.get("values_list"), included="values_list" in updates)
+    add_field(
+        "mission",
+        org.get("mission_statement"),
+        updates.get("mission_statement"),
+        included="mission_statement" in updates,
+        max_len=200,
+        is_long=True,
+    )
+    add_field(
+        "description",
+        org.get("description"),
+        updates.get("description"),
+        included="description" in updates,
+        max_len=200,
+        is_long=True,
+    )
 
-    old_reasoning = old_details.get("reasoning")
-    new_reasoning = new_details.get("reasoning")
-    add_field("sse_reasoning", old_reasoning, new_reasoning, max_len=300, is_long=True)
-    add_field("flags", old_details.get("flags"), new_details.get("flags"))
+    sse_details_written = "sse_details" in updates
+    add_field(
+        "sse_reasoning",
+        old_details.get("reasoning"),
+        new_details.get("reasoning"),
+        included=sse_details_written,
+        max_len=300,
+        is_long=True,
+    )
+    add_field(
+        "flags",
+        old_details.get("flags"),
+        new_details.get("flags"),
+        included=sse_details_written,
+    )
 
     logger.info("\n".join(lines))
 
