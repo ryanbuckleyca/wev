@@ -5,6 +5,7 @@
  */
 
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
 import type { OrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import type { ActiveFilterChip } from '@/components/JobSearch';
 
@@ -18,6 +19,7 @@ interface BuildOrgFilterChipsInput {
   onRemoveType: (type: string) => void;
   onRemoveLanguage: (language: string) => void;
   onRemoveSector: (sector: string) => void;
+  onRemoveGovernance: (category: string) => void;
   /** next-intl t function scoped to the 'organizations' namespace */
   tOrgs: { (key: string): string; has: (key: string) => boolean };
   /** next-intl t function scoped to the 'filters' namespace */
@@ -44,6 +46,7 @@ export function buildOrgActiveFilterChips({
   onRemoveType,
   onRemoveLanguage,
   onRemoveSector,
+  onRemoveGovernance,
   tOrgs,
   tFilters,
   tSectors,
@@ -112,6 +115,14 @@ export function buildOrgActiveFilterChips({
       id: `sector-${sector}`,
       label: tSectors(`${sector}.label`),
       onRemove: () => onRemoveSector(sector),
+    });
+  }
+
+  for (const category of filters.selectedGovernanceCategories) {
+    chips.push({
+      id: `governance-${category}`,
+      label: getGovernanceCategoryLabel(category, tOrgs) ?? category,
+      onRemove: () => onRemoveGovernance(category),
     });
   }
 
