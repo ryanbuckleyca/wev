@@ -4,7 +4,10 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
 import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
-import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
+import {
+  getOrgGovernanceDisplayLabel,
+  hasPublicGovernanceSubtype,
+} from '@/lib/organizations/governance-labels';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import type { OrgRecord } from '@/lib/organizations/types';
@@ -67,7 +70,10 @@ export default function OrganizationProfileHeader({
             {governanceLabel && (
               <div className="flex flex-col items-start gap-1.5">
                 <span className="font-medium text-foreground">
-                  {org.governance_subtype ? t('orgGovernance') : t('orgType')}:
+                  {hasPublicGovernanceSubtype(org.governance_subtype)
+                    ? t('orgGovernance')
+                    : t('orgType')}
+                  :
                 </span>{' '}
                 {governanceLabel}
               </div>
