@@ -11,6 +11,7 @@ const baseFilters: OrganizationFilters = {
   selectedTypes: [],
   selectedLanguages: [],
   selectedSectors: [],
+  selectedGovernanceCategories: [],
   activityWindow: 'all',
 };
 

@@ -20,7 +20,9 @@ const VALID_ORG_LANGUAGES = new Set<string>(ORG_LANGUAGES);
 /** Fields that decide whether an org still needs assessment. */
 export interface OrgAssessmentSnapshot {
   sector_id?: string | null;
+  /** @deprecated Prefer governance_subtype; kept for transitional fixtures. */
   type?: string | null;
+  governance_subtype?: string | null;
   description?: string | null;
   description_en?: string | null;
   description_fr?: string | null;
@@ -33,10 +35,11 @@ export interface OrgAssessmentSnapshot {
  *
  * Drives both the completeness check and the review banner, so the reason an
  * org is parked always matches what the banner tells the admin to fix.
+ * Keep in sync with find_missing_org_fields in wev-scraper/utils/catch_up.py.
  */
 export type OrgMissingField =
   | 'sector'
-  | 'type'
+  | 'governance'
   | 'descriptionEn'
   | 'descriptionFr'
   | 'language'
@@ -45,7 +48,7 @@ export type OrgMissingField =
 /** Assessed fields in form / checklist order. */
 export const ORG_ASSESSMENT_FIELDS: readonly OrgMissingField[] = [
   'sector',
-  'type',
+  'governance',
   'descriptionEn',
   'descriptionFr',
   'language',
@@ -55,7 +58,8 @@ export const ORG_ASSESSMENT_FIELDS: readonly OrgMissingField[] = [
 export function findMissingOrgFields(org: OrgAssessmentSnapshot): OrgMissingField[] {
   const missing: OrgMissingField[] = [];
   if (!org.sector_id?.trim()) missing.push('sector');
-  if (!org.type?.trim()) missing.push('type');
+  // EXCLUDED_NON_SSE counts as classified (non-SSE orgs are complete).
+  if (!org.governance_subtype?.trim()) missing.push('governance');
   // description_en falls back to the legacy description column, as the scraper does.
   if (!(org.description_en?.trim() || org.description?.trim())) missing.push('descriptionEn');
   if (!org.description_fr?.trim()) missing.push('descriptionFr');

@@ -10,7 +10,7 @@ import {
 
 const completeOrg = {
   sector_id: 'housing',
-  type: 'cooperative',
+  governance_subtype: 'GOV_1_1_WORKER_COOP',
   description_en: 'Member-owned housing.',
   description_fr: 'Logement détenu par les membres.',
   language: 'en',
@@ -47,7 +47,7 @@ describe('isOrgAssessmentComplete', () => {
 
   it.each([
     ['sector_id', { sector_id: null }],
-    ['type', { type: null }],
+    ['governance_subtype', { governance_subtype: null }],
     ['description_fr', { description_fr: null }],
     ['language', { language: null }],
   ])('rejects an org missing %s', (_field, override) => {

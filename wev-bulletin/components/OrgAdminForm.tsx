@@ -13,6 +13,7 @@ import ValuesSelector from './profile/values/ValuesSelector';
 import LocationAutocomplete from './profile/LocationAutocomplete';
 import OrgSlugField from './OrgSlugField';
 import OrgTypeSelect from './OrgTypeSelect';
+import OrgGovernanceSelect from './OrgGovernanceSelect';
 import OrgSectorSelect from './OrgSectorSelect';
 import OrgLanguageSelect from './OrgLanguageSelect';
 import OrgReviewActions from './admin/OrgReviewActions';
@@ -37,6 +38,10 @@ import {
   findMissingOrgFields,
 } from '@/lib/organizations/assessment-review';
 import { getOrganizationTypeLabel } from '@/lib/organizations/org-type';
+import {
+  getGovernanceCategoryLabel,
+  getGovernanceSubtypeLabel,
+} from '@/lib/organizations/governance-labels';
 import { parseOrgId } from '@/lib/organizations/parse-org-id';
 import { useOrgAdminFormState } from '@/lib/organizations/use-org-admin-form-state';
 import { validateOrgInput } from '@/lib/organizations/validate';
@@ -87,6 +92,14 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     (orgType: string) => getOrganizationTypeLabel(orgType, tOrgs) ?? orgType,
     [tOrgs],
   );
+  const governanceCategoryLabel = useCallback(
+    (category: string) => getGovernanceCategoryLabel(category, tOrgs) ?? category,
+    [tOrgs],
+  );
+  const governanceSubtypeLabel = useCallback(
+    (subtype: string) => getGovernanceSubtypeLabel(subtype, tOrgs) ?? subtype,
+    [tOrgs],
+  );
 
   const orgIdForReview = parseOrgId(initialValues?.id);
   const skipReason = initialValues?.assessment_skip_reason ?? null;
@@ -99,7 +112,7 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
   // Recomputed from live form state so the checklist shrinks as fields are filled.
   const missingFields = findMissingOrgFields({
     sector_id: form.sectorId,
-    type: form.type,
+    governance_subtype: form.governanceSubtype,
     description_en: form.descriptionEn,
     description_fr: form.descriptionFr,
     language: form.language,
@@ -368,6 +381,18 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         placeholder={t('placeholders.selectType')}
         typeLabel={orgTypeLabel}
         error={errors.type}
+        disabled={isSubmitting}
+      />
+
+      <OrgGovernanceSelect
+        value={form.governanceSubtype}
+        onChange={form.setGovernanceSubtype}
+        label={t('fields.governance')}
+        placeholder={t('placeholders.selectGovernance')}
+        categoryLabel={governanceCategoryLabel}
+        subtypeLabel={governanceSubtypeLabel}
+        isSse={form.isSse}
+        error={errors.governance_subtype}
         disabled={isSubmitting}
       />
 

@@ -1,6 +1,6 @@
 """Canadian SSE governance taxonomy (single-axis, 2-level).
 
-Source of truth for the 5 parent categories and 13 governance subtypes (plus
+Source of truth for the 5 parent categories and 14 governance subtypes (plus
 the EXCLUDED / EXCLUDED_NON_SSE special category) used to classify the
 governance *form* of an organization — WHO holds ownership and democratic
 voting control — independent of sector, business model, or delivery platform.
@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-GOVERNANCE_TAXONOMY_VERSION = "v1"
+GOVERNANCE_TAXONOMY_VERSION = "v1.1"
 
 # ── Parent categories ───────────────────────────────────────────────────────
 EXCLUDED_CATEGORY = "EXCLUDED"
@@ -120,6 +120,19 @@ GOVERNANCE_SUBTYPES: dict[str, dict[str, str]] = {
             "ecological land permanently off the speculative market."
         ),
     },
+    "GOV_3_2_INDIGENOUS_LAND_TRUST": {
+        "category": "GOV_3",
+        "label_en": "Indigenous & Sovereign Land Trust",
+        "label_fr": "Fiducie foncière autochtone et souveraine",
+        "scope_note": (
+            "Autonomous, community-governed Indigenous land trust, urban "
+            "Indigenous stewardship society, or non-state settlement/"
+            "conservation trust that rematriates and protects ancestral lands "
+            "outside the speculative market — distinct from public Indigenous "
+            "governments (band councils, land-claim governments), which remain "
+            "excluded from the enterprise taxonomy."
+        ),
+    },
     "GOV_4_1_MEMBER_NPO": {
         "category": "GOV_4",
         "label_en": "Member-Governed Non-Profit",
@@ -167,17 +180,18 @@ GOVERNANCE_SUBTYPES: dict[str, dict[str, str]] = {
     },
     "GOV_5_3_DEMOCRATIC_UNION": {
         "category": "GOV_5",
-        "label_en": "Democratic Labor Union / Worker Center",
-        "label_fr": "Syndicat démocratique",
+        "label_en": "Democratic Labor Union Local",
+        "label_fr": "Syndicat démocratique local",
         "scope_note": (
-            "Member-controlled worker organization practicing rank-and-file "
-            "democracy."
+            "Member-controlled workplace union exercising collective bargaining "
+            "and democratic worker governance to advance decent work across "
+            "the SSE."
         ),
     },
 }
 
 # ── Derived lookups ─────────────────────────────────────────────────────────
-#: The 13 SSE governance subtypes (EXCLUDED_NON_SSE is not one of them).
+#: The 14 SSE governance subtypes (EXCLUDED_NON_SSE is not one of them).
 SSE_SUBTYPES: frozenset[str] = frozenset(GOVERNANCE_SUBTYPES)
 
 #: Every valid stored subtype code, including the excluded special value.

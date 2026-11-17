@@ -4,10 +4,12 @@ import { useState } from 'react';
 import OrganizationFilters from './OrganizationFilters';
 import OrganizationCard from './OrganizationCard';
 import SectorIndexGrid from './SectorIndexGrid';
+import GovernanceIndexGrid from './GovernanceIndexGrid';
 import Pagination from './Pagination';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { SectorIndexCard } from '@/lib/organizations/sector-index';
+import type { GovernanceIndexCard } from '@/lib/organizations/governance-index';
 import { useOrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import { useOrganizationData } from '@/lib/hooks/useOrganizationData';
 import { useOrganizationPagination } from '@/lib/hooks/useOrganizationPagination';
@@ -24,15 +26,17 @@ interface OrganizationIndexClientProps {
   initialData: { orgs: OrgIndexEntry[]; total: number; totalAvailable?: number };
   filterOptions: OrganizationFilterOptions;
   sectorIndex: SectorIndexCard[];
+  governanceIndex?: GovernanceIndexCard[];
   locale: string;
   initialHasMatchScores?: boolean;
 }
 
-/** Client org index: filters, sector grid, and session-gated SSR discard for rankings. */
+/** Client org index: filters, sector/governance grids, and session-gated SSR discard. */
 export default function OrganizationIndexClient({
   initialData,
   filterOptions,
   sectorIndex,
+  governanceIndex = [],
   locale,
   initialHasMatchScores = false,
 }: OrganizationIndexClientProps) {
@@ -77,7 +81,8 @@ export default function OrganizationIndexClient({
   });
 
   const activeFilterOptions = dynamicFilterOptions ?? filterOptions;
-  const showSectorIndex = !controls.hasAnyFilters && sectorIndex.length > 0;
+  const showBrowseIndex =
+    !controls.hasAnyFilters && (sectorIndex.length > 0 || governanceIndex.length > 0);
   const showCountSkeleton = loading;
 
   const handleSelectSector = (sectorId: string) => {
@@ -85,6 +90,14 @@ export default function OrganizationIndexClient({
       ? controls.selectedSectors
       : [...controls.selectedSectors, sectorId];
     void controls.setSelectedSectors(next);
+    void controls.setCurrentPage(1);
+  };
+
+  const handleSelectGovernance = (categoryId: string) => {
+    const next = controls.selectedGovernanceCategories.includes(categoryId)
+      ? controls.selectedGovernanceCategories
+      : [...controls.selectedGovernanceCategories, categoryId];
+    void controls.setSelectedGovernanceCategories(next);
     void controls.setCurrentPage(1);
   };
 
@@ -100,15 +113,25 @@ export default function OrganizationIndexClient({
         setFiltersExpanded={setFiltersExpanded}
       />
 
-      {showSectorIndex ? (
-        <SectorIndexGrid
-          sectors={sectorIndex}
-          locale={locale}
-          onSelectSector={handleSelectSector}
-        />
+      {showBrowseIndex ? (
+        <div className="flex flex-col gap-10">
+          {governanceIndex.length > 0 ? (
+            <GovernanceIndexGrid
+              categories={governanceIndex}
+              onSelectCategory={handleSelectGovernance}
+            />
+          ) : null}
+          {sectorIndex.length > 0 ? (
+            <SectorIndexGrid
+              sectors={sectorIndex}
+              locale={locale}
+              onSelectSector={handleSelectSector}
+            />
+          ) : null}
+        </div>
       ) : (
         <div className="flex flex-col gap-4" aria-live="polite">
-          {controls.hasAnyFilters && sectorIndex.length > 0 ? (
+          {controls.hasAnyFilters && (sectorIndex.length > 0 || governanceIndex.length > 0) ? (
             <div className="flex justify-end">
               <button
                 type="button"
