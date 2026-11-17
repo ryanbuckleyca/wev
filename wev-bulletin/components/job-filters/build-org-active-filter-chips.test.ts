@@ -38,6 +38,7 @@ describe('buildOrgActiveFilterChips', () => {
     selectedTypes: [],
     selectedLanguages: [],
     selectedSectors: [],
+    selectedGovernanceCategories: [],
     activityWindow: 'all',
   };
 
@@ -193,6 +194,7 @@ describe('buildOrgActiveFilterChips', () => {
         selectedTypes: ['nonprofit'],
         selectedLanguages: ['bilingual'],
         selectedSectors: ['tech'],
+        selectedGovernanceCategories: [],
         activityWindow: '90d',
       },
       ...baseChipHandlers,

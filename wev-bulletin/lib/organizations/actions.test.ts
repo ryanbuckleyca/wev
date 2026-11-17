@@ -230,6 +230,7 @@ describe('organizations/actions', () => {
       slug: 'riverside',
       is_sse: false,
       type: 'cooperative',
+      governance_subtype: 'EXCLUDED_NON_SSE',
       assessment_skip_reason: 'location_mismatch',
       sector_id: null,
       description: null,

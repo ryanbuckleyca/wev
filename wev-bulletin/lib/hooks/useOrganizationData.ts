@@ -39,6 +39,7 @@ function buildFetchKey(
     filters.selectedTypes.join(','),
     filters.selectedLanguages.join(','),
     filters.selectedSectors.join(','),
+    filters.selectedGovernanceCategories.join(','),
     filters.activityWindow,
   ].join('|');
 }

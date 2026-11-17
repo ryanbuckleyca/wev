@@ -12,6 +12,7 @@ const emptyFilters: OrganizationFilters = {
   selectedTypes: [],
   selectedLanguages: [],
   selectedSectors: [],
+  selectedGovernanceCategories: [],
   activityWindow: 'all',
 };
 
@@ -72,6 +73,46 @@ describe('useOrganizationData', () => {
     expect(result.current.orgs).toEqual([]);
     expect(result.current.total).toBe(0);
     expect(result.current.loading).toBe(true);
+  });
+
+  it('refetches when selected governance categories change', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        urls.push(String(input));
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ orgs: [], total: 0, totalAvailable: 0 }),
+        });
+      }),
+    );
+
+    const { rerender } = renderHook(
+      ({ filters }) =>
+        useOrganizationData(
+          'en',
+          {
+            filters,
+            currentPage: 1,
+            sortBy: 'org-asc',
+            sessionCookie: false,
+          },
+          { orgs: [ssrOrg], total: 1 },
+        ),
+      { initialProps: { filters: emptyFilters } },
+    );
+
+    await act(async () => {
+      rerender({
+        filters: {
+          ...emptyFilters,
+          selectedGovernanceCategories: ['GOV_1'],
+        },
+      });
+    });
+
+    expect(urls.some((url) => url.includes('governance=GOV_1'))).toBe(true);
   });
 
   it('surfaces a timeout error and stops loading when the fetch aborts from timeout', async () => {
