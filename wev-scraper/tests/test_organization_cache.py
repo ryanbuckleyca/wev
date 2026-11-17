@@ -13,6 +13,7 @@ from hypothesis import strategies as st
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    clean_organization_display_name,
     domains_match,
     employer_apex,
     evidence_domain,
@@ -134,6 +135,14 @@ class TestMakeCacheKey:
         assert make_cache_key("Canadian Centre for Food & Ecology") == make_cache_key(
             "Canadian Centre for Food and Ecology (CCFE)"
         )
+
+    def test_hiring_count_suffix_stripped_from_key_and_display(self):
+        dirty = "Grand River Conservation Authority (2 positions)"
+        clean = "Grand River Conservation Authority"
+        assert clean_organization_display_name(dirty) == clean
+        assert clean_organization_display_name("Org – 3 postes") == "Org"
+        assert make_cache_key(dirty) == make_cache_key(clean)
+        assert "positions" not in make_cache_key(dirty)
 
     def test_trailing_place_paren_not_stripped(self):
         """Location qualifiers stay part of the key; only all-caps acronyms drop."""

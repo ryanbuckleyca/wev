@@ -9,6 +9,7 @@ from utils.organization_assessment import OrganizationAssessor
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    clean_organization_display_name,
     extract_org_identity,
     make_cache_key,
     names_equivalent,
@@ -119,11 +120,12 @@ class OrganizationResolver:
         description: str = "",
         job_id: str | None = None,
     ) -> int | None:
-        if not raw_name or not raw_name.strip():
+        cleaned_name = clean_organization_display_name(raw_name)
+        if not cleaned_name:
             return None
 
         ctx = JobContext(
-            raw_name=raw_name.strip(),
+            raw_name=cleaned_name,
             municipality=municipality,
             province=province,
             location=location,
@@ -398,7 +400,7 @@ class OrganizationResolver:
         slug = self._find_available_slug(slug_base, job_id)
 
         row = {
-            "name": canonical_name,
+            "name": clean_organization_display_name(canonical_name) or canonical_name,
             "slug": slug,
             "location": canonical_loc or None,
             "website": website,

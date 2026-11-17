@@ -1425,8 +1425,10 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     llm_website = data.get("website")
     logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
 
+    from utils.organization_cache import clean_organization_display_name
+
     result = AssessedOrgResult(
-        canonical_name=canonical_name.strip(),
+        canonical_name=clean_organization_display_name(canonical_name) or canonical_name.strip(),
         slug=slug,
         website=_parse_website(llm_website),
         description_en=description_en,

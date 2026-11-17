@@ -21,6 +21,20 @@ _TRAILING_ACRONYM = re.compile(
     r"\s*[\(\[]([A-Za-z][A-Za-z0-9.&/\-]{0,14})[\)\]]\s*$"
 )
 
+# Posting-count noise glued onto employer names by job boards, e.g.
+# "Grand River Conservation Authority (2 positions)" / "Org – 3 postes".
+_HIRING_COUNT_SUFFIX = re.compile(
+    r"(?:"
+    r"\s*[\(\[]\s*\d+\s+"
+    r"(?:positions?|postes?|openings?|vacancies|roles?|offres?)"
+    r"\s*[\)\]]"
+    r"|"
+    r"\s*[\-–—]\s*\d+\s+"
+    r"(?:positions?|postes?|openings?|vacancies|roles?|offres?)"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
 
 class OrganizationCache:
     """In-process LRU cache mapping normalized org keys to organization IDs.
@@ -73,13 +87,26 @@ def _strip_trailing_acronym(name: str) -> str:
     return name
 
 
+def _strip_hiring_count_suffix(name: str) -> str:
+    """Drop trailing posting-count clutter from employer names."""
+    return _HIRING_COUNT_SUFFIX.sub("", name).rstrip()
+
+
+def clean_organization_display_name(name: str | None) -> str:
+    """Strip scrape noise that must never become the canonical org name."""
+    cleaned = _strip_hiring_count_suffix((name or "").strip())
+    return cleaned.strip()
+
+
 def _normalize(s: str) -> str:
     """Normalize an org name for equality / cache keys.
 
     Collapses common scrape noise: accents, ``&``/``et`` ↔ and, hyphens/slashes,
-    trailing ``(ACRONYM)``, punctuation, and whitespace.
+    hiring-count suffixes, trailing ``(ACRONYM)``, punctuation, and whitespace.
     """
-    stripped = _strip_trailing_acronym((s or "").strip())
+    stripped = _strip_trailing_acronym(
+        _strip_hiring_count_suffix((s or "").strip())
+    )
     ascii_str = nfkd_to_ascii(stripped).lower()
     ascii_str = ascii_str.replace("&", " and ")
     ascii_str = re.sub(r"\bet\b", " and ", ascii_str)
