@@ -41,6 +41,7 @@ _daily_exhausted_providers: set[str] = set()
 _AUTH_ERROR_TEXT_RE = re.compile(
     r"(?:^|[\s:(])(?:401|403)\s+(?:permission_denied|forbidden|unauthenticated|unauthorized)\b"
     r"|['\"](?:code|status_code)['\"]\s*:\s*(?:401|403)\b"
+    r"|\bgroq api error \((?:401|403)\)"
     r"|['\"]status['\"]\s*:\s*['\"](?:permission_denied|unauthenticated)['\"]"
     r"|\bapi_key_invalid\b"
     r"|\bapi key not valid\b",

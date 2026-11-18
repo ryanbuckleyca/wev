@@ -107,6 +107,13 @@ def test_auth_permission_error_ignores_incidental_403_text():
     assert is_auth_permission_error(Exception("API key not valid. Please pass a valid API key.")) is True
 
 
+def test_auth_permission_error_detects_groq_status_prefix():
+    for status in (401, 403):
+        err = Exception(f'Groq API error ({status}): {{"error": {{"message": "Invalid API Key"}}}}')
+        assert is_auth_permission_error(err) is True
+    assert is_auth_permission_error(Exception("Groq API error (500): request 403 failed")) is False
+
+
 class _Chain(ProviderCooldownMixin):
     def __init__(self):
         self._exhausted_until = {}

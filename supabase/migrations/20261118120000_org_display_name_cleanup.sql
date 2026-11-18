@@ -116,6 +116,7 @@ UPDATE public.organizations AS o
 SET name = p.new_name
 FROM projected AS p
 WHERE o.id = p.id
+  AND btrim(o.name) = p.old_name
   AND p.new_name <> ''
   AND p.new_name IS DISTINCT FROM p.old_name
   AND NOT EXISTS (
@@ -135,11 +136,15 @@ WHERE o.id = p.id
 UPDATE public.jobs AS j
 SET organization = cleaned.new_name
 FROM (
-  SELECT id, public.clean_org_display_name(organization) AS new_name
+  SELECT
+    id,
+    organization AS old_organization,
+    public.clean_org_display_name(organization) AS new_name
   FROM public.jobs
   WHERE organization IS NOT NULL
 ) AS cleaned
 WHERE j.id = cleaned.id
+  AND btrim(j.organization) = btrim(cleaned.old_organization)
   AND cleaned.new_name <> ''
   AND cleaned.new_name IS DISTINCT FROM btrim(j.organization);
 

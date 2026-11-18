@@ -1252,6 +1252,41 @@ def test_place_name_guard_ignores_explanation_rejecting_place_name():
     assert not any("place_name_guard" in f for f in result["flags"])
 
 
+def test_place_name_guard_remaps_when_place_name_suggests_government():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en="The town name suggests a municipal program.",
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_ignores_place_name_suggesting_only_geography():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "The town name suggests a geographic link, not public ownership."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
+
+
 def test_place_name_guard_keeps_no_when_purpose_must_have_unmet():
     """Remap the type, but an independent eligibility failure keeps No."""
     result = _parse_response(

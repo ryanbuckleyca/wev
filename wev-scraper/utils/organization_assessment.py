@@ -367,8 +367,6 @@ RULES for the "values" field:
 
 {JSON_INSTRUCTIONS}
 
-{ORG_TYPE_RULES_RECAP}
-
 ORGANIZATION DATA:
   Raw name:    {raw_name}
   Municipality: {municipality}
@@ -380,6 +378,8 @@ ORGANIZATION DATA:
 
 SOURCE DESCRIPTION (for description_* only — omit if none):
 {source_description}
+
+{ORG_TYPE_RULES_RECAP}
 
 Evaluate the organization in ORGANIZATION DATA above. Return one JSON object
 with exactly these fields:
@@ -1111,7 +1111,8 @@ _PLACE_NAME_BASIS_RE = re.compile(
     r"(?:of\s+)?(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)"
     r"[- ]?(?:name|in (?:the|its) name)\b|"
     r"\b(?:city|town|municipal|municipality|place|region)[- ]?name\s+"
-    r"(?:suggests|indicates|implies|shows)\b|"
+    r"(?:suggests|indicates|implies|shows)\s+(?:(?:that\s+)?it\s+is\s+)?(?:a\s+|an\s+)?"
+    r"(?:public|government|municipal)\b|"
     r"\b(?<!not )(?<!n't )(?:assumed|presumed|inferred) to be (?:a |an )?"
     r"(?:public|government|municipal)\b",
     re.IGNORECASE,
