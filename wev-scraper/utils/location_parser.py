@@ -296,6 +296,9 @@ def is_country_only_location(location: Optional[str]) -> bool:
 _US_COUNTRY_RE = re.compile(
     r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)(?!\w)"
 )
+# Country-code suffix as job boards format it ("Nationwide, US"). Case-sensitive
+# so a trailing "us" in prose is not a match.
+_US_TRAILING_CODE_RE = re.compile(r",\s*US\s*$")
 
 # Full US state / DC names. Require a preceding comma (City, State) so bare
 # tokens like "Washington" / "Georgia" are not treated as US-only.
@@ -346,6 +349,7 @@ def looks_like_us_location(location: Optional[str]) -> bool:
     text = str(location).strip()
     has_us = bool(
         _US_COUNTRY_RE.search(text)
+        or _US_TRAILING_CODE_RE.search(text)
         or _US_STATE_NAME_RE.search(text)
         or _US_STATE_CODE_RE.search(text)
     )

@@ -39,6 +39,8 @@ def test_looks_like_us_location_avoids_ambiguous_tokens():
     # Bare "US" omitted (English false positives); dotted form is explicit.
     assert looks_like_us_location("US") is False
     assert looks_like_us_location("U.S.") is True
+    assert looks_like_us_location("Nationwide, US") is True
+    assert looks_like_us_location("Remote, work with us") is False
     # CA is a Canadian country/province code — excluded from US state codes.
     assert looks_like_us_location("Toronto, CA") is False
     assert looks_like_us_location("Los Angeles, CA") is False
