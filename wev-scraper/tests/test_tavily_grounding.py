@@ -150,6 +150,7 @@ def test_org_assessment_prompt_keeps_description_out_of_interpretive_fields():
 
 def test_org_prompt_keeps_entity_after_local_truncate():
     from utils.organization_assessment import _build_assessment_prompt
+    from utils.sse_prompts import ORG_TYPE_RULES_RECAP
 
     prompt = _build_assessment_prompt(
         "Park People",
@@ -159,10 +160,41 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         "park notes",
         known_website="https://parkpeople.ca",
     )
-    assert "ORGANIZATION DATA" in prompt
-    # Entity block must sit near the end so head+tail truncation keeps it.
-    assert prompt.rfind("ORGANIZATION DATA") > prompt.find("ALLOWED VALUES")
-    truncated = truncate_keep_ends(prompt, max_chars=8000)
-    assert "Park People" in truncated
-    assert "canonical_name" in truncated
-    assert "parkpeople.ca" in truncated.lower()
+    header = prompt.find("ORGANIZATION DATA:")
+    assert header != -1
+    assert prompt.find("ORGANIZATION DATA:", header + 1) == -1
+    # Entity + JSON schema sit at the end so head+tail truncation keeps both
+    # (Ollama default budget and the 8k stress case). Compare the standalone
+    # header, not the later "ORGANIZATION DATA" wording in the evaluation line.
+    assert header > prompt.find("ALLOWED VALUES")
+    assert prompt.rfind('"canonical_name"') > header
+    for budget in (8000, 10000):
+        truncated = truncate_keep_ends(prompt, max_chars=budget)
+        assert len(truncated) <= budget
+        assert "Park People" in truncated
+        assert "Official organization name" in truncated
+        assert "parkpeople.ca" in truncated.lower()
+        # The type schema and the recap of the type rules travel together.
+        assert '"type":' in truncated
+        assert ORG_TYPE_RULES_RECAP in truncated
+
+
+def test_org_prompt_keeps_type_recap_with_capped_notes_after_truncate():
+    from utils.organization_assessment import _PROMPT_DESC_MAX_CHARS, _build_assessment_prompt
+    from utils.sse_prompts import ORG_TYPE_RULES_RECAP
+
+    prompt = _build_assessment_prompt(
+        "Park People",
+        "Toronto",
+        "ON",
+        "Coordinator",
+        "n" * _PROMPT_DESC_MAX_CHARS,
+        known_website="https://parkpeople.ca",
+        existing_description="s" * _PROMPT_DESC_MAX_CHARS,
+        listing_notes="n" * _PROMPT_DESC_MAX_CHARS,
+    )
+    for budget in (8000, 10000):
+        truncated = truncate_keep_ends(prompt, max_chars=budget)
+        assert ORG_TYPE_RULES_RECAP in truncated
+        assert '"type":' in truncated
+        assert '"canonical_name"' in truncated

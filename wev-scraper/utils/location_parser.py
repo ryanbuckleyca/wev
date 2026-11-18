@@ -35,9 +35,16 @@ LOCATION_ALIASES: dict[str, str] = {
     "norfolk county": "Simcoe, ON",
     "national capital region": "Ottawa, ON",
     "montreal and surrounding area": "Montreal, QC",
+    "ile de montreal": "Montreal, QC",
+    # Geocodio mis-resolves "Peel, ON" → Poole, ON; Brampton is the regional seat
+    "regional municipality of peel": "Brampton, ON",
+    # "Toronto/GTA ON. Virtual and In-person…" → Brantford, ON
+    "toronto/gta": "Toronto, ON",
     # French short form / Sainte- after Ste- expand
     "valleyfield": "Salaberry-de-Valleyfield, QC",
     "sainte-adele": "Sainte-Adèle, QC",
+    # COCo street address with no city; Geocodio picks Grand Trunk in Chambly / AB
+    "1950 grand trunk": "Montreal, QC",
     # Org name used as location
     "collectif bienvenue - welcome collective": "Montreal, QC",
     "welcome collective": "Montreal, QC",
@@ -52,7 +59,15 @@ LOCATION_ALIASES: dict[str, str] = {
 
 # Aliases eligible for prefix matching (Geocodio anchors + long-blurb regions).
 # Everything else in LOCATION_ALIASES is matched exact-only.
-_PREFIX_MATCH_ALIASES = ("saanich", "ladner", "national capital region")
+_PREFIX_MATCH_ALIASES = (
+    "saanich",
+    "ladner",
+    "national capital region",
+    "ile de montreal",
+    "regional municipality of peel",
+    "toronto/gta",
+    "1950 grand trunk",
+)
 
 # Approx province centroids when Geocodio skips province-only queries.
 _CA_PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
@@ -134,8 +149,9 @@ def has_repeated_location_token(location: Optional[str]) -> bool:
 def normalize_messy_location(location: Optional[str]) -> str:
     """Fix common scraper artifacts before alias lookup / Geocodio.
 
-    - Strip trailing ``+`` / junk commas
+    - Strip trailing ``+`` / junk commas and decorative ``*`` runs
     - Unicode dashes → ASCII hyphen
+    - Oracle job boards' ``Calgary, CA-AB, CA`` → ``Calgary, AB``
     - Collapse repeated city tokens (``CalgaryCalgary``, ``EloraEloraElora``)
     - Expand ``Ste-`` / ``Ste `` → ``Sainte-`` (French Sainte-)
     """
@@ -143,6 +159,8 @@ def normalize_messy_location(location: Optional[str]) -> str:
         return ""
     text = str(location).strip()
     text = text.replace("\u2013", "-").replace("\u2014", "-").replace("\u2212", "-")
+    text = text.replace("*", " ")
+    text = re.sub(r"(?i),\s*CA-([A-Z]{2})(?:\s*,\s*CA)?\s*$", r", \1", text)
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[+\s,]+$", "", text).strip()
     # Collapse CamelCase repeats: CalgaryCalgary → Calgary, EloraEloraElora → Elora
@@ -278,6 +296,9 @@ def is_country_only_location(location: Optional[str]) -> bool:
 _US_COUNTRY_RE = re.compile(
     r"(?i)\b(?:united\s+states(?:\s+of\s+america)?|u\.s\.a\.|usa|u\.s\.)(?!\w)"
 )
+# Country-code suffix as job boards format it ("Nationwide, US"). Case-sensitive
+# so a trailing "us" in prose is not a match.
+_US_TRAILING_CODE_RE = re.compile(r",\s*US\s*$")
 
 # Full US state / DC names. Require a preceding comma (City, State) so bare
 # tokens like "Washington" / "Georgia" are not treated as US-only.
@@ -328,6 +349,7 @@ def looks_like_us_location(location: Optional[str]) -> bool:
     text = str(location).strip()
     has_us = bool(
         _US_COUNTRY_RE.search(text)
+        or _US_TRAILING_CODE_RE.search(text)
         or _US_STATE_NAME_RE.search(text)
         or _US_STATE_CODE_RE.search(text)
     )
@@ -486,32 +508,156 @@ _AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
             (re.compile(r"(?:qc|quebec).{0,24}(?:ste\.? catherine|sainte-catherine)"), 1),
         ),
     },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:kitchener\s*(?:[,/&-]|and)\s*)?waterloo"
+            r"(?:(?:\s*,\s*|\s+)(?:qc|quebec|on|ontario|canada|ca))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Waterloo",
+                "province": "ON",
+                "lat": 43.466874,
+                "lng": -80.524635,
+            },
+            {
+                "municipality": "Waterloo",
+                "province": "QC",
+                "lat": 45.350000,
+                "lng": -72.516667,
+            },
+        ),
+        # Kitchener-Waterloo signals win even over a stored "Waterloo, QC":
+        # earlier backfills wrote Geocodio's wrong pick back into jobs.location.
+        # Eastern Townships signals pick Quebec; otherwise Ontario.
+        "rules": (
+            (re.compile(r"kitchener|cambridge|guelph|laurier|uwaterloo|waterloo region|region of waterloo"), 0),
+            (re.compile(r"waterloo\W{0,3}(?:qc|quebec)\b"), 1),
+            (re.compile(r"granby|shefford|bromont|magog|eastern townships|cantons de l.est"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:[^,]*\d[^,]*,\s*)?york"
+            r"(?:(?:\s*,\s*|\s+)(?:on|ontario|pe|pei|prince edward island|canada|ca"
+            r"|[a-z]\d[a-z]|\d[a-z]\d))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Toronto",
+                "province": "ON",
+                "lat": 43.689600,
+                "lng": -79.478700,
+            },
+            {
+                "municipality": "York",
+                "province": "PE",
+                "lat": 46.300000,
+                "lng": -63.070000,
+            },
+        ),
+        # Bare "York" is the former City of York, now Toronto. A stored
+        # "York, PE" alone is not enough (earlier backfills wrote that back);
+        # Prince Edward Island needs a PEI signal in the posting.
+        "rules": (
+            (re.compile(r"charlottetown|prince edward island|\bpei\b"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:[^,]*\d[^,]*,\s*)?(?:city of\s+)?hamilton(?:\s+township)?"
+            r"(?:(?:\s*,\s*|\s+)(?:on|ontario|canada|ca|[a-z]\d[a-z]|\d[a-z]\d))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Hamilton",
+                "province": "ON",
+                "lat": 43.255700,
+                "lng": -79.871100,
+            },
+            {
+                "municipality": "Hamilton Township",
+                "province": "ON",
+                "lat": 44.091139,
+                "lng": -78.282622,
+            },
+        ),
+        # Geocodio resolves every "Hamilton, ON" (even with a street) to Hamilton
+        # Township near Cobourg, and earlier backfills wrote that back into
+        # jobs.location. Only Northumberland County signals mean the township.
+        "rules": (
+            (re.compile(r"cobourg|northumberland|bewdley|gores landing"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
 )
 
 
-def ambiguous_city_for(location: Optional[str], context: str = "") -> dict | None:
+def ambiguous_city_for(
+    location: Optional[str], context: str = "", default_province: Optional[str] = None
+) -> dict | None:
     """Choose a province when the place name exists in more than one.
 
     Returns a municipality/province/lat/lng dict, or None when *location* is
     not one of the ambiguous names. *context* is the employer and posting text.
+    When nothing in the evidence decides it, the source's *default_province*
+    wins over the group's catch-all city.
     """
     if not location or not str(location).strip():
         return None
     folded_query = _alias_lookup_key(normalize_messy_location(location))
     folded_context = _alias_lookup_key(normalize_messy_location(context or ""))
     evidence = f"{folded_query}\n{folded_context}"
+    default_code = _normalize_ca_province_code(default_province) if default_province else None
     for group in _AMBIGUOUS_CITY_GROUPS:
         if not group["query"].fullmatch(folded_query):
             continue
         for pattern, index in group["rules"]:
-            if pattern.search(evidence):
-                return dict(group["cities"][index])
+            if not pattern.search(evidence):
+                continue
+            if not pattern.pattern and default_code:
+                for city in group["cities"]:
+                    if city["province"] == default_code:
+                        return dict(city)
+            return dict(group["cities"][index])
     return None
 
 
+_TRAILING_REGION_TOKENS_RE = re.compile(
+    r"(?:(?:\s*,\s*|\s+)(?:qc|quebec|québec|on|ontario|pe|pei|prince edward island"
+    r"|canada|ca|[a-z]\d[a-z]|\d[a-z]\d))+$",
+    re.IGNORECASE,
+)
+
+
+def _ambiguous_choice_query(cleaned: str, choice: dict) -> str:
+    """Geocodio query for an ambiguous city: keep any street, swap the province.
+
+    "120 Industry St, York" → "120 Industry St, York, ON" keeps street-level
+    coordinates; a bare name becomes the chosen "City, PROV".
+    """
+    head = _TRAILING_REGION_TOKENS_RE.sub("", cleaned).strip(" ,")
+    if "," not in head:
+        return f"{choice['municipality']}, {choice['province']}"
+    return f"{head}, {choice['province']}"
+
+
+def _near_choice(result: dict, choice: dict) -> bool:
+    lat, lng = result.get("lat"), result.get("lng")
+    if lat is None or lng is None:
+        return False
+    return abs(float(lat) - choice["lat"]) < 0.5 and abs(float(lng) - choice["lng"]) < 0.5
+
+
 def _apply_ambiguous_choice(result: dict | None, choice: dict) -> dict:
-    """Keep Geocodio coordinates when they agree; otherwise use the chosen city."""
-    if result and result.get("province") == choice["province"]:
+    """Keep Geocodio coordinates when they agree; otherwise use the chosen city.
+
+    Agreeing means the same province and within ~50 km: Hamilton and Hamilton
+    Township are both in Ontario.
+    """
+    if result and result.get("province") == choice["province"] and _near_choice(result, choice):
         agreed = dict(result)
         agreed["municipality"] = choice["municipality"]
         agreed["province"] = choice["province"]
@@ -553,13 +699,9 @@ def parse_address_with_geocodio(
         return _empty
 
     cleaned = normalize_messy_location(location)
-    choice = ambiguous_city_for(cleaned, context)
+    choice = ambiguous_city_for(cleaned, context, default_province)
     aliased = None if choice else apply_location_alias(cleaned)
-    query = (
-        f"{choice['municipality']}, {choice['province']}"
-        if choice
-        else (aliased or cleaned)
-    )
+    query = _ambiguous_choice_query(cleaned, choice) if choice else (aliased or cleaned)
 
     # Province-scoped phrases → fill province (+ optional centroid), no city.
     scoped = _province_scoped_from_phrase(cleaned)
@@ -632,7 +774,7 @@ def parse_address_with_geocodio(
             return _empty
 
     try:
-        result = _geocode_with_geocodio(query, allow_us=allow_us)
+        result = _geocode_with_geocodio(query, allow_us=allow_us, keep_street=bool(choice))
         if choice:
             return _apply_ambiguous_choice(result, choice)
         if not result:
@@ -649,7 +791,7 @@ def parse_address_with_geocodio(
         return result
     except Exception as e:
         logger.warning(f"Geocodio call failed for location '{location}': {e}")
-        return _empty
+        return _apply_ambiguous_choice(None, choice) if choice else _empty
 
 
 def _safe_get(obj, key, default=None):
@@ -1117,7 +1259,9 @@ def _clean_location_for_geocoding(location: str) -> str:
     return cleaned
 
 
-def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional[dict]:
+def _geocode_with_geocodio(
+    location: str, *, allow_us: bool = False, keep_street: bool = False
+) -> Optional[dict]:
     """
     Use Geocodio to parse location.
     Strategy:
@@ -1129,7 +1273,7 @@ def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional
     """
     global _last_request_time
 
-    cache_key = f"{location}|us={int(allow_us)}"
+    cache_key = f"{location}|us={int(allow_us)}" + ("|street" if keep_street else "")
     # Return cached result if we've seen this location string before
     if cache_key in _geocode_cache:
         cached = _geocode_cache[cache_key]
@@ -1137,19 +1281,22 @@ def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional
             print(f"\tGeocoding '{location}'... ✓ (cached)")
         return cached
     # Also check legacy key without us flag for CA-only callers
-    if not allow_us and location in _geocode_cache:
+    if not allow_us and not keep_street and location in _geocode_cache:
         cached = _geocode_cache[location]
         if cached:
             print(f"\tGeocoding '{location}'... ✓ (cached)")
         return cached
 
-    result = _geocode_with_geocodio_uncached(location, allow_us=allow_us)
+    result = _geocode_with_geocodio_uncached(location, allow_us=allow_us, keep_street=keep_street)
     _geocode_cache[cache_key] = result
-    _geocode_cache[location] = result
+    if not keep_street:
+        _geocode_cache[location] = result
     return result
 
 
-def _geocode_with_geocodio_uncached(location: str, *, allow_us: bool = False) -> Optional[dict]:
+def _geocode_with_geocodio_uncached(
+    location: str, *, allow_us: bool = False, keep_street: bool = False
+) -> Optional[dict]:
     """Internal: perform the actual Geocodio API call without cache."""
     global _last_request_time
 
@@ -1164,8 +1311,9 @@ def _geocode_with_geocodio_uncached(location: str, *, allow_us: bool = False) ->
         if not client:
             return None
 
-        # Strategy 1: Try to extract explicit "City, Province" from the messy location string
-        explicit_location = _extract_explicit_location(location)
+        # Strategy 1: Try to extract explicit "City, Province" from the messy location string.
+        # keep_street callers already built a clean "street, City, PROV" query.
+        explicit_location = None if keep_street else _extract_explicit_location(location)
 
         if explicit_location:
             # Use the explicit extraction - much more likely to be accurate

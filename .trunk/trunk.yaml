@@ -32,6 +32,7 @@ lint:
     - linters: [bandit, pyright, checkov, hadolint, markdownlint]
       paths:
         - wev-scraper/**
+        - wev-ig/**
         - supabase/apply-migrations-direct.py
     - linters: [eslint]
       paths:

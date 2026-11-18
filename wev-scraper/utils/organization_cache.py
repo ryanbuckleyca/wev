@@ -21,6 +21,53 @@ _TRAILING_ACRONYM = re.compile(
     r"\s*[\(\[]([A-Za-z][A-Za-z0-9.&/\-]{0,14})[\)\]]\s*$"
 )
 
+# _HIRING_COUNT_SUFFIX and _PAGE_CHROME_SUFFIX are mirrored in SQL by
+# public.clean_org_display_name (migration 20261118120000); change both together.
+
+# Posting-count noise glued onto employer names by job boards, e.g.
+# "Grand River Conservation Authority (2 positions)" / "Org – 3 postes".
+_HIRING_COUNT_SUFFIX = re.compile(
+    r"(?:"
+    r"\s*[\(\[]\s*\d+\s+"
+    r"(?:positions?|postes?|openings?|vacancies|roles?|offres?)"
+    r"\s*[\)\]]"
+    r"|"
+    r"\s*[\-–—]\s*\d+\s+"
+    r"(?:positions?|postes?|openings?|vacancies|roles?|offres?)"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
+# Page-chrome / CTA / aggregator noise from career & profile titles, e.g.
+# "Clean Energy Canada | Apply", "The Kindness and Smile Zone | Linktree",
+# "Black Table Farm | About", "Dhyana Cleaning | Social Impact".
+_PAGE_CHROME_SUFFIX = re.compile(
+    r"\s*[|\/]\s*"
+    r"(?:"
+    r"apply(?:\s+now)?|postuler|postulez|candidat(?:ure|er)?|"
+    r"submit(?:\s+(?:an?\s+)?application)?|"
+    r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio|beacons\.ai|"
+    r"solo\.to|allmylinks|"
+    r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
+    r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
+    r"social\s+impact|"
+    r"official\s+site|our\s+story|who\s+we\s+are|get\s+involved|"
+    r"facebook|instagram"
+    r")"
+    r"\s*$"
+    r"|"
+    # A bare hyphen needs a space before it so "Habitat-Home" keeps its name.
+    r"(?:\s+[\-–—]|[–—])\s*"
+    r"(?:"
+    r"apply(?:\s+now)?|postuler|postulez|"
+    r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio|"
+    r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
+    r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
+    r"social\s+impact"
+    r")\s*$",
+    re.IGNORECASE,
+)
+
 
 class OrganizationCache:
     """In-process LRU cache mapping normalized org keys to organization IDs.
@@ -73,13 +120,43 @@ def _strip_trailing_acronym(name: str) -> str:
     return name
 
 
+def _strip_hiring_count_suffix(name: str) -> str:
+    """Drop trailing posting-count clutter from employer names."""
+    return _HIRING_COUNT_SUFFIX.sub("", name).rstrip()
+
+
+def _strip_page_chrome_suffix(name: str) -> str:
+    """Drop trailing apply-CTA / link-aggregator clutter from employer names."""
+    return _PAGE_CHROME_SUFFIX.sub("", name).rstrip()
+
+
+def _strip_scrape_noise_suffixes(name: str) -> str:
+    """Strip page-chrome and hiring-count suffixes until the name stabilizes.
+
+    Order can stack either way (``Org | Apply (2 positions)`` vs
+    ``Org (2 positions) | Apply``), so one pass of each is not enough.
+    """
+    prev = None
+    while prev != name:
+        prev = name
+        name = _strip_page_chrome_suffix(name)
+        name = _strip_hiring_count_suffix(name)
+    return name
+
+
+def clean_organization_display_name(name: str | None) -> str:
+    """Strip scrape noise that must never become the canonical org name."""
+    return _strip_scrape_noise_suffixes((name or "").strip()).strip()
+
+
 def _normalize(s: str) -> str:
     """Normalize an org name for equality / cache keys.
 
     Collapses common scrape noise: accents, ``&``/``et`` ↔ and, hyphens/slashes,
-    trailing ``(ACRONYM)``, punctuation, and whitespace.
+    page-chrome / hiring-count suffixes, trailing ``(ACRONYM)``, punctuation, and
+    whitespace.
     """
-    stripped = _strip_trailing_acronym((s or "").strip())
+    stripped = _strip_trailing_acronym(_strip_scrape_noise_suffixes((s or "").strip()))
     ascii_str = nfkd_to_ascii(stripped).lower()
     ascii_str = ascii_str.replace("&", " and ")
     ascii_str = re.sub(r"\bet\b", " and ", ascii_str)

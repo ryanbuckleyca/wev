@@ -1,6 +1,27 @@
 """Tests for utils.normalize.normalize_job_data location handling."""
 
-from utils.normalize import normalize_job_data
+from utils.normalize import normalize_job_data, normalize_organization
+
+
+def test_normalize_organization_strips_hiring_count_suffix():
+    assert (
+        normalize_organization("Grand River Conservation Authority (2 positions)")
+        == "Grand River Conservation Authority"
+    )
+    assert normalize_organization("Org (1 position)") == "Org"
+    assert normalize_organization("Org (2 postes)") == "Org"
+
+
+def test_normalize_organization_strips_apply_link_suffix():
+    assert normalize_organization("Clean Energy Canada | Apply") == "Clean Energy Canada"
+    assert normalize_organization("veritree | Apply") == "veritree"
+
+
+def test_normalize_organization_strips_linktree_suffix():
+    assert (
+        normalize_organization("The Kindness and Smile Zone | Linktree")
+        == "The Kindness and Smile Zone"
+    )
 
 
 def _no_geocode(monkeypatch):

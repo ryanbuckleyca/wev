@@ -33,19 +33,24 @@ from utils.governance_taxonomy import (
 )
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.location_parser import is_province_like_municipality, parse_address_with_geocodio
-from utils.organization_cache import evidence_domain, extract_domain
+from utils.organization_cache import (
+    clean_organization_display_name,
+    evidence_domain,
+    extract_domain,
+)
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     _detect_text_language,
     classify_org_language,
 )
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
-from utils.slug import generate_slug
+from utils.slug import generate_slug, nfkd_to_ascii
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
     ORG_EVALUATION_CRITERIA,
     ORG_RATING_GUIDELINES,
+    ORG_TYPE_RULES_RECAP,
     SSE_PRINCIPLES,
 )
 
@@ -142,6 +147,40 @@ DISTRICT_INDICATORS_PATTERN = re.compile(
     r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
 )
 
+# Boroughs / inner suburbs that org websites and search results describe by the
+# parent city. The location check also accepts the parent city's name.
+_MUNICIPALITY_PARENT_CITY: dict[str, str] = {
+    "york": "toronto",
+    "north york": "toronto",
+    "east york": "toronto",
+    "etobicoke": "toronto",
+    "scarborough": "toronto",
+    "saint leonard": "montreal",
+    "montreal nord": "montreal",
+    "saint laurent": "montreal",
+    "lasalle": "montreal",
+    "verdun": "montreal",
+    "lachine": "montreal",
+    "anjou": "montreal",
+    "outremont": "montreal",
+    "lemoyne": "longueuil",
+    "saint hubert": "longueuil",
+    "greenfield park": "longueuil",
+    "burnaby": "vancouver",
+    "north vancouver": "vancouver",
+    "west vancouver": "vancouver",
+    "esquimalt": "victoria",
+    "saanich": "victoria",
+    "oak bay": "victoria",
+}
+
+
+def _parent_city_terms(municipality: str | None) -> tuple[str, ...]:
+    key = re.sub(r"[\s\-]+", " ", nfkd_to_ascii(municipality or "").lower()).strip()
+    parent = _MUNICIPALITY_PARENT_CITY.get(key)
+    return (parent,) if parent else ()
+
+
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
@@ -163,7 +202,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. Classify by governance control/ownership per TYPE MAPPING and CRITICAL rules above (not mission alone). Type is a filter, not a Yes by itself.",
   "governance_subtype_code": "One subtype code from the GOVERNANCE TAXONOMY above, or EXCLUDED_NON_SSE, or null. Classify by ownership/voting control, not sector or platform.",
   "governance_category_id": "Parent category of that subtype (GOV_1..GOV_5 or EXCLUDED).",
   "governance_confidence": "0.0 to 1.0",
@@ -374,7 +413,10 @@ ORGANIZATION DATA:
 SOURCE DESCRIPTION (for description_* only — omit if none):
 {source_description}
 
-Return a JSON object with exactly these fields:
+{ORG_TYPE_RULES_RECAP}
+
+Evaluate the organization in ORGANIZATION DATA above. Return one JSON object
+with exactly these fields:
 {json_fields}
 """
 
@@ -492,6 +534,7 @@ def _build_assessment_prompt(
         public_language_rules=_PUBLIC_LANGUAGE_RULES,
         sector_priority_rules=_SECTOR_PRIORITY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
+        ORG_TYPE_RULES_RECAP=ORG_TYPE_RULES_RECAP,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
 
@@ -949,8 +992,11 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 
 # Explicit private / commercial ownership signals in model text.
 # Shareholders: positive ownership only — do not match "without shareholders".
+# "for-profit" must not match inside "not-for-profit" / "not for profit".
+# Evidence text is normalized first (hyphen variants → "-", whitespace runs →
+# one space) — see _org_assessment_evidence_blob.
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
-    r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
+    r"(?<!not[- ])for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
     r"founder[- ]owned|owner[- ]operated|"
     r"(?:with|has|have)\s+(?:private\s+)?shareholders?|shareholder[- ]owned|"
     r"commercial (?:music|arts|education|school|program|enterprise)|"
@@ -980,14 +1026,21 @@ _SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
     r"volunteer board|without (?:private )?shareholders?|"
     r"volunteer[- ](?:run|led|based|driven|center|centre|organization)|"
     r"(?:staffed|composed|operated)\s+(?:by|mainly by|primarily by)\s+volunteers?|"
-    r"non[- ]?profit(?:able)?(?:\s+organization)?|charitable\s+(?:mission|purpose|aims?)|"
+    r"non[- ]?profit(?:able)?(?:\s+organization)?|"
+    r"not[- ]for[- ]profit(?:able)?(?:\s+organization)?|"
+    r"charitable\s+(?:mission|purpose|aims?)|"
     r"community[- ]based\s+(?:organization|service)|social\s+(?:mission|purpose)|"
     r"serves?\s+the\s+(?:community|public)|community\s+solidarity",
     re.IGNORECASE,
 )
 
 
+# Soft hyphen, Unicode hyphens/dashes, minus sign, small/full-width hyphen-minus.
+_HYPHEN_VARIANTS_RE = re.compile("[\u00ad\u2010-\u2015\u2212\ufe63\uff0d]")
+
+
 def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
+    """Model explanation text, normalized so phrase regexes see one spelling."""
     parts = [
         result.get("sse_reasoning_en") or "",
         result.get("sse_reasoning_fr") or "",
@@ -995,7 +1048,8 @@ def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
         " ".join(str(x) for x in (result.get("must_haves_met") or [])),
         " ".join(str(x) for x in (result.get("nice_to_haves_met") or [])),
     ]
-    return " ".join(parts)
+    blob = _HYPHEN_VARIANTS_RE.sub("-", " ".join(parts))
+    return re.sub(r"\s+", " ", blob)
 
 
 def _demote_org_to_other_no(
@@ -1078,10 +1132,40 @@ _EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
     r"public[- ]sector|crown corp|"
     r"statutory|created by (?:statute|legislation|government)|"
     r"appointed by (?:a )?(?:minister|council|cabinet|public authority)|"
-    r"school board|public hospital|government (?:agency|department|body)|"
+    r"school board|public hospital authority|hospital authority|"
+    r"government (?:agency|department|body)|"
     r"provincial (?:agency|ministry)|federal (?:agency|department)",
     re.IGNORECASE,
 )
+# Overturn a government type only when the explanation shows the place name
+# was the *basis* for that label. Merely mentioning a place name — or rejecting
+# it as evidence ("the city name is geographic branding") — does not match.
+_PLACE_NAME_BASIS_RE = re.compile(
+    r"\b(?<!not )(?:because|since|given|due to|based (?:solely |only )?on|inferred from)\s+"
+    r"(?:of\s+)?(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)"
+    r"[- ]?(?:name|in (?:the|its) name)\b|"
+    r"\b(?<!not )(?:classified|labell?ed|typed|treated|categori[sz]ed) as (?:a |an )?"
+    r"(?:public|government|municipal)\b[^.;]{0,40}?\b(?:from|by|after|per)\s+"
+    r"(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)[- ]?name\b|"
+    r"\b(?:city|town|municipal|municipality|place|region)[- ]?name\s+"
+    r"(?:suggests|indicates|implies|shows|means|signals|makes it|points to)\s+"
+    r"(?:(?:that\s+)?it\s+is\s+)?(?:a\s+|an\s+)?"
+    r"(?:public|government|municipal)\b|"
+    r"\b(?<!not )(?<!n't )(?:assumed|presumed|inferred) to be (?:a |an )?"
+    r"(?:public|government|municipal)\b",
+    re.IGNORECASE,
+)
+# The employer itself operates a public hospital: stays government even if the
+# explanation also blames a place name. A hospital as venue, partner, or funder
+# ("concerts at the public hospital", "OHIP funding") does not match.
+_PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
+    r"\b(?:it|this|the (?:organization|organisation|employer|entity|org))\s+"
+    r"(?:is|operates|runs|manages)\s+(?:a |the )?(?:public )?hospital\b|"
+    r"\b(?:is|as) (?:a |the )?(?:public )?hospital (?:operator|authority)\b|"
+    r"\bministry[- ]run hospitals?\b",
+    re.IGNORECASE,
+)
+_PURPOSE_BEYOND_PROFIT_MUST_HAVE = "clear purpose beyond profit"
 
 
 def _apply_community_arts_place_name_guard(
@@ -1091,8 +1175,11 @@ def _apply_community_arts_place_name_guard(
     """Correct government typing from city-in-name for community arts orgs.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to nonprofit and restore a Yes floor when the
-    model also forced No solely via that mis-type.
+    municipal employment. Remap to nonprofit only when the explanation shows
+    the place name was the basis for the government label. Restore a Yes floor
+    only when that was the sole reason for No: the purpose-beyond-profit
+    must-have is still met. An employer that operates a public hospital stays
+    government/no.
     """
     if result.get("type") != "government":
         return result
@@ -1102,7 +1189,11 @@ def _apply_community_arts_place_name_guard(
         return result
 
     blob = _org_assessment_evidence_blob(result)
+    if _PUBLIC_HOSPITAL_OPERATOR_RE.search(blob):
+        return result
     if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
+        return result
+    if not _PLACE_NAME_BASIS_RE.search(blob):
         return result
 
     flags = list(result.get("flags") or [])
@@ -1110,8 +1201,9 @@ def _apply_community_arts_place_name_guard(
         "place_name_guard: community arts org — city/place in name is not "
         "municipal/government evidence → type=nonprofit"
     )
+    must_haves = {str(m).strip().lower() for m in (result.get("must_haves_met") or [])}
     new_rating = result.get("sse_rating") or "no"
-    if new_rating == "no":
+    if new_rating == "no" and _PURPOSE_BEYOND_PROFIT_MUST_HAVE in must_haves:
         new_rating = "weak_yes"
         flags.append(
             "place_name_guard: restored weak_yes for community arts "
@@ -1400,12 +1492,16 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         )
         return None
 
+    # Slug the cleaned name that is stored. If cleaning strips the whole
+    # value, keep the previous nonempty-name fallback for both fields.
+    stored_name = clean_organization_display_name(canonical_name) or canonical_name.strip()
+
     slug = _parse_text_field(data, "slug") or ""
     if not slug:
-        slug = generate_slug(canonical_name)
+        slug = generate_slug(stored_name)
         logger.warning(
             "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
-            canonical_name, raw_name, slug,
+            stored_name, raw_name, slug,
         )
 
     description_en, description_fr = _parse_localized_text(
@@ -1423,7 +1519,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
 
     result = AssessedOrgResult(
-        canonical_name=canonical_name.strip(),
+        canonical_name=stored_name,
         slug=slug,
         website=_parse_website(llm_website),
         description_en=description_en,
@@ -2083,6 +2179,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             tl = t.lower()
                             if len(tl) > 2:
                                 location_terms_set.add(tl)
+                    municipality_terms = {nfkd_to_ascii(t) for t in location_terms_set}
+                    parent_city_terms = _parent_city_terms(municipality)
                     if province:
                         location_terms_set.add(province.lower())
                         # Full province/territory names in EN+FR (all 13 provinces + territories)
@@ -2116,7 +2214,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                                     wl = word.lower()
                                     if len(wl) > 2:
                                         location_terms_set.add(wl)
-                    location_terms = list(location_terms_set)
+                    # Accent-folded on both sides so "montreal"/"levis" match "Montréal"/"Lévis".
+                    location_terms = list({nfkd_to_ascii(t) for t in location_terms_set})
 
                     # If we have location info, validate it appears in the response
                     # UNLESS the organization has national/provincial/international scope
@@ -2133,7 +2232,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             _extra_hq_parts.append(llm_hq_prov_code.lower())
                         website_str = (discovered_website or "")
                         domain_str = extract_domain(website_str) or ""
-                        searchable_content = " ".join([
+                        searchable_content = nfkd_to_ascii(" ".join([
                             (response_text or "").lower(),
                             (result.get("description_en") or "").lower(),
                             (result.get("description_fr") or "").lower(),
@@ -2146,7 +2245,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             " ".join(p.lower() for p in _extra_hq_parts),
                             website_str.lower(),
                             domain_str.lower(),
-                        ])
+                        ]))
 
                         structured_prov = (result.get("headquarters_province") or "").lower()
                         structured_prov_code = (llm_hq_prov_code or "").lower()
@@ -2161,12 +2260,19 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             else:
                                 if term in searchable_content:
                                     matches_set.add(term)
+                        # A borough's parent city stands in for the municipality, so
+                        # it never raises the number of matches required.
+                        if not (matches_set & municipality_terms):
+                            matches_set.update(p for p in parent_city_terms if p in searchable_content)
                         matches = list(matches_set)
 
                         # Check if location appears in the organization name itself
                         raw_name_lower = raw_name.lower()
+                        folded_name = nfkd_to_ascii(raw_name_lower)
                         location_in_name = any(
-                            term in raw_name_lower for term in location_terms if len(term) > 2
+                            term in folded_name
+                            for term in (*location_terms, *parent_city_terms)
+                            if len(term) > 2
                         )
 
                         # Also check if org name contains district/neighborhood indicators

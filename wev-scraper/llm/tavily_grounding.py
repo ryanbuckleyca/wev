@@ -346,7 +346,9 @@ def max_grounded_prompt_chars() -> int:
 def truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) -> str:
     """Keep prompt head (instructions) and tail (entity data / JSON schema).
 
-    Head-only truncation drops the payload models must answer from.
+    Head-only truncation drops the payload models must answer from. Prompts
+    put anything that must survive truncation (e.g. the org type-rules recap)
+    in the tail rather than relying on this function to splice it back in.
     """
     if max_chars <= 0 or len(text) <= max_chars:
         return text
