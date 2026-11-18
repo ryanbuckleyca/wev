@@ -75,6 +75,14 @@ trunk_report.txt
 trunk_results.txt
 *_ids.txt
 
+# wev-ig local artifacts (scripts themselves are tracked)
+wev-ig/.venv*/
+wev-ig/downloads/
+wev-ig/images/
+wev-ig/test_carousel/
+wev-ig/**/__pycache__/
+wev-ig/.DS_Store
+
 # Trunk / local tooling caches
 .trunk-cache/
 
