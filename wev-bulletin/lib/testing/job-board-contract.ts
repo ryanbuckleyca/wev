@@ -8,7 +8,7 @@ export const JOB_BOARD_TEST_IDS = {
   provinceSection: 'job-board-province-section',
   municipalitySection: 'job-board-municipality-section',
   employmentTypeSection: 'job-board-employment-type-section',
-  organizationTypeSection: 'job-board-organization-type-section',
+  governanceSection: 'job-board-governance-section',
   sectorSection: 'job-board-sector-section',
   sourceSection: 'job-board-source-section',
   localeSwitcher: 'job-board-locale-switcher',

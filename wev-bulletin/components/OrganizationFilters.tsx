@@ -17,7 +17,8 @@ import {
   orgLanguageLabel,
   toggleArrayItem,
 } from './job-filters/build-org-active-filter-chips';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
+import { SSE_GOVERNANCE_FILTER_CATEGORIES } from '@/lib/organizations/governance-taxonomy';
 import type { OrganizationFilterControls } from '@/lib/hooks/useOrganizationFilters';
 import type { OrganizationFilterOptions } from '@/lib/organizations/server-data';
 import type { ActivityWindow } from '@/lib/organizations/params';
@@ -57,8 +58,6 @@ export default function OrganizationFilters({
     setSelectedProvinces,
     selectedMunicipalities,
     setSelectedMunicipalities,
-    selectedTypes,
-    setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
     selectedSectors,
@@ -90,7 +89,6 @@ export default function OrganizationFilters({
     onRemoveProvince: (p) => setSelectedProvinces(toggleArrayItem(p, selectedProvinces)),
     onRemoveMunicipality: (m) =>
       setSelectedMunicipalities(toggleArrayItem(m, selectedMunicipalities)),
-    onRemoveType: (type) => setSelectedTypes(toggleArrayItem(type, selectedTypes)),
     onRemoveLanguage: (language) => {
       void setSelectedLanguages(toggleArrayItem(language, selectedLanguages));
       void setCurrentPage(1);
@@ -114,14 +112,23 @@ export default function OrganizationFilters({
   );
 
   const availableProvinces = filterOptions.availableProvinces ?? filterOptions.provinces ?? [];
-  const availableTypes = filterOptions.availableTypes ?? filterOptions.types ?? [];
+  const governanceOptions = useMemo(() => {
+    const fromRpc = filterOptions.governanceCategories ?? [];
+    const present = new Set(fromRpc);
+    // Stable GOV_1..GOV_5 order; hide categories with no organizations.
+    return SSE_GOVERNANCE_FILTER_CATEGORIES.filter((code) => present.has(code));
+  }, [filterOptions.governanceCategories]);
+  const availableGovernanceCategories =
+    filterOptions.availableGovernanceCategories ?? filterOptions.governanceCategories ?? [];
   const availableLanguages = filterOptions.availableLanguages ?? filterOptions.languages ?? [];
   const availableSectors = filterOptions.availableSectors ?? filterOptions.sectors ?? [];
   const availableMunicipalitiesByProvince =
     filterOptions.availableMunicipalitiesByProvince ?? filterOptions.municipalitiesByProvince ?? {};
 
   const disabledProvinces = filterOptions.provinces.filter((p) => !availableProvinces.includes(p));
-  const disabledTypes = filterOptions.types.filter((t) => !availableTypes.includes(t));
+  const disabledGovernanceCategories = governanceOptions.filter(
+    (code) => !availableGovernanceCategories.includes(code),
+  );
   const disabledLanguages = filterOptions.languages.filter((l) => !availableLanguages.includes(l));
   const disabledSectors = filterOptions.sectors.filter((s) => !availableSectors.includes(s));
   const disabledMunicipalities = Object.values(filterOptions.municipalitiesByProvince || {})
@@ -215,17 +222,22 @@ export default function OrganizationFilters({
 
           <div className="flex flex-col min-h-0">
             <CheckboxFilterSection
-              label={t('organizationType')}
-              selectedCount={selectedTypes.length}
-              totalCount={filterOptions.types.length}
-              options={filterOptions.types}
-              selectedValues={selectedTypes}
-              disabledValues={disabledTypes}
+              label={t('governanceFilter')}
+              selectedCount={selectedGovernanceCategories.length}
+              totalCount={governanceOptions.length}
+              options={governanceOptions}
+              selectedValues={selectedGovernanceCategories}
+              disabledValues={disabledGovernanceCategories}
               disabledTooltipMessage={disabledTooltipMessage}
-              onToggle={(val) => setSelectedTypes(toggleArrayItem(val, selectedTypes))}
-              emptyMessage={t('noOrganizationTypes')}
+              onToggle={(val) => {
+                void setSelectedGovernanceCategories(
+                  toggleArrayItem(val, selectedGovernanceCategories),
+                );
+                void setCurrentPage(1);
+              }}
+              emptyMessage={t('noGovernanceCategories')}
               listClassName={FILTER_LIST_BOX_CLASS}
-              renderLabel={(type) => getOrganizationTypeLabel(type, t)}
+              renderLabel={(code) => getGovernanceCategoryLabel(code, t) ?? code}
             />
           </div>
 

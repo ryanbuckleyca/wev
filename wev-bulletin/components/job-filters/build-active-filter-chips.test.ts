@@ -12,12 +12,12 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     selectedProvinces: [],
     selectedMunicipalities: [],
     selectedOrganizations: [],
-    selectedOrgTypes: [],
+    selectedGovernanceCategories: [],
     selectedSectors: [],
     selectedEmploymentTypes: [],
     selectedSources: [],
     selectedLanguages: [],
-    orgTypeLabel: (type) => type,
+    governanceCategoryLabel: (category) => category,
     sectorLabel: (sector) => sector,
     onPostedWithinChange: vi.fn(),
     onShowNonSseChange: vi.fn(),
@@ -27,7 +27,7 @@ function createInput(overrides: Partial<ActiveFilterChipInputs> = {}): ActiveFil
     onProvincesChange: vi.fn(),
     onMunicipalitiesChange: vi.fn(),
     onOrganizationsChange: vi.fn(),
-    onOrgTypesChange: vi.fn(),
+    onGovernanceCategoriesChange: vi.fn(),
     onSectorsChange: vi.fn(),
     onEmploymentTypesChange: vi.fn(),
     onSourcesChange: vi.fn(),
@@ -122,21 +122,24 @@ describe('buildActiveFilterChips', () => {
     expect(employmentChip?.title).toBe('Contract');
   });
 
-  it('chips org type and sector with labeled remove handlers', () => {
+  it('chips governance category and sector with labeled remove handlers', () => {
     const input = createInput({
-      selectedOrgTypes: ['nonprofit'],
+      selectedGovernanceCategories: ['GOV_4'],
       selectedSectors: ['education'],
-      orgTypeLabel: (type) => (type === 'nonprofit' ? 'Nonprofit' : type),
+      governanceCategoryLabel: (category) =>
+        category === 'GOV_4' ? 'Participatory Non-Profits & Social Enterprises' : category,
       sectorLabel: (sector) => (sector === 'education' ? 'Education' : sector),
     });
 
     const chips = buildActiveFilterChips(input, t);
     expect(chips.map((chip) => chip.id)).toEqual(
-      expect.arrayContaining(['org-type-nonprofit', 'sector-education']),
+      expect.arrayContaining(['governance-GOV_4', 'sector-education']),
     );
 
-    chips.find((chip) => chip.id === 'org-type-nonprofit')?.onRemove?.();
-    expect(input.onOrgTypesChange).toHaveBeenCalledWith([]);
+    const governanceChip = chips.find((chip) => chip.id === 'governance-GOV_4');
+    expect(governanceChip?.title).toBe('Participatory Non-Profits & Social Enterprises');
+    governanceChip?.onRemove?.();
+    expect(input.onGovernanceCategoriesChange).toHaveBeenCalledWith([]);
 
     chips.find((chip) => chip.id === 'sector-education')?.onRemove?.();
     expect(input.onSectorsChange).toHaveBeenCalledWith([]);

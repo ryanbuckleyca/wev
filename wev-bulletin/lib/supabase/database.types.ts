@@ -819,8 +819,9 @@ export type Database = {
           max_value: number | null
           min_value: number | null
           municipality: string | null
+          org_governance_category: string | null
+          org_governance_subtype: string | null
           org_sector_id: string | null
-          org_type: string | null
           organization: string | null
           organization_id: number | null
           province: string | null

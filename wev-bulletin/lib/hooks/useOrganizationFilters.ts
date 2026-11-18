@@ -18,7 +18,6 @@ export interface OrganizationFilters {
   showNonSse: boolean;
   selectedProvinces: string[];
   selectedMunicipalities: string[];
-  selectedTypes: string[];
   selectedLanguages: string[];
   selectedSectors: string[];
   selectedGovernanceCategories: string[];
@@ -44,8 +43,6 @@ export interface OrganizationFilterControls {
   setSelectedProvinces: (value: string[] | null) => Promise<unknown> | void;
   selectedMunicipalities: string[];
   setSelectedMunicipalities: (value: string[] | null) => Promise<unknown> | void;
-  selectedTypes: string[];
-  setSelectedTypes: (value: string[] | null) => Promise<unknown> | void;
   selectedLanguages: string[];
   setSelectedLanguages: (value: string[] | null) => Promise<unknown> | void;
   selectedSectors: string[];
@@ -76,10 +73,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     'municipality',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
-  const [selectedTypes, setSelectedTypes] = useQueryState(
-    'type',
-    parseAsArrayOf(parseAsString).withDefault([]),
-  );
   const [selectedLanguages, setSelectedLanguages] = useQueryState(
     'language',
     parseAsNativeArrayOf(parseAsString).withDefault([]),
@@ -108,7 +101,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse,
       selectedProvinces,
       selectedMunicipalities,
-      selectedTypes,
       selectedLanguages,
       selectedSectors,
       selectedGovernanceCategories,
@@ -119,7 +111,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse,
       selectedProvinces,
       selectedMunicipalities,
-      selectedTypes,
       selectedLanguages,
       selectedSectors,
       selectedGovernanceCategories,
@@ -134,7 +125,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse ||
       selectedProvinces.length > 0 ||
       selectedMunicipalities.length > 0 ||
-      selectedTypes.length > 0 ||
       selectedLanguages.length > 0 ||
       selectedSectors.length > 0 ||
       selectedGovernanceCategories.length > 0 ||
@@ -144,7 +134,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse,
       selectedProvinces,
       selectedMunicipalities,
-      selectedTypes,
       selectedLanguages,
       selectedSectors,
       selectedGovernanceCategories,
@@ -159,7 +148,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       !showNonSse &&
       selectedProvinces.length === 0 &&
       selectedMunicipalities.length === 0 &&
-      selectedTypes.length === 0 &&
       selectedLanguages.length === 0 &&
       selectedSectors.length === 0 &&
       selectedGovernanceCategories.length === 0 &&
@@ -169,7 +157,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       showNonSse,
       selectedProvinces,
       selectedMunicipalities,
-      selectedTypes,
       selectedLanguages,
       selectedSectors,
       selectedGovernanceCategories,
@@ -183,7 +170,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       void setShowNonSse(nonSseDefault);
       void setSelectedProvinces([]);
       void setSelectedMunicipalities([]);
-      void setSelectedTypes([]);
       void setSelectedLanguages([]);
       void setSelectedSectors([]);
       void setSelectedGovernanceCategories([]);
@@ -195,7 +181,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
       setShowNonSse,
       setSelectedProvinces,
       setSelectedMunicipalities,
-      setSelectedTypes,
       setSelectedLanguages,
       setSelectedSectors,
       setSelectedGovernanceCategories,
@@ -227,8 +212,6 @@ export function useOrganizationFilters(): OrganizationFilterControls {
     setSelectedProvinces,
     selectedMunicipalities,
     setSelectedMunicipalities,
-    selectedTypes,
-    setSelectedTypes,
     selectedLanguages,
     setSelectedLanguages,
     selectedSectors,

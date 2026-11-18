@@ -8,7 +8,6 @@ const baseFilters: OrganizationFilters = {
   showNonSse: false,
   selectedProvinces: [],
   selectedMunicipalities: [],
-  selectedTypes: [],
   selectedLanguages: [],
   selectedSectors: [],
   selectedGovernanceCategories: [],

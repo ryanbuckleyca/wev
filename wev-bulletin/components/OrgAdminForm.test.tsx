@@ -106,7 +106,8 @@ describe('OrgAdminForm', () => {
     expect(screen.getByLabelText(/fields\.slug/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.website/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.location/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/fields\.type/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fields\.type/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/fields\.governance/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.isSse/)).toBeInTheDocument();
     expect(screen.getByTestId('values-selector')).toBeInTheDocument();
   });

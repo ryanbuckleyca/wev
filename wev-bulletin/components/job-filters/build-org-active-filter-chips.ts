@@ -4,7 +4,6 @@
  * each can evolve independently and both remain unit-testable in isolation.
  */
 
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
 import type { OrganizationFilters } from '@/lib/hooks/useOrganizationFilters';
 import type { ActiveFilterChip } from '@/components/JobSearch';
@@ -16,7 +15,6 @@ interface BuildOrgFilterChipsInput {
   onRemoveSearch: () => void;
   onRemoveProvince: (province: string) => void;
   onRemoveMunicipality: (municipality: string) => void;
-  onRemoveType: (type: string) => void;
   onRemoveLanguage: (language: string) => void;
   onRemoveSector: (sector: string) => void;
   onRemoveGovernance: (category: string) => void;
@@ -43,7 +41,6 @@ export function buildOrgActiveFilterChips({
   onRemoveSearch,
   onRemoveProvince,
   onRemoveMunicipality,
-  onRemoveType,
   onRemoveLanguage,
   onRemoveSector,
   onRemoveGovernance,
@@ -91,14 +88,6 @@ export function buildOrgActiveFilterChips({
       id: `m-${municipality}`,
       label: municipality,
       onRemove: () => onRemoveMunicipality(municipality),
-    });
-  }
-
-  for (const type of filters.selectedTypes) {
-    chips.push({
-      id: `type-${type}`,
-      label: getOrganizationTypeLabel(type, tOrgs) ?? type,
-      onRemove: () => onRemoveType(type),
     });
   }
 

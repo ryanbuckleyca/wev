@@ -4,6 +4,7 @@ import { requireAdminPage } from '@/lib/auth/require-admin-page';
 import { supabaseServer } from '@/lib/supabase-server';
 import { ADMIN_ORGS_PER_PAGE } from '@/lib/organizations/constants';
 import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { ORG_SKIP_REASON_IGNORED } from '@/lib/organizations/assessment-review';
 import { logger } from '@/lib/logger';
 import PageLayout from '@/components/PageLayout';
@@ -24,7 +25,7 @@ function parsePage(raw: string | undefined): number {
 }
 
 const ORG_ADMIN_TABLE_SELECT =
-  'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason' as const;
+  'id, name, slug, type, governance_subtype, is_sse, location, created_at, assessment_skip_reason' as const;
 
 const ORG_ADMIN_REVIEW_SELECT =
   'id, name, slug, type, is_sse, location, created_at, assessment_skip_reason, sector_id, governance_subtype, description, description_en, description_fr, language, values_list' as const;
@@ -160,7 +161,7 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                   {t('columns.slug')}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
-                  {t('columns.type')}
+                  {t('columns.governance')}
                 </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">
                   {t('columns.location')}
@@ -189,7 +190,9 @@ export default async function AdminOrganizationsPage({ params, searchParams }: P
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground font-mono">{org.slug}</td>
                   <td className="px-4 py-3 text-sm">
-                    {getOrganizationTypeLabel(org.type, tOrgs) ?? '—'}
+                    {getOrgGovernanceDisplayLabel(org, tOrgs, (type) =>
+                      getOrganizationTypeLabel(type, tOrgs),
+                    ) ?? '—'}
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{org.location || '—'}</td>
                   <td className="px-4 py-3 text-center">

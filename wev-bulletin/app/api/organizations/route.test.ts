@@ -29,12 +29,12 @@ describe('GET /api/organizations', () => {
       totalAvailable: 10,
     });
     mockFetchOrganizationFilterOptions.mockResolvedValue({
-      types: [],
+      governanceCategories: [],
       provinces: [],
       municipalitiesByProvince: {},
       languages: [],
       sectors: [],
-      availableTypes: [],
+      availableGovernanceCategories: [],
       availableProvinces: [],
       availableMunicipalitiesByProvince: {},
       availableLanguages: [],

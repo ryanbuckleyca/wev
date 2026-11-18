@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchBulletinQueryPayload, type BulletinQueryInput } from '@/lib/bulletin/server-data';
 import { PRODUCT_DEFAULT_POSTED_WITHIN } from '@/lib/bulletin/constants';
-import { isOrgType } from '@/lib/organizations/org-type';
+import { SSE_GOVERNANCE_FILTER_CATEGORIES } from '@/lib/organizations/governance-taxonomy';
 import { isValidSector } from '@/lib/sectors';
 import { parseLocale } from '@/lib/resolve-skill-labels';
 import { createClient } from '@/lib/supabase/server';
@@ -44,7 +44,11 @@ export async function GET(request: Request) {
 
     // Parse array filters natively
     const orgs = searchParams.getAll('orgs');
-    const orgTypes = searchParams.getAll('types').filter(isOrgType);
+    const governanceCategories = searchParams
+      .getAll('governance')
+      .filter((value): value is (typeof SSE_GOVERNANCE_FILTER_CATEGORIES)[number] =>
+        (SSE_GOVERNANCE_FILTER_CATEGORIES as readonly string[]).includes(value),
+      );
     const sectors = searchParams.getAll('sectors').filter(isValidSector);
     const provs = searchParams.getAll('provs');
     const munis = searchParams.getAll('munis');
@@ -88,7 +92,7 @@ export async function GET(request: Request) {
       sortBy,
       postedWithin,
       orgs,
-      orgTypes,
+      governanceCategories,
       sectors,
       provs,
       munis,

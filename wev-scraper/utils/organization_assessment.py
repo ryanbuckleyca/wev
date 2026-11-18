@@ -1752,12 +1752,10 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     reasoning_fr = result["sse_reasoning_fr"]
     website = result.get("website")
     is_sse = result["sse_rating"] in ("strong_yes", "weak_yes")
-    # Governance is the new source of truth, but the legacy `type` column is
-    # still written during the transition: matched_jobs and the org-filter RPCs
-    # keep reading `type` until the follow-up migration swaps them to governance
-    # and drops the column. Dropping the write early would make freshly-assessed
-    # orgs disappear from the type facet, so `type` is retired atomically with
-    # its readers in that later migration — not here.
+    # Governance is the source of truth for filters/readers (Migration B).
+    # Keep writing legacy `type` until a later migration drops the column and
+    # SSE prompt gates no longer reference it; display fallbacks still use it
+    # when governance_subtype is unset/EXCLUDED.
     # Reconcile the model's governance pick against the SSE gate so the two can
     # never disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a
     # valid SSE subtype (category derived) or stays null for re-assessment.

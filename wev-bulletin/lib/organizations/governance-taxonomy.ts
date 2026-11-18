@@ -40,6 +40,15 @@ export const GOVERNANCE_CATEGORIES = {
 
 export type GovernanceCategory = keyof typeof GOVERNANCE_CATEGORIES;
 
+/** SSE category codes used by job-board / org-directory filter checkboxes. */
+export const SSE_GOVERNANCE_FILTER_CATEGORIES = [
+  'GOV_1',
+  'GOV_2',
+  'GOV_3',
+  'GOV_4',
+  'GOV_5',
+] as const satisfies ReadonlyArray<Exclude<GovernanceCategory, typeof EXCLUDED_CATEGORY>>;
+
 /** Ordered SSE subtypes — drives admin selects and browse cards. */
 export const GOVERNANCE_SUBTYPES = {
   GOV_1_1_WORKER_COOP: {
