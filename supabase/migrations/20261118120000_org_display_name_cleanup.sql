@@ -91,13 +91,12 @@ COMMENT ON FUNCTION public.normalize_org_name(text) IS
   'Normalize an organization name for equality matching (mirrors Python '
   'organization_cache.make_cache_key; strips scrape-noise suffixes and trailing acronyms).';
 
--- Block concurrent org writes so the identity-key checks below stay true until
--- commit. Reads continue.
-LOCK TABLE public.organizations IN SHARE ROW EXCLUSIVE MODE;
-
 -- Rename a row only when no other row holds the cleaned identity key
 -- (lower(btrim(name)) + location, see organizations_identity_key) now, and no
 -- other row would hold it after this update. Skipped rows keep their name.
+-- No LOCK TABLE: the CLI may run this file outside a transaction. A concurrent
+-- insert that takes a cleaned name fails this statement on the unique index;
+-- rerunning is safe.
 WITH projected AS (
   SELECT
     id,
