@@ -176,16 +176,22 @@ def test_ambiguous_st_catharines_uses_posting_and_employer():
         ("120 Industry St, York", "FoodShare Toronto", ("Toronto", "ON")),
         ("1290 Weston Rd, York, ON M6M 4R3, Canada", "", ("Toronto", "ON")),
         ("York", "Charlottetown, PEI", ("York", "PE")),
+        ("Hamilton", "", ("Hamilton", "ON")),
+        ("Hamilton Township, ON", "Theatre Aquarius", ("Hamilton", "ON")),
+        ("100 King St W, Hamilton, ON L8P 1A2", "", ("Hamilton", "ON")),
+        ("Hamilton Township", "Farm near Cobourg, Northumberland County", ("Hamilton Township", "ON")),
     ],
 )
-def test_ambiguous_waterloo_and_york(location, context, expected):
+def test_ambiguous_waterloo_york_and_hamilton(location, context, expected):
     from utils.location_parser import ambiguous_city_for
 
     choice = ambiguous_city_for(location, context)
     assert (choice["municipality"], choice["province"]) == expected
 
 
-@pytest.mark.parametrize("location", ["New York", "York Region", "North York, ON", "Waterloo Region"])
+@pytest.mark.parametrize(
+    "location", ["New York", "York Region", "North York, ON", "Waterloo Region", "Hamilton, PE"]
+)
 def test_ambiguous_groups_ignore_other_places(location):
     from utils.location_parser import ambiguous_city_for
 
@@ -203,6 +209,22 @@ def test_ambiguous_choice_keeps_street_in_geocode_query():
     with patch("utils.location_parser._geocode_with_geocodio", return_value=None) as geocode:
         parse_address_with_geocodio("York, PE")
     geocode.assert_called_once_with("Toronto, ON", allow_us=False)
+
+
+def test_ambiguous_choice_overrides_same_province_geocode_far_from_city():
+    from utils.location_parser import parse_address_with_geocodio
+
+    township = {
+        "municipality": "Hamilton Township",
+        "province": "ON",
+        "lat": 44.091139,
+        "lng": -78.282622,
+        "geocode_accuracy_type": "place",
+    }
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=township):
+        result = parse_address_with_geocodio("Hamilton, ON")
+    assert (result["municipality"], result["province"]) == ("Hamilton", "ON")
+    assert round(result["lat"], 2) == 43.26
 
 
 @pytest.mark.parametrize(

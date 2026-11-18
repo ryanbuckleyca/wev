@@ -561,6 +561,33 @@ _AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
             (re.compile(r""), 0),
         ),
     },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:[^,]*\d[^,]*,\s*)?(?:city of\s+)?hamilton(?:\s+township)?"
+            r"(?:(?:\s*,\s*|\s+)(?:on|ontario|canada|ca|[a-z]\d[a-z]|\d[a-z]\d))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Hamilton",
+                "province": "ON",
+                "lat": 43.255700,
+                "lng": -79.871100,
+            },
+            {
+                "municipality": "Hamilton Township",
+                "province": "ON",
+                "lat": 44.091139,
+                "lng": -78.282622,
+            },
+        ),
+        # Geocodio resolves every "Hamilton, ON" (even with a street) to Hamilton
+        # Township near Cobourg, and earlier backfills wrote that back into
+        # jobs.location. Only Northumberland County signals mean the township.
+        "rules": (
+            (re.compile(r"cobourg|northumberland|baltimore|camborne|bewdley|gores landing|harwood"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
 )
 
 
@@ -603,9 +630,20 @@ def _ambiguous_choice_query(cleaned: str, choice: dict) -> str:
     return f"{head}, {choice['province']}"
 
 
+def _near_choice(result: dict, choice: dict) -> bool:
+    lat, lng = result.get("lat"), result.get("lng")
+    if lat is None or lng is None:
+        return False
+    return abs(float(lat) - choice["lat"]) < 0.5 and abs(float(lng) - choice["lng"]) < 0.5
+
+
 def _apply_ambiguous_choice(result: dict | None, choice: dict) -> dict:
-    """Keep Geocodio coordinates when they agree; otherwise use the chosen city."""
-    if result and result.get("province") == choice["province"]:
+    """Keep Geocodio coordinates when they agree; otherwise use the chosen city.
+
+    Agreeing means the same province and within ~50 km: Hamilton and Hamilton
+    Township are both in Ontario.
+    """
+    if result and result.get("province") == choice["province"] and _near_choice(result, choice):
         agreed = dict(result)
         agreed["municipality"] = choice["municipality"]
         agreed["province"] = choice["province"]
