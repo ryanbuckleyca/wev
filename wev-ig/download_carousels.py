@@ -82,8 +82,11 @@ def instagram_posts(bookmarks: list[dict]) -> list[Post]:
             continue
         kind, shortcode = match.group(1).lower(), match.group(2)
         seen.add(shortcode)
+        raindrop_id = item.get("_id")
+        if raindrop_id is None:
+            continue
         posts.append(Post(
-            raindrop_id=item.get("_id"),
+            raindrop_id=int(raindrop_id),
             saved_at=(item.get("created") or "")[:10],
             title=(item.get("title") or "").strip(),
             url=f"https://www.instagram.com/{kind}/{shortcode}/",

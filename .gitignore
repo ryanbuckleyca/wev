@@ -88,3 +88,5 @@ wev-ig/.DS_Store
 
 # Local halfvec evaluation sandbox (prod copy). Never commit.
 /halfvec-eval/
+
+wev-ig/_scratch/
