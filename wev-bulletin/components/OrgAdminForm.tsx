@@ -368,7 +368,6 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
         />
       </div>
 
-      {/* Legacy organizations.type is no longer editable; it is preserved from initial values on save. */}
       <OrgGovernanceSelect
         value={form.governanceSubtype}
         onChange={form.setGovernanceSubtype}

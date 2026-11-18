@@ -50,12 +50,12 @@ def test_run_minimal_mode_reassesses_and_updates():
         "sse_details": None,
         "values_list": None,
         "mission_statement": None,
-        "type": None,
+        "governance_subtype": None,
         "language": None,
     }
     updates = {
         "sse_rating": "yes",
-        "type": "nonprofit",
+        "governance_subtype": "GOV_4_1_MEMBER_NPO",
         "description": "A real org.",
         "sse_details": {"classified_at": "2026-07-29T00:00:00+00:00"},
     }
@@ -176,7 +176,6 @@ def test_run_governance_mode_writes_only_governance_and_gate_fields():
         # The SSE decision's metadata must stay with its rating.
         "sse_details": sse_details,
         # Collateral fields that must NOT be written in governance mode.
-        "type": None,
         "sector_id": None,
         "values_list": [],
         "description": "",

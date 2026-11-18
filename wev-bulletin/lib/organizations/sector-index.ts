@@ -1,6 +1,5 @@
 import sharedSectors from '@shared/taxonomy/sectors.json';
 import { isGovernanceCategory } from '@/lib/organizations/governance-taxonomy';
-import { normalizeOrgType } from '@/lib/organizations/org-type';
 import { SECTORS_LIST } from '@/lib/sectors';
 
 export type SectorIndexTypeCount = {
@@ -17,7 +16,6 @@ export type SectorIndexCard = {
 
 type OrgSectorRow = {
   name: string | null;
-  type?: string | null;
   governance_category?: string | null;
   sector_id: string | null;
 };
@@ -35,8 +33,7 @@ export function sectorBlurb(sectorId: string, locale: string): string | null {
 
 /**
  * Aggregate org rows into one card per taxonomy sector (taxonomy order).
- * Sectors with zero matching orgs are omitted so the grid stays useful.
- * Mix counts prefer governance_category; fall back to legacy type when unset.
+ * Mix counts use governance_category (SSE categories only).
  */
 export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   const bySector = new Map<
@@ -60,10 +57,8 @@ export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
       row.governance_category && isGovernanceCategory(row.governance_category)
         ? row.governance_category
         : null;
-    const legacy = normalizeOrgType(row.type ?? null);
-    const mixKey = category && category !== 'EXCLUDED' ? category : legacy;
-    if (mixKey) {
-      bucket.types.set(mixKey, (bucket.types.get(mixKey) ?? 0) + 1);
+    if (category && category !== 'EXCLUDED') {
+      bucket.types.set(category, (bucket.types.get(category) ?? 0) + 1);
     }
 
     const name = row.name?.trim();

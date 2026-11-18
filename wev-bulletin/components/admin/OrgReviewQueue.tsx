@@ -9,7 +9,6 @@ import {
   type OrgAssessmentSnapshot,
 } from '@/lib/organizations/assessment-review';
 import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 import { cn } from '@/lib/utils';
 
 export type OrgReviewQueueRow = OrgAssessmentSnapshot & {
@@ -41,9 +40,7 @@ export default async function OrgReviewQueue({ orgs, locale, reasonLabel }: OrgR
     <ul className="space-y-4">
       {orgs.map((org) => {
         const missing = new Set(findMissingOrgFields(org));
-        const governanceLabel = getOrgGovernanceDisplayLabel(org, tOrgs, (type) =>
-          getOrganizationTypeLabel(type, tOrgs),
-        );
+        const governanceLabel = getOrgGovernanceDisplayLabel(org, tOrgs);
 
         return (
           <li key={org.id} className="border border-border rounded-wev-card bg-card p-4 sm:p-5">

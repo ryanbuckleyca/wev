@@ -20,8 +20,6 @@ const VALID_ORG_LANGUAGES = new Set<string>(ORG_LANGUAGES);
 /** Fields that decide whether an org still needs assessment. */
 export interface OrgAssessmentSnapshot {
   sector_id?: string | null;
-  /** @deprecated Prefer governance_subtype; kept for transitional fixtures. */
-  type?: string | null;
   governance_subtype?: string | null;
   description?: string | null;
   description_en?: string | null;

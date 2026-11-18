@@ -90,7 +90,7 @@ async function fetchOrganizationIndexUncached(
   const effectiveSortBy = sortBy ?? (userId ? 'value-match-desc' : 'org-asc');
 
   // Product default is SSE-only; that is the baseline universe, not a "filter".
-  // Denominator matches the current SSE scope with no search/geo/type/sector chips.
+  // Denominator matches the current SSE scope with no search/geo/governance/sector chips.
   const hasUserFilters =
     Boolean(searchQuery) ||
     provinces.length > 0 ||
@@ -108,7 +108,6 @@ async function fetchOrganizationIndexUncached(
     p_sse_only: sseOnly,
     p_provinces: null,
     p_municipalities: null,
-    p_org_types: null,
     p_languages: null,
     p_sectors: null,
     p_governance_categories: null,
@@ -118,15 +117,12 @@ async function fetchOrganizationIndexUncached(
     p_sort: 'org-asc' as const,
   };
 
-  // Legacy p_org_types stays in the RPC signature but is ignored (Migration B);
-  // filtering is governance-only via p_governance_categories.
   const mainParams = {
     min_date: minDate,
     p_search: searchQuery || null,
     p_sse_only: sseOnly,
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
-    p_org_types: null,
     p_languages: languages.length > 0 ? languages : null,
     p_sectors: sectors.length > 0 ? sectors : null,
     p_governance_categories: governanceCategories.length > 0 ? governanceCategories : null,
@@ -426,12 +422,16 @@ const fetchSectorIndexStatsCached = unstable_cache(
   async (sseOnlyKey: string): Promise<SectorIndexCard[]> => {
     const sseOnly = sseOnlyKey !== 'false';
 
-    let rows: Array<{ name: string | null; type: string | null; sector_id: string | null }>;
+    let rows: Array<{
+      name: string | null;
+      governance_category: string | null;
+      sector_id: string | null;
+    }>;
     try {
       rows = await fetchAllPagedRows(async (from, to) => {
         let query = supabaseServer
           .from('organizations')
-          .select('name, type, governance_category, sector_id')
+          .select('name, governance_category, sector_id')
           .not('sector_id', 'is', null)
           .order('id', { ascending: true });
 

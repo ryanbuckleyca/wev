@@ -394,7 +394,6 @@ class OrganizationResolver:
         job_id: str | None,
         website: str | None = None,
         description: str | None = None,
-        org_type: str | None = None,
         values: str | None = None,
     ) -> int | None:
         slug = self._find_available_slug(slug_base, job_id)
@@ -405,7 +404,6 @@ class OrganizationResolver:
             "location": canonical_loc or None,
             "website": website,
             "description": description,
-            "type": org_type,
             "values": values,
         }
 

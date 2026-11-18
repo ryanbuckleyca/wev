@@ -174,8 +174,8 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         assert "Park People" in truncated
         assert "Official organization name" in truncated
         assert "parkpeople.ca" in truncated.lower()
-        # The type schema and the recap of the type rules travel together.
-        assert '"type":' in truncated
+        # Governance subtype schema and the rules recap travel together.
+        assert '"governance_subtype_code"' in truncated
         assert ORG_TYPE_RULES_RECAP in truncated
 
 
@@ -196,5 +196,5 @@ def test_org_prompt_keeps_type_recap_with_capped_notes_after_truncate():
     for budget in (8000, 10000):
         truncated = truncate_keep_ends(prompt, max_chars=budget)
         assert ORG_TYPE_RULES_RECAP in truncated
-        assert '"type":' in truncated
+        assert '"governance_subtype_code"' in truncated
         assert '"canonical_name"' in truncated

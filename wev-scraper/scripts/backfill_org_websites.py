@@ -510,10 +510,10 @@ def run(
                             # Additive backfill: populate governance and the SSE
                             # decision it is derived from (is_sse / sse_rating /
                             # sse_details together, so the decision stays
-                            # coherent). Established fields — type, sector,
-                            # values, descriptions, website, language — are
-                            # preserved so a thinner reassessment can never erase
-                            # good data on an org that only lacked governance.
+                            # coherent). Established fields — sector, values,
+                            # descriptions, website, language — are preserved so
+                            # a thinner reassessment can never erase good data
+                            # on an org that only lacked governance.
                             updates = {
                                 key: updates[key]
                                 for key in _GOVERNANCE_BACKFILL_FIELDS

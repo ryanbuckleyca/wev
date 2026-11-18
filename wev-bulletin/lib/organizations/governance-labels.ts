@@ -39,8 +39,7 @@ export function getGovernanceSubtypeLabel(
 
 /**
  * True when the subtype is a public SSE governance form (not unset / EXCLUDED).
- * Non-SSE rows store EXCLUDED_NON_SSE; that must not replace the legacy type
- * label on cards and profiles.
+ * Non-SSE rows store EXCLUDED_NON_SSE and have no public governance label.
  */
 export function hasPublicGovernanceSubtype(
   subtype: string | null | undefined,
@@ -53,22 +52,18 @@ export function hasPublicGovernanceSubtype(
 }
 
 /**
- * Display label for an org's governance form: prefer subtype, else legacy type
- * via the caller's typeLabel fallback.
+ * Display label for an org's governance form (subtype when publicly classifiable).
  */
 export function getOrgGovernanceDisplayLabel(
   org: {
     governance_subtype?: string | null;
-    type?: string | null;
   },
   t: OrgTranslator,
-  typeLabel: (type: string | null | undefined) => string | null,
 ): string | null {
   if (hasPublicGovernanceSubtype(org.governance_subtype)) {
-    const governance = getGovernanceSubtypeLabel(org.governance_subtype, t);
-    if (governance) return governance;
+    return getGovernanceSubtypeLabel(org.governance_subtype, t);
   }
-  return typeLabel(org.type);
+  return null;
 }
 
 export function resolveGovernanceForSave(input: {

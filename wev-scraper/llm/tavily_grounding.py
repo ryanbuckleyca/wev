@@ -53,9 +53,9 @@ _TRUNCATE_MARK = (
 # Search is supporting context only — primary source lives in the prompt body.
 _EVIDENCE_HEADER = """SUPPORTING WEB EVIDENCE (secondary — from search):
 PRIORITY RULES (mandatory):
-1. Interpretive fields (is_sse / rating, sector, language, type, mission, values,
-   website) MUST come from official-website / this web research — never from a
-   stored org blurb or job-listing SOURCE DESCRIPTION.
+1. Interpretive fields (is_sse / rating, sector, language, governance_subtype_code,
+   mission, values, website) MUST come from official-website / this web research —
+   never from a stored org blurb or job-listing SOURCE DESCRIPTION.
 2. description_* may be taken from SOURCE DESCRIPTION when present; only when
    SOURCE DESCRIPTION is absent may these snippets supply description text.
 3. NEVER substitute a different organization found in search for the one named

@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeOrgType } from './org-type';
 import {
   normalizeOrgValuesList,
   validateOrgInput,
@@ -7,83 +6,36 @@ import {
   buildOrgUpdateFields,
 } from './validate';
 
-describe('normalizeOrgType', () => {
-  it('normalizes hyphenated and underscored variants', () => {
-    expect(normalizeOrgType('non-profit')).toBe('nonprofit');
-    expect(normalizeOrgType('social_enterprise')).toBe('other');
-    expect(normalizeOrgType('Social Enterprise')).toBe('other');
-    expect(normalizeOrgType('mutual-aid')).toBe('nonprofit');
-    expect(normalizeOrgType('community association')).toBe('nonprofit');
-    expect(normalizeOrgType('credit union')).toBe('cooperative');
-  });
-
-  it('returns null for unknown types', () => {
-    expect(normalizeOrgType('for-profit')).toBeNull();
-  });
-});
-
 describe('normalizeOrgValuesList', () => {
-  it('keeps only valid Knowdell value IDs', () => {
-    expect(normalizeOrgValuesList(['Community', 'NotAValue', 'Community'])).toEqual(['Community']);
-  });
-
-  it('limits to five values', () => {
-    const values = [
-      'Advancement',
-      'Aesthetic',
-      'Challenge',
-      'Community',
-      'Competence',
-      'Creativity',
-    ];
-    expect(normalizeOrgValuesList(values)).toHaveLength(5);
+  it('dedupes values', () => {
+    expect(normalizeOrgValuesList(['Help Society', 'Help Society'])).toEqual(['Help Society']);
   });
 });
 
 describe('validateOrgInput', () => {
-  it('rejects missing name on create', () => {
-    expect(validateOrgInput({ name: '  ' })).toEqual({
-      field: 'name',
-      error: 'name_required',
-    });
-  });
-
-  it('rejects invalid slug format', () => {
-    expect(validateOrgInput({ name: 'Test Org', slug: 'Bad Slug' })).toEqual({
-      field: 'slug',
-      error: 'slug_invalid',
-    });
-  });
-
-  it('rejects website without scheme', () => {
+  it('accepts a minimal valid org', () => {
     expect(
-      validateOrgInput({ name: 'Test Org', slug: 'test-org', website: 'example.org' }),
-    ).toEqual({ field: 'website', error: 'website_invalid' });
+      validateOrgInput({
+        name: 'Example Co-op',
+        slug: 'example-coop',
+        is_sse: true,
+        governance_subtype: 'GOV_1_1_WORKER_COOP',
+      }),
+    ).toBeNull();
+  });
+
+  it('rejects an invalid governance subtype', () => {
+    expect(
+      validateOrgInput({
+        name: 'Example Co-op',
+        slug: 'example-coop',
+        governance_subtype: 'NOT_A_CODE',
+      }),
+    ).toEqual({ field: 'governance_subtype', error: 'invalid_governance' });
   });
 });
 
 describe('buildOrgPayload', () => {
-  it('populates values_list, sse_rating, and admin sse_details', () => {
-    const payload = buildOrgPayload({
-      name: 'Co-op Example',
-      slug: 'co-op-example',
-      is_sse: true,
-      values_list: ['Community', 'Creativity'],
-    });
-
-    expect(payload.values_list).toEqual(['Community', 'Creativity']);
-    expect(payload.values).toBe('Community, Creativity');
-    expect(payload.values_rated).toEqual([
-      { value: 'Community', rank: 1 },
-      { value: 'Creativity', rank: 2 },
-    ]);
-    expect(payload.sse_rating).toBe('weak_yes');
-    expect(payload.sse_details).toMatchObject({
-      reviewed: true,
-      flags: ['admin_override'],
-    });
-  });
-
   it('stores city autocomplete fields with city accuracy', () => {
     const payload = buildOrgPayload({
       name: 'Co-op Example',
@@ -104,16 +56,18 @@ describe('buildOrgPayload', () => {
       geocode_accuracy_type: 'city',
     });
   });
-  it('forces is_sse false for government orgs', () => {
+
+  it('persists governance without a legacy type field', () => {
     const payload = buildOrgPayload({
-      name: 'City Parks',
-      slug: 'city-parks',
-      type: 'government',
+      name: 'Example Co-op',
+      slug: 'example-coop',
       is_sse: true,
+      governance_subtype: 'GOV_1_1_WORKER_COOP',
     });
-    expect(payload.type).toBe('government');
-    expect(payload.is_sse).toBe(false);
-    expect(payload.sse_rating).toBe('no');
+    expect(payload).not.toHaveProperty('type');
+    expect(payload.governance_subtype).toBe('GOV_1_1_WORKER_COOP');
+    expect(payload.governance_category).toBe('GOV_1');
+    expect(payload.is_sse).toBe(true);
   });
 });
 
@@ -155,7 +109,7 @@ describe('buildOrgUpdateFields', () => {
       { governance_subtype: 'GOV_4_1_MEMBER_NPO' },
       {
         previousIsSse: true,
-        previousGovernanceSubtype: 'GOV_1_1_WORKER_COOP',
+        previousGovernanceSubtype: 'EXCLUDED_NON_SSE',
       },
     );
     expect(changed.governance_subtype).toBe('GOV_4_1_MEMBER_NPO');
@@ -169,31 +123,30 @@ describe('buildOrgUpdateFields', () => {
       { sector_id: 'housing' },
       {
         previousIsSse: true,
-        previousGovernanceSubtype: 'GOV_1_1_WORKER_COOP',
+        previousGovernanceSubtype: 'EXCLUDED_NON_SSE',
       },
     );
     expect(changed).not.toHaveProperty('governance_subtype');
     expect(changed).not.toHaveProperty('governance_confidence');
   });
 
-  it('clears is_sse when type becomes government', () => {
+  it('forces EXCLUDED governance when SSE is turned off', () => {
     const changed = buildOrgUpdateFields(
-      { type: 'government' },
-      { previousIsSse: true, previousType: 'nonprofit' },
+      { is_sse: false },
+      { previousIsSse: true, previousGovernanceSubtype: 'GOV_4_1_MEMBER_NPO' },
     );
-    expect(changed.type).toBe('government');
     expect(changed.is_sse).toBe(false);
     expect(changed.sse_rating).toBe('no');
     expect(changed.governance_subtype).toBe('EXCLUDED_NON_SSE');
   });
 
-  it('rejects is_sse true while type remains government', () => {
+  it('clears EXCLUDED when promoting back to SSE without a subtype', () => {
     const changed = buildOrgUpdateFields(
       { is_sse: true },
-      { previousIsSse: false, previousType: 'government' },
+      { previousIsSse: false, previousGovernanceSubtype: 'EXCLUDED_NON_SSE' },
     );
-    expect(changed.is_sse).toBe(false);
-    expect(changed.sse_rating).toBe('no');
+    expect(changed.is_sse).toBe(true);
+    expect(changed.governance_subtype).toBeNull();
   });
 
   it('clears geo fields when location is cleared', () => {

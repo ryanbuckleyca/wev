@@ -25,36 +25,31 @@ describe('buildSectorIndexCards', () => {
     const cards = buildSectorIndexCards([
       {
         name: 'Zulu Co-op',
-        type: 'cooperative',
         governance_category: 'GOV_1',
         sector_id: 'agriculture-food-systems',
       },
       {
         name: 'Alpha Farm',
-        type: 'nonprofit',
         governance_category: 'GOV_4',
         sector_id: 'agriculture-food-systems',
       },
       {
         name: 'Beta Bank',
-        type: 'nonprofit',
         governance_category: 'GOV_4',
         sector_id: 'agriculture-food-systems',
       },
       {
         name: 'Extra Farm',
-        type: 'nonprofit',
         governance_category: 'GOV_4',
         sector_id: 'agriculture-food-systems',
       },
       {
         name: 'Radio Co-op',
-        type: 'cooperative',
         governance_category: 'GOV_1',
         sector_id: 'arts-culture-information',
       },
-      { name: 'No Sector', type: 'nonprofit', governance_category: 'GOV_4', sector_id: null },
-      { name: 'Bad Sector', type: 'nonprofit', governance_category: 'GOV_4', sector_id: 'not-real' },
+      { name: 'No Sector', governance_category: 'GOV_4', sector_id: null },
+      { name: 'Bad Sector', governance_category: 'GOV_4', sector_id: 'not-real' },
     ]);
 
     expect(cards.map((c) => c.id)).toEqual([
@@ -72,12 +67,5 @@ describe('buildSectorIndexCards', () => {
     });
     expect(cards[1].orgCount).toBe(1);
     expect(cards[1].sampleNames).toEqual(['Radio Co-op']);
-  });
-
-  it('falls back to legacy type when governance_category is unset', () => {
-    const cards = buildSectorIndexCards([
-      { name: 'Legacy NPO', type: 'nonprofit', sector_id: 'agriculture-food-systems' },
-    ]);
-    expect(cards[0].typeCounts).toEqual([{ type: 'nonprofit', count: 1 }]);
   });
 });

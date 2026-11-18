@@ -23,32 +23,19 @@ describe('hasPublicGovernanceSubtype', () => {
 });
 
 describe('getOrgGovernanceDisplayLabel', () => {
-  const typeLabel = (type: string | null | undefined) =>
-    type === 'private' ? 'Private' : type ?? null;
-
-  it('prefers the governance subtype for SSE orgs', () => {
+  it('returns the governance subtype for SSE orgs', () => {
     expect(
-      getOrgGovernanceDisplayLabel(
-        { governance_subtype: 'GOV_1_1_WORKER_COOP', type: 'cooperative' },
-        t,
-        typeLabel,
-      ),
+      getOrgGovernanceDisplayLabel({ governance_subtype: 'GOV_1_1_WORKER_COOP' }, t),
     ).toBe('governance.subtype.GOV_1_1_WORKER_COOP');
   });
 
-  it('falls back to legacy type for EXCLUDED_NON_SSE instead of a public exclusion label', () => {
+  it('returns null for EXCLUDED_NON_SSE', () => {
     expect(
-      getOrgGovernanceDisplayLabel(
-        { governance_subtype: 'EXCLUDED_NON_SSE', type: 'private' },
-        t,
-        typeLabel,
-      ),
-    ).toBe('Private');
+      getOrgGovernanceDisplayLabel({ governance_subtype: 'EXCLUDED_NON_SSE' }, t),
+    ).toBeNull();
   });
 
-  it('falls back to legacy type when governance is unset', () => {
-    expect(
-      getOrgGovernanceDisplayLabel({ governance_subtype: null, type: 'private' }, t, typeLabel),
-    ).toBe('Private');
+  it('returns null when governance is unset', () => {
+    expect(getOrgGovernanceDisplayLabel({ governance_subtype: null }, t)).toBeNull();
   });
 });

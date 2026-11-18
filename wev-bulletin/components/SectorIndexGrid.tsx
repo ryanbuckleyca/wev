@@ -2,9 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
-import { isGovernanceCategory } from '@/lib/organizations/governance-taxonomy';
 import { sectorBlurb, type SectorIndexCard } from '@/lib/organizations/sector-index';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 
 interface SectorIndexGridProps {
   sectors: SectorIndexCard[];
@@ -26,12 +24,7 @@ function typeMixLabel(
 export default function SectorIndexGrid({ sectors, locale, onSelectSector }: SectorIndexGridProps) {
   const t = useTranslations('organizations');
   const tSectors = useTranslations('taxonomy.sectors');
-  const getMixLabel = (key: string) => {
-    if (isGovernanceCategory(key)) {
-      return getGovernanceCategoryLabel(key, t) ?? key;
-    }
-    return getOrganizationTypeLabel(key, t) ?? key;
-  };
+  const getMixLabel = (key: string) => getGovernanceCategoryLabel(key, t) ?? key;
 
   if (sectors.length === 0) return null;
 

@@ -476,7 +476,6 @@ export type Database = {
           slug: string
           sse_details: Json | null
           sse_rating: string | null
-          type: string | null
           values: string | null
           values_list: string[] | null
           values_rated: Json | null
@@ -514,7 +513,6 @@ export type Database = {
           slug: string
           sse_details?: Json | null
           sse_rating?: string | null
-          type?: string | null
           values?: string | null
           values_list?: string[] | null
           values_rated?: Json | null
@@ -552,7 +550,6 @@ export type Database = {
           slug?: string
           sse_details?: Json | null
           sse_rating?: string | null
-          type?: string | null
           values?: string | null
           values_list?: string[] | null
           values_rated?: Json | null
@@ -907,7 +904,6 @@ export type Database = {
           p_limit?: number
           p_municipalities?: string[]
           p_offset?: number
-          p_org_types?: string[]
           p_provinces?: string[]
           p_search?: string
           p_sectors?: string[]
@@ -944,7 +940,6 @@ export type Database = {
           sse_details: Json
           sse_rating: string
           total_count: number
-          type: string
           value_score: number
           values: string
           values_list: string[]

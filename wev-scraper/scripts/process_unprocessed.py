@@ -109,7 +109,7 @@ def fetch_unprocessed_jobs():
 
 
 def fetch_unprocessed_orgs(include_parked=False):
-    """Fetch orgs missing sector_id/type/descriptions/language/values_list.
+    """Fetch orgs missing sector_id/governance_subtype/descriptions/language/values_list.
 
     Parked orgs (assessment_skip_reason set) are excluded unless *include_parked*,
     so a plain run never re-spends credits on rows a previous attempt gave up on.

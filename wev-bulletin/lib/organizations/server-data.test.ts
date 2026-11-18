@@ -90,7 +90,6 @@ function makeRpcOrg(id: number, name: string, active_job_count: number) {
     created_at: '2026-06-01T00:00:00.000Z',
     name,
     values: null,
-    type: null,
     slug: `${name.toLowerCase()}-${id}`,
     description: null,
     description_en: null,
@@ -143,8 +142,7 @@ describe('organizations/server-data', () => {
       p_sse_only: true,
       p_provinces: null,
       p_municipalities: null,
-      p_org_types: null,
-      p_languages: null,
+        p_languages: null,
       p_sectors: null,
       p_governance_categories: null,
       p_user_id: null,
@@ -213,8 +211,7 @@ describe('organizations/server-data', () => {
         p_limit: 1,
         p_provinces: null,
         p_municipalities: null,
-        p_org_types: null,
-        p_languages: null,
+            p_languages: null,
         p_governance_categories: null,
       }),
     );
@@ -271,16 +268,14 @@ describe('organizations/server-data', () => {
       'get_active_organizations',
       expect.objectContaining({
         p_governance_categories: ['GOV_1', 'GOV_4'],
-        p_org_types: null,
-      }),
+          }),
     );
     expect(mockRpc).toHaveBeenNthCalledWith(
       2,
       'get_active_organizations',
       expect.objectContaining({
         p_governance_categories: null,
-        p_org_types: null,
-      }),
+          }),
     );
   });
 
@@ -408,12 +403,10 @@ describe('organizations/server-data', () => {
         data: [
           {
             name: 'Alpha Farm',
-            type: 'nonprofit',
             sector_id: 'agriculture-food-systems',
           },
           {
             name: 'Radio Co-op',
-            type: 'cooperative',
             sector_id: 'arts-culture-information',
           },
         ],
