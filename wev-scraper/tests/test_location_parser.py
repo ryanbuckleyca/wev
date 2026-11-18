@@ -206,12 +206,49 @@ def test_ambiguous_choice_keeps_street_in_geocode_query():
 
     with patch("utils.location_parser._geocode_with_geocodio", return_value=None) as geocode:
         result = parse_address_with_geocodio("120 Industry St, York")
-    geocode.assert_called_once_with("120 Industry St, York, ON", allow_us=False)
+    geocode.assert_called_once_with("120 Industry St, York, ON", allow_us=False, keep_street=True)
     assert (result["municipality"], result["province"]) == ("Toronto", "ON")
 
     with patch("utils.location_parser._geocode_with_geocodio", return_value=None) as geocode:
         parse_address_with_geocodio("York, PE")
-    geocode.assert_called_once_with("Toronto, ON", allow_us=False)
+    geocode.assert_called_once_with("Toronto, ON", allow_us=False, keep_street=True)
+
+
+def test_ambiguous_choice_sends_street_to_geocodio_client():
+    from utils import location_parser
+    from utils.location_parser import parse_address_with_geocodio
+
+    client = MagicMock()
+    client.geocode.return_value = {"results": []}
+    location_parser._geocode_cache.clear()
+    with patch("utils.location_parser._get_geocodio_client", return_value=client):
+        parse_address_with_geocodio("120 Industry St, York")
+    client.geocode.assert_called_once_with("120 Industry St, York, ON, Canada")
+
+
+@pytest.mark.parametrize(
+    "location, default_province, expected",
+    [
+        ("Waterloo", "QC", ("Waterloo", "QC")),
+        ("Waterloo", None, ("Waterloo", "ON")),
+        ("York", "PE", ("York", "PE")),
+        ("Waterloo", "BC", ("Waterloo", "ON")),
+    ],
+)
+def test_ambiguous_fallback_uses_source_default_province(location, default_province, expected):
+    from utils.location_parser import parse_address_with_geocodio
+
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=None):
+        result = parse_address_with_geocodio(location, default_province=default_province)
+    assert (result["municipality"], result["province"]) == expected
+
+
+def test_ambiguous_choice_survives_geocodio_error():
+    from utils.location_parser import parse_address_with_geocodio
+
+    with patch("utils.location_parser._geocode_with_geocodio", side_effect=RuntimeError("boom")):
+        result = parse_address_with_geocodio("Hamilton, ON")
+    assert (result["municipality"], result["province"]) == ("Hamilton", "ON")
 
 
 def test_ambiguous_choice_overrides_same_province_geocode_far_from_city():
@@ -289,7 +326,7 @@ def test_default_province_qualifies_bare_city():
 
     captured = {}
 
-    def fake_geocode(query, allow_us=False):
+    def fake_geocode(query, allow_us=False, keep_street=False):
         captured["query"] = query
         return {
             "municipality": "Lasalle",
@@ -311,7 +348,7 @@ def test_default_province_respects_explicit_province():
 
     captured = {}
 
-    def fake_geocode(query, allow_us=False):
+    def fake_geocode(query, allow_us=False, keep_street=False):
         captured["query"] = query
         return {"municipality": "Ottawa", "province": "ON", "lat": 45.0, "lng": -75.0, "geocode_accuracy_type": "place"}
 

@@ -2179,7 +2179,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             tl = t.lower()
                             if len(tl) > 2:
                                 location_terms_set.add(tl)
-                        location_terms_set.update(_parent_city_terms(municipality))
+                    municipality_terms = {nfkd_to_ascii(t) for t in location_terms_set}
+                    parent_city_terms = _parent_city_terms(municipality)
                     if province:
                         location_terms_set.add(province.lower())
                         # Full province/territory names in EN+FR (all 13 provinces + territories)
@@ -2259,13 +2260,19 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             else:
                                 if term in searchable_content:
                                     matches_set.add(term)
+                        # A borough's parent city stands in for the municipality, so
+                        # it never raises the number of matches required.
+                        if not (matches_set & municipality_terms):
+                            matches_set.update(p for p in parent_city_terms if p in searchable_content)
                         matches = list(matches_set)
 
                         # Check if location appears in the organization name itself
                         raw_name_lower = raw_name.lower()
                         folded_name = nfkd_to_ascii(raw_name_lower)
                         location_in_name = any(
-                            term in folded_name for term in location_terms if len(term) > 2
+                            term in folded_name
+                            for term in (*location_terms, *parent_city_terms)
+                            if len(term) > 2
                         )
 
                         # Also check if org name contains district/neighborhood indicators

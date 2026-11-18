@@ -595,23 +595,33 @@ _AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
 )
 
 
-def ambiguous_city_for(location: Optional[str], context: str = "") -> dict | None:
+def ambiguous_city_for(
+    location: Optional[str], context: str = "", default_province: Optional[str] = None
+) -> dict | None:
     """Choose a province when the place name exists in more than one.
 
     Returns a municipality/province/lat/lng dict, or None when *location* is
     not one of the ambiguous names. *context* is the employer and posting text.
+    When nothing in the evidence decides it, the source's *default_province*
+    wins over the group's catch-all city.
     """
     if not location or not str(location).strip():
         return None
     folded_query = _alias_lookup_key(normalize_messy_location(location))
     folded_context = _alias_lookup_key(normalize_messy_location(context or ""))
     evidence = f"{folded_query}\n{folded_context}"
+    default_code = _normalize_ca_province_code(default_province) if default_province else None
     for group in _AMBIGUOUS_CITY_GROUPS:
         if not group["query"].fullmatch(folded_query):
             continue
         for pattern, index in group["rules"]:
-            if pattern.search(evidence):
-                return dict(group["cities"][index])
+            if not pattern.search(evidence):
+                continue
+            if not pattern.pattern and default_code:
+                for city in group["cities"]:
+                    if city["province"] == default_code:
+                        return dict(city)
+            return dict(group["cities"][index])
     return None
 
 
@@ -689,7 +699,7 @@ def parse_address_with_geocodio(
         return _empty
 
     cleaned = normalize_messy_location(location)
-    choice = ambiguous_city_for(cleaned, context)
+    choice = ambiguous_city_for(cleaned, context, default_province)
     aliased = None if choice else apply_location_alias(cleaned)
     query = _ambiguous_choice_query(cleaned, choice) if choice else (aliased or cleaned)
 
@@ -764,7 +774,7 @@ def parse_address_with_geocodio(
             return _empty
 
     try:
-        result = _geocode_with_geocodio(query, allow_us=allow_us)
+        result = _geocode_with_geocodio(query, allow_us=allow_us, keep_street=bool(choice))
         if choice:
             return _apply_ambiguous_choice(result, choice)
         if not result:
@@ -781,7 +791,7 @@ def parse_address_with_geocodio(
         return result
     except Exception as e:
         logger.warning(f"Geocodio call failed for location '{location}': {e}")
-        return _empty
+        return _apply_ambiguous_choice(None, choice) if choice else _empty
 
 
 def _safe_get(obj, key, default=None):
@@ -1249,7 +1259,9 @@ def _clean_location_for_geocoding(location: str) -> str:
     return cleaned
 
 
-def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional[dict]:
+def _geocode_with_geocodio(
+    location: str, *, allow_us: bool = False, keep_street: bool = False
+) -> Optional[dict]:
     """
     Use Geocodio to parse location.
     Strategy:
@@ -1261,7 +1273,7 @@ def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional
     """
     global _last_request_time
 
-    cache_key = f"{location}|us={int(allow_us)}"
+    cache_key = f"{location}|us={int(allow_us)}" + ("|street" if keep_street else "")
     # Return cached result if we've seen this location string before
     if cache_key in _geocode_cache:
         cached = _geocode_cache[cache_key]
@@ -1269,19 +1281,22 @@ def _geocode_with_geocodio(location: str, *, allow_us: bool = False) -> Optional
             print(f"\tGeocoding '{location}'... ✓ (cached)")
         return cached
     # Also check legacy key without us flag for CA-only callers
-    if not allow_us and location in _geocode_cache:
+    if not allow_us and not keep_street and location in _geocode_cache:
         cached = _geocode_cache[location]
         if cached:
             print(f"\tGeocoding '{location}'... ✓ (cached)")
         return cached
 
-    result = _geocode_with_geocodio_uncached(location, allow_us=allow_us)
+    result = _geocode_with_geocodio_uncached(location, allow_us=allow_us, keep_street=keep_street)
     _geocode_cache[cache_key] = result
-    _geocode_cache[location] = result
+    if not keep_street:
+        _geocode_cache[location] = result
     return result
 
 
-def _geocode_with_geocodio_uncached(location: str, *, allow_us: bool = False) -> Optional[dict]:
+def _geocode_with_geocodio_uncached(
+    location: str, *, allow_us: bool = False, keep_street: bool = False
+) -> Optional[dict]:
     """Internal: perform the actual Geocodio API call without cache."""
     global _last_request_time
 
@@ -1296,8 +1311,9 @@ def _geocode_with_geocodio_uncached(location: str, *, allow_us: bool = False) ->
         if not client:
             return None
 
-        # Strategy 1: Try to extract explicit "City, Province" from the messy location string
-        explicit_location = _extract_explicit_location(location)
+        # Strategy 1: Try to extract explicit "City, Province" from the messy location string.
+        # keep_street callers already built a clean "street, City, PROV" query.
+        explicit_location = None if keep_street else _extract_explicit_location(location)
 
         if explicit_location:
             # Use the explicit extraction - much more likely to be accurate

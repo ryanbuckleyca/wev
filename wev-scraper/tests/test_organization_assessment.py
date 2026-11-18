@@ -1640,6 +1640,8 @@ def test_assess_with_outcome_reports_location_mismatch():
         ("North York", "ON", "A community health centre serving Toronto, Ontario."),
         ("Saint-Léonard", "QC", "Un organisme communautaire de Montréal, Québec."),
         ("Esquimalt", "BC", "A food hub serving Victoria, British Columbia."),
+        ("Esquimalt", None, "A food hub serving Victoria."),
+        ("Esquimalt", None, "A food hub based in Esquimalt."),
     ],
 )
 def test_assess_accepts_borough_when_results_name_parent_city(municipality, province, description):
