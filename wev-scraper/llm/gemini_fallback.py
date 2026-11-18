@@ -3,8 +3,8 @@
 Order (free tiers first, then local):
   1. gemini-3.6-flash
   2. gemini-3.5-flash-lite
-  3. ollama (LocalGroundedProvider) when ENABLE_LOCAL_FALLBACK
-  4. groq only when SSE_INCLUDE_GROQ=1 (off by default for org/SSE assessment)
+  3. groq only when SSE_INCLUDE_GROQ=1 (off by default for org/SSE assessment)
+  4. ollama (LocalGroundedProvider) when ENABLE_LOCAL_FALLBACK
 
 Shared Tavily snippets are preferred so all backends see the same evidence.
 Gemini native Google Search is **never** enabled by this provider — grounding
@@ -24,8 +24,9 @@ Env overrides:
   SSE_INCLUDE_GROQ           set 1 to put groq back in the SSE/org chain
 
 A 403 / PERMISSION_DENIED on a model (e.g. gemini-3.6-flash) disables that
-model for the rest of the process so later orgs skip straight to the next
-backend. Restart the process after fixing key/model access to retry it.
+model *for that API key* for the rest of the process so later orgs skip straight
+to the next backend. The key is the model actually sent (including a ``model=``
+override). Restart the process after fixing key/model access to retry it.
 """
 
 from __future__ import annotations
@@ -40,6 +41,7 @@ from llm.cooldown import (
     ProviderCooldownMixin,
     fallback_reason,
     get_cooldown_seconds,
+    permission_key,
 )
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
@@ -125,6 +127,10 @@ def _model_for_backend(name: str, model: str | None) -> str | None:
     if _is_gemini_backend(name):
         return model
     return None
+
+
+def _backend_permission_key(name: str, provider: BaseLLMProvider, model: str | None) -> str:
+    return permission_key(_model_for_backend(name, model) or name, provider)
 
 
 def gemini_sse_primary_model() -> str:
@@ -290,10 +296,13 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         last_error: Exception | None = None
         failed: list[str] = []
         for name, provider in self._providers:
+            perm_key = _backend_permission_key(name, provider, model)
             # Skip providers in cooldown / permission-denied disable
-            if self._is_provider_in_cooldown(name):
+            if self._is_provider_in_cooldown(name, perm_key=perm_key):
                 failed.append(name)
-                self._remember_fallback(name, self._provider_skip_reason(name))
+                self._remember_fallback(
+                    name, self._provider_skip_reason(name, perm_key=perm_key),
+                )
                 continue
 
             ev = evidence
@@ -342,7 +351,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 last_error = exc
                 failed.append(name)
                 self._remember_fallback(name, fallback_reason(exc))
-                if not self._mark_provider_failure(name, exc):
+                if not self._mark_provider_failure(name, exc, perm_key=perm_key):
                     logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 
@@ -367,10 +376,13 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         # Gemini-specific model override must not leak to Groq/Ollama.
         model_override = kwargs.pop("model", None)
         for name, provider in self._providers:
+            perm_key = _backend_permission_key(name, provider, model_override)
             # Skip providers in cooldown / permission-denied disable
-            if self._is_provider_in_cooldown(name):
+            if self._is_provider_in_cooldown(name, perm_key=perm_key):
                 failed.append(name)
-                self._remember_fallback(name, self._provider_skip_reason(name))
+                self._remember_fallback(
+                    name, self._provider_skip_reason(name, perm_key=perm_key),
+                )
                 continue
 
             try:
@@ -401,7 +413,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 last_error = exc
                 failed.append(name)
                 self._remember_fallback(name, fallback_reason(exc))
-                if not self._mark_provider_failure(name, exc):
+                if not self._mark_provider_failure(name, exc, perm_key=perm_key):
                     logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 

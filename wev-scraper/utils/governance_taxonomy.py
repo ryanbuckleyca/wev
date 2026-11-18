@@ -298,8 +298,6 @@ def format_governance_taxonomy_prompt() -> str:
         "talent clouds, or social-purchasing portals are operational tags, NOT "
         "governance types (e.g. a driver-owned ride-hailing app is "
         "GOV_1_1_WORKER_COOP with operational_tags [\"platform_coop\"]).",
-        # truncate_keep_ends pins the clause from "hospital authorities and
-        # ministry-run" through "public health-system funding". Keep it intact.
         "3. EXCLUSIONS → EXCLUDED_NON_SSE when any apply: investor-owned / "
         "private for-profits; top-down non-profits with self-perpetuating "
         "donor/corporate boards and no worker or voting-member power; "

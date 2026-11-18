@@ -150,8 +150,10 @@ def get_sse_provider() -> BaseLLMProvider | None:
 def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
     """Return the unified job processor with intelligent fallback.
 
-    Fallback order matches SSE (Gemini first; groq opt-in via UNIFIED_INCLUDE_GROQ):
-      gemini-3.6-flash → gemini-3.5-flash-lite → ollama
+    Fallback order (groq opt-in via UNIFIED_INCLUDE_GROQ; ollama needs
+    ENABLE_LOCAL_FALLBACK):
+      gemini-3.6-flash → gemini-3.5-flash-lite → [groq] → ollama
+    With ENV_MODE=local, ollama is tried first instead of last.
 
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).

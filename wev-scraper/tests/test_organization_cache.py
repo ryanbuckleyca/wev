@@ -171,6 +171,18 @@ class TestMakeCacheKey:
         assert make_cache_key("Org | Apply (2 positions)") == make_cache_key("Org")
         assert make_cache_key("Org (2 positions) | Apply") == make_cache_key("Org")
 
+    def test_page_chrome_strips_profile_tabs_but_keeps_name_words(self):
+        assert clean_organization_display_name("Black Table Farm | About") == "Black Table Farm"
+        assert clean_organization_display_name("Org | Careers | Apply") == "Org"
+        # A discipline after a separator can be part of the employer's identity.
+        assert clean_organization_display_name("Centre of Forensic Sciences | Forensic Science") == (
+            "Centre of Forensic Sciences | Forensic Science"
+        )
+        assert make_cache_key("Org | Forensic Science") != make_cache_key("Org")
+        assert clean_organization_display_name("Habitat-Home") == "Habitat-Home"
+        assert clean_organization_display_name("Habitat - Home") == "Habitat"
+        assert clean_organization_display_name("Habitat–Careers") == "Habitat"
+
     def test_trailing_place_paren_not_stripped(self):
         """Location qualifiers stay part of the key; only all-caps acronyms drop."""
         assert make_cache_key("Canadian Cancer Society (Ontario)") != make_cache_key(
