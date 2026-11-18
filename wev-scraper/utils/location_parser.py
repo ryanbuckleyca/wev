@@ -588,7 +588,7 @@ _AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
         # Township near Cobourg, and earlier backfills wrote that back into
         # jobs.location. Only Northumberland County signals mean the township.
         "rules": (
-            (re.compile(r"cobourg|northumberland|baltimore|camborne|bewdley|gores landing|harwood"), 1),
+            (re.compile(r"cobourg|northumberland|bewdley|gores landing"), 1),
             (re.compile(r""), 0),
         ),
     },

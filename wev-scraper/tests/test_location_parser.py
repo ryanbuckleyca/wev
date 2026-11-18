@@ -182,6 +182,7 @@ def test_ambiguous_st_catharines_uses_posting_and_employer():
         ("Hamilton Township, ON", "Theatre Aquarius", ("Hamilton", "ON")),
         ("100 King St W, Hamilton, ON L8P 1A2", "", ("Hamilton", "ON")),
         ("Hamilton Township", "Farm near Cobourg, Northumberland County", ("Hamilton Township", "ON")),
+        ("Hamilton, ON", "Contact Jane Harwood; offices in Baltimore, MD", ("Hamilton", "ON")),
     ],
 )
 def test_ambiguous_waterloo_york_and_hamilton(location, context, expected):
