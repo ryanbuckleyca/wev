@@ -376,7 +376,7 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 - Never rate "no" because a job description is truncated or lacks compensation details"""
 
 # Short restatement of the TYPE MAPPING / CRITICAL type rules. The org prompt
-# places it next to ORGANIZATION DATA so head+tail truncation (local Ollama)
+# places it just before the JSON schema so head+tail truncation (local Ollama)
 # keeps it together with the "type" schema.
 ORG_TYPE_RULES_RECAP = """TYPE RULES RECAP (the full TYPE MAPPING and CRITICAL rules above take precedence):
 - nonprofit — registered charity / nonprofit / association / OBNL / autonomous community
