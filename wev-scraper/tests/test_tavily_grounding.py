@@ -159,10 +159,25 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         "park notes",
         known_website="https://parkpeople.ca",
     )
-    assert "ORGANIZATION DATA" in prompt
-    # Entity block must sit near the end so head+tail truncation keeps it.
-    assert prompt.rfind("ORGANIZATION DATA") > prompt.find("ALLOWED VALUES")
-    truncated = truncate_keep_ends(prompt, max_chars=8000)
-    assert "Park People" in truncated
-    assert "canonical_name" in truncated
-    assert "parkpeople.ca" in truncated.lower()
+    header = prompt.find("ORGANIZATION DATA:")
+    assert header != -1
+    assert prompt.find("ORGANIZATION DATA:", header + 1) == -1
+    # Entity + JSON schema sit at the end so head+tail truncation keeps both
+    # (Ollama default budget and the 8k stress case). Compare the standalone
+    # header, not the later "ORGANIZATION DATA" wording in the evaluation line.
+    assert header > prompt.find("ALLOWED VALUES")
+    assert prompt.rfind('"canonical_name"') > header
+    for budget in (8000, 10000):
+        truncated = truncate_keep_ends(prompt, max_chars=budget)
+        assert len(truncated) <= budget
+        assert "Park People" in truncated
+        assert "Official organization name" in truncated
+        assert "parkpeople.ca" in truncated.lower()
+        # Type schema stays, so the rules it points at stay too.
+        assert '"type":' in truncated
+        assert "TYPE MAPPING (do not invent other type labels):" in truncated
+        assert "NOT registered-charity / independent-board hospitals" in truncated
+        assert "CRITICAL — public funding is NOT government" in truncated
+        assert "Holland Bloorview-style" in truncated
+        assert "hospital authorities and ministry-run" in truncated
+        assert "independent registered-charity / non-profit hospitals" in truncated

@@ -41,10 +41,16 @@ def normalize_date(date_str: Optional[str]) -> Optional[str]:
 
 
 def normalize_organization(org: Optional[str]) -> Optional[str]:
-    """Normalize organization names."""
+    """Normalize organization names (strip posting-count scrape noise)."""
     if not org:
         return None
-    return normalize_text(org)
+    from utils.organization_cache import clean_organization_display_name
+
+    cleaned = normalize_text(org)
+    if not cleaned:
+        return None
+    cleaned = clean_organization_display_name(cleaned)
+    return cleaned or None
 
 
 def normalize_employment_type(emp_type: Optional[str]) -> Optional[str]:

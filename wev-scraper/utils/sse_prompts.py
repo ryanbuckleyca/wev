@@ -176,6 +176,10 @@ RATING_GUIDELINES = """Be strict:
 
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
+# Local Ollama truncation (llm.tavily_grounding.truncate_keep_ends) re-attaches
+# the TYPE MAPPING block, the hospital CRITICAL section, and the hospital
+# governance-taxonomy exclusion whenever the JSON type schema is kept.
+# Do not rename those headings without updating _TYPE_RULE_SPANS.
 ORG_EVALUATION_CRITERIA = """EVALUATION CRITERIA (organization-level — NOT the job posting):
 
 Rate the ORGANIZATION itself from research (official website, mission, governance,
@@ -211,9 +215,11 @@ TYPE MAPPING (do not invent other type labels):
   are cooperatives, not conventional for-profits).
 - union — labour union
 - government — public agency / municipality / crown corp / school board / public hospital
-  authority / direct statutory department → "no"
+  authority (ministry-/council-appointed) / direct statutory department → "no"
   (NOT political parties — parties are not public bodies; see "other" below)
   (NOT autonomous non-profit corporations or regional development hubs funded by municipal/provincial grants — see "nonprofit" above)
+  (NOT registered-charity / independent-board hospitals that receive OHIP/Medicare /
+  provincial health funding — public funding ≠ government; see CRITICAL below)
 - other — conventional for-profit / private company / privately owned school or
   program / political party or electoral organization / residual → "no"
   (even if the mission mentions environment, community, children, nature, or
@@ -232,6 +238,15 @@ CRITICAL — place-name / city-in-name is NOT government (municipal funding is N
 - Use type "government" only with explicit public-sector evidence (created by statute,
   governing body appointed by a minister / council / public authority, crown corp,
   school board, public hospital authority, municipal department, etc.).
+CRITICAL — public funding is NOT government (charity / teaching hospitals):
+- OHIP, Medicare, Ontario Health / provincial health-system funding, research grants,
+  or "publicly funded" language alone does NOT make an employer type "government".
+- Independent registered-charity or non-profit teaching / rehabilitation / children's
+  hospitals with their own board (Holland Bloorview-style) → type "nonprofit",
+  SSE-eligible Yes when must-haves hold — even when most revenue is public health funding.
+- Exclude as "government" only hospital *authorities* / ministry-run facilities /
+  boards appointed by a minister or public authority — not every hospital that takes
+  public money.
 CRITICAL — worker-owned enterprises are cooperatives, not conventional consultancies:
 - Worker-owned businesses, worker-owned consultancies/practices/studios, and worker
   collectives are type "cooperative" (SSE-eligible), NOT "other". Do NOT disqualify
@@ -257,6 +272,17 @@ CRITICAL — charities are never "other" for lacking cooperative governance:
 There is no "social enterprise" type. Mission-driven private businesses are "other".
 Political parties and electoral organizations → type "other", rating "no" (never SSE;
 never "government"; do not store as nonprofit Yes even if incorporated as a society).
+CRITICAL — citizens' advocacy / campaign nonprofits are NOT political parties:
+- Independent non-profit citizens' advocacy, civic campaign, and public-interest
+  movement organizations (e.g. Leadnow-style democracy / climate / justice campaigns)
+  → type "nonprofit", SSE-eligible Yes when must-haves hold.
+- Do NOT rate "no" or type "other" merely because the org does advocacy, lobbying,
+  civic campaigns, or "political" issue work, or because it is "not a cooperative,
+  mutual, or trading social enterprise." Advocacy OBNLs / charities with a clear
+  people/community/planet mission are SSE — they are not excluded for lacking an
+  enterprise / coop business model.
+- Only registered parties, riding associations, and electoral campaign organizations
+  that exist to elect candidates → type "other", rating "no".
 Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
 Mission-driven private enterprise is not SSE.
 
@@ -281,6 +307,8 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
 - Government / public-sector employer (any level) — never SSE
   (Do NOT trigger from a city/town name in the org title alone — see place-name rule)
 - Political party / electoral organization — never SSE (type "other", not "government")
+- Do NOT automatic-no citizens' advocacy / civic campaign nonprofits (they are
+  nonprofit Yes when must-haves hold — only parties/electoral orgs are out)
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - Privately owned / founder-owned business or private school/program with a social
   or environmental mission but no nonprofit, cooperative, or union governance
@@ -312,6 +340,10 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
   Community orchestras / community arts associations with accessible music, culture,
   or arts-education public benefit → type "nonprofit" (prefer strong_yes when mission
   evidence is clear) — not government/no.
+- Never type "government" / "no" solely because a registered-charity hospital or
+  health nonprofit is "publicly funded" (OHIP/Medicare/provincial health funding).
+  Independent-board charity hospitals → nonprofit Yes; only hospital authorities /
+  minister-appointed public bodies are government.
 - Inc./Ltd./Corp. commercial music, arts, or education providers without charity
   or nonprofit registration evidence → type "other", rating "no" (never invent
   nonprofit + weak_yes from mission warmth alone)
@@ -339,6 +371,8 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
   NEVER government or other.
 - "no" = government, other/conventional for-profit / privately owned mission business
   / political party (type "other"), or no substantive social/environmental mission
+- Never "no" solely because a clear nonprofit does advocacy / civic campaigns /
+  democracy or justice organizing rather than operating a coop or trading enterprise
 - Greenwashing test: environmental, nature, outdoor-education, wellness, or
   "community" mission without nonprofit/coop/union governance → "no" (type "other")
   — but a registered charity or clear community nonprofit with that mission is

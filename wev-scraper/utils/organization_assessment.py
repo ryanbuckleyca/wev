@@ -33,7 +33,11 @@ from utils.governance_taxonomy import (
 )
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.location_parser import is_province_like_municipality, parse_address_with_geocodio
-from utils.organization_cache import evidence_domain, extract_domain
+from utils.organization_cache import (
+    clean_organization_display_name,
+    evidence_domain,
+    extract_domain,
+)
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     _detect_text_language,
@@ -163,7 +167,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. IMPORTANT: Classify based on governance control and ownership, not mission language alone. Type is a filter, not a Yes by itself — SSE Yes still requires must-haves from research. If an entity is created by government statute, has its governing body appointed by government (a minister, cabinet, or a public authority), and its mandate is set externally by government rather than by an autonomous membership, classify it as 'government', regardless of whether it is incorporated as a nonprofit. A city/town/region name in the organization name is geographic branding only — NOT evidence of municipal/government status. Community orchestras, choirs, bands, theatres, and similar arts associations are typically 'nonprofit', not 'government', unless research shows a city department or statutory public body. Autonomous non-profit corporations (OBNLs) and regional development hubs with independent boards are 'nonprofit', even when receiving municipal/provincial grants. Reserve 'nonprofit' for organizations autonomously governed as charities/nonprofits (independent board, non-distribution) — map mutuals/community groups to nonprofit; board+ED charities stay nonprofit (never 'other' for lacking cooperative labels). Use 'cooperative' for worker/consumer/producer coops, credit unions, and worker-owned businesses/practices. Use 'other' for conventional for-profits, privately owned mission-driven businesses (including private nature/forest schools), and political parties / electoral organizations (parties are NOT 'government'). Do NOT invent a social-enterprise type.",
+  "type": "One of: nonprofit, cooperative, government, union, other — or null. Classify by governance control/ownership per TYPE MAPPING and CRITICAL rules above (not mission alone). Type is a filter, not a Yes by itself.",
   "governance_subtype_code": "One subtype code from the GOVERNANCE TAXONOMY above, or EXCLUDED_NON_SSE, or null. Classify by ownership/voting control, not sector or platform.",
   "governance_category_id": "Parent category of that subtype (GOV_1..GOV_5 or EXCLUDED).",
   "governance_confidence": "0.0 to 1.0",
@@ -374,7 +378,8 @@ ORGANIZATION DATA:
 SOURCE DESCRIPTION (for description_* only — omit if none):
 {source_description}
 
-Return a JSON object with exactly these fields:
+Evaluate the organization in ORGANIZATION DATA above. Return one JSON object
+with exactly these fields:
 {json_fields}
 """
 
@@ -949,8 +954,11 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 
 # Explicit private / commercial ownership signals in model text.
 # Shareholders: positive ownership only — do not match "without shareholders".
+# "for-profit" must not match inside "not-for-profit" / "not for profit".
+# Equivalent whitespace ("not  for profit", "not for  profit") is collapsed
+# before these patterns run — see _apply_private_company_sse_guard.
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
-    r"for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
+    r"(?<!not[- ])for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
     r"founder[- ]owned|owner[- ]operated|"
     r"(?:with|has|have)\s+(?:private\s+)?shareholders?|shareholder[- ]owned|"
     r"commercial (?:music|arts|education|school|program|enterprise)|"
@@ -980,7 +988,9 @@ _SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
     r"volunteer board|without (?:private )?shareholders?|"
     r"volunteer[- ](?:run|led|based|driven|center|centre|organization)|"
     r"(?:staffed|composed|operated)\s+(?:by|mainly by|primarily by)\s+volunteers?|"
-    r"non[- ]?profit(?:able)?(?:\s+organization)?|charitable\s+(?:mission|purpose|aims?)|"
+    r"non[- ]?profit(?:able)?(?:\s+organization)?|"
+    r"not[- ]for[- ]profit(?:able)?(?:\s+organization)?|"
+    r"charitable\s+(?:mission|purpose|aims?)|"
     r"community[- ]based\s+(?:organization|service)|social\s+(?:mission|purpose)|"
     r"serves?\s+the\s+(?:community|public)|community\s+solidarity",
     re.IGNORECASE,
@@ -1032,7 +1042,10 @@ def _apply_private_company_sse_guard(
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
-    blob = _org_assessment_evidence_blob(result)
+    # Collapse equivalent whitespace so "not  for profit" and "not for  profit"
+    # are the same not-for-profit wording as "not for profit", while bare
+    # "for-profit" still matches the demotion pattern.
+    blob = re.sub(r"\s+", " ", _org_assessment_evidence_blob(result))
     org_type = result.get("type")
 
     # Strongest keep: CRA / letters patent / charity registration.
@@ -1078,8 +1091,31 @@ _EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
     r"public[- ]sector|crown corp|"
     r"statutory|created by (?:statute|legislation|government)|"
     r"appointed by (?:a )?(?:minister|council|cabinet|public authority)|"
-    r"school board|public hospital|government (?:agency|department|body)|"
+    r"school board|public hospital authority|hospital authority|"
+    r"government (?:agency|department|body)|"
     r"provincial (?:agency|ministry)|federal (?:agency|department)",
+    re.IGNORECASE,
+)
+# Overturn a government type only when the explanation itself treats a
+# place-name as municipal employment. Public-hospital governance or funding
+# is not that mistake.
+_PLACE_NAME_MISTAKE_RE = re.compile(
+    r"place[- ]name|"
+    r"named after (?:the )?(?:city|town|municipality|region)|"
+    r"(?:city|town|place)(?:[- ]|\s)+in(?:[- ]|\s)+(?:the[- ]|the\s+)?name|"
+    r"from the (?:city|town|place) name|"
+    r"assumed to be a public body|"
+    r"geographic branding",
+    re.IGNORECASE,
+)
+# A public hospital operator stays government even if the explanation also
+# mentions a place-name. Governance or funding wording alone is not a
+# place-name mistake and does not restore SSE.
+_PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
+    r"\bpublic hospitals?\b|"
+    r"\bhospital operators?\b|"
+    r"\bhospital authority\b|"
+    r"ministry[- ]run (?:hospitals?|facilities)",
     re.IGNORECASE,
 )
 
@@ -1091,8 +1127,10 @@ def _apply_community_arts_place_name_guard(
     """Correct government typing from city-in-name for community arts orgs.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to nonprofit and restore a Yes floor when the
-    model also forced No solely via that mis-type.
+    municipal employment. Remap to nonprofit and restore a Yes floor only when
+    the explanation shows that place-name mistake. Public hospital governance
+    or funding is not that mistake; a public hospital operator stays
+    government/no.
     """
     if result.get("type") != "government":
         return result
@@ -1102,7 +1140,11 @@ def _apply_community_arts_place_name_guard(
         return result
 
     blob = _org_assessment_evidence_blob(result)
+    if _PUBLIC_HOSPITAL_OPERATOR_RE.search(blob):
+        return result
     if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
+        return result
+    if not _PLACE_NAME_MISTAKE_RE.search(blob):
         return result
 
     flags = list(result.get("flags") or [])
@@ -1400,12 +1442,16 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         )
         return None
 
+    # Slug the cleaned name that is stored. If cleaning strips the whole
+    # value, keep the previous nonempty-name fallback for both fields.
+    stored_name = clean_organization_display_name(canonical_name) or canonical_name.strip()
+
     slug = _parse_text_field(data, "slug") or ""
     if not slug:
-        slug = generate_slug(canonical_name)
+        slug = generate_slug(stored_name)
         logger.warning(
             "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
-            canonical_name, raw_name, slug,
+            stored_name, raw_name, slug,
         )
 
     description_en, description_fr = _parse_localized_text(
@@ -1423,7 +1469,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
 
     result = AssessedOrgResult(
-        canonical_name=canonical_name.strip(),
+        canonical_name=stored_name,
         slug=slug,
         website=_parse_website(llm_website),
         description_en=description_en,

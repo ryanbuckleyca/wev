@@ -67,6 +67,17 @@ def test_org_political_parties_map_to_other_not_government():
     assert 'political party (type "other")' in ORG_RATING_GUIDELINES
 
 
+def test_org_citizens_advocacy_nonprofits_remain_sse_eligible():
+    """Advocacy OBNLs must not be conflated with parties or 'not an enterprise'."""
+    assert "citizens' advocacy / campaign nonprofits are NOT political parties" in (
+        ORG_EVALUATION_CRITERIA
+    )
+    assert "Leadnow-style" in ORG_EVALUATION_CRITERIA
+    assert "trading social enterprise" in ORG_EVALUATION_CRITERIA
+    assert "Do NOT automatic-no citizens' advocacy" in ORG_EVALUATION_CRITERIA
+    assert "Never \"no\" solely because a clear nonprofit does advocacy" in ORG_RATING_GUIDELINES
+
+
 def test_job_rating_prefers_weak_yes_for_nonprofit_missing_wage():
     assert "false-no charities solely for opaque" in RATING_GUIDELINES
     assert "wage disclosure alone is NOT an automatic No" in EVALUATION_CRITERIA
@@ -86,6 +97,19 @@ def test_org_place_name_not_government_for_community_arts():
     assert "Community orchestras, choirs, bands, theatres" in ORG_EVALUATION_CRITERIA
     assert "Never type \"government\" from a municipal place-name" in ORG_RATING_GUIDELINES
     assert "community arts / orchestra / choir" in ORG_RATING_GUIDELINES
+
+
+def test_org_publicly_funded_charity_hospitals_remain_nonprofit():
+    """OHIP/Medicare funding alone must not force government / EXCLUDED."""
+    assert "public funding is NOT government (charity / teaching hospitals)" in (
+        ORG_EVALUATION_CRITERIA
+    )
+    assert "Holland Bloorview-style" in ORG_EVALUATION_CRITERIA
+    assert "public funding ≠ government" in ORG_EVALUATION_CRITERIA
+    assert "hospital *authorities*" in ORG_EVALUATION_CRITERIA
+    assert "Never type \"government\" / \"no\" solely because a registered-charity hospital" in (
+        ORG_RATING_GUIDELINES
+    )
 
 
 def test_job_rating_prefers_strong_yes_for_popular_education_nonprofits():

@@ -298,13 +298,23 @@ def format_governance_taxonomy_prompt() -> str:
         "talent clouds, or social-purchasing portals are operational tags, NOT "
         "governance types (e.g. a driver-owned ride-hailing app is "
         "GOV_1_1_WORKER_COOP with operational_tags [\"platform_coop\"]).",
+        # truncate_keep_ends pins the clause from "hospital authorities and
+        # ministry-run" through "public health-system funding". Keep it intact.
         "3. EXCLUSIONS → EXCLUDED_NON_SSE when any apply: investor-owned / "
         "private for-profits; top-down non-profits with self-perpetuating "
         "donor/corporate boards and no worker or voting-member power; "
-        "government / state entities (public hospitals, universities, colleges, "
-        "Crown corporations, municipal bodies); corporate trade associations "
-        "(chambers of commerce, industry lobbies); and extractive co-ops that "
-        "violate SSE decent-work or ecological criteria.",
+        "government / state entities (hospital authorities and ministry-run "
+        "facilities with government-appointed boards, public universities/colleges "
+        "as state institutions, Crown corporations, municipal bodies) — NOT "
+        "independent registered-charity / non-profit hospitals that merely receive "
+        "public health-system funding; corporate trade associations "
+        "(chambers of commerce, industry lobbies); registered political parties "
+        "/ electoral campaign organizations; and extractive co-ops that "
+        "violate SSE decent-work or ecological criteria. Do NOT exclude "
+        "citizens' advocacy, civic campaign, or public-interest movement "
+        "nonprofits merely because they advocate rather than trade — those "
+        "are typically GOV_4_1_MEMBER_NPO (or another GOV_4/GOV_5 subtype) "
+        "when SSE Yes, never EXCLUDED_NON_SSE for 'not an enterprise'.",
         "",
         "CONTROLLED SUBTYPE DICTIONARY (choose exactly one subtype code):",
     ]

@@ -13,6 +13,7 @@ from hypothesis import strategies as st
 from utils.organization_cache import (
     OrganizationCache,
     canonical_location,
+    clean_organization_display_name,
     domains_match,
     employer_apex,
     evidence_domain,
@@ -134,6 +135,41 @@ class TestMakeCacheKey:
         assert make_cache_key("Canadian Centre for Food & Ecology") == make_cache_key(
             "Canadian Centre for Food and Ecology (CCFE)"
         )
+
+    def test_hiring_count_suffix_stripped_from_key_and_display(self):
+        dirty = "Grand River Conservation Authority (2 positions)"
+        clean = "Grand River Conservation Authority"
+        assert clean_organization_display_name(dirty) == clean
+        assert clean_organization_display_name("Org – 3 postes") == "Org"
+        assert make_cache_key(dirty) == make_cache_key(clean)
+        assert "positions" not in make_cache_key(dirty)
+
+    def test_apply_link_suffix_stripped_from_key_and_display(self):
+        dirty = "Clean Energy Canada | Apply"
+        clean = "Clean Energy Canada"
+        assert clean_organization_display_name(dirty) == clean
+        assert clean_organization_display_name("Town of East Gwillimbury | Apply Now") == (
+            "Town of East Gwillimbury"
+        )
+        assert clean_organization_display_name("Org – Postuler") == "Org"
+        assert make_cache_key(dirty) == make_cache_key(clean)
+        assert "apply" not in make_cache_key(dirty)
+
+    def test_linktree_suffix_stripped_from_key_and_display(self):
+        dirty = "The Kindness and Smile Zone | Linktree"
+        clean = "The Kindness and Smile Zone"
+        assert clean_organization_display_name(dirty) == clean
+        assert clean_organization_display_name("Org | linktr.ee") == "Org"
+        assert clean_organization_display_name("Org – Carrd") == "Org"
+        assert make_cache_key(dirty) == make_cache_key(clean)
+        assert "linktree" not in make_cache_key(dirty)
+
+    def test_stacked_scrape_noise_suffixes_strip_in_either_order(self):
+        """Hiring-count and apply chrome can appear in either order."""
+        assert clean_organization_display_name("Org | Apply (2 positions)") == "Org"
+        assert clean_organization_display_name("Org (2 positions) | Apply") == "Org"
+        assert make_cache_key("Org | Apply (2 positions)") == make_cache_key("Org")
+        assert make_cache_key("Org (2 positions) | Apply") == make_cache_key("Org")
 
     def test_trailing_place_paren_not_stripped(self):
         """Location qualifiers stay part of the key; only all-caps acronyms drop."""
