@@ -44,7 +44,7 @@ from utils.organization_language import (
     classify_org_language,
 )
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
-from utils.slug import generate_slug
+from utils.slug import generate_slug, nfkd_to_ascii
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -146,6 +146,40 @@ _DISTRICT_INDICATORS = [
 DISTRICT_INDICATORS_PATTERN = re.compile(
     r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
 )
+
+# Boroughs / inner suburbs that org websites and search results describe by the
+# parent city. The location check also accepts the parent city's name.
+_MUNICIPALITY_PARENT_CITY: dict[str, str] = {
+    "york": "toronto",
+    "north york": "toronto",
+    "east york": "toronto",
+    "etobicoke": "toronto",
+    "scarborough": "toronto",
+    "saint leonard": "montreal",
+    "montreal nord": "montreal",
+    "saint laurent": "montreal",
+    "lasalle": "montreal",
+    "verdun": "montreal",
+    "lachine": "montreal",
+    "anjou": "montreal",
+    "outremont": "montreal",
+    "lemoyne": "longueuil",
+    "saint hubert": "longueuil",
+    "greenfield park": "longueuil",
+    "burnaby": "vancouver",
+    "north vancouver": "vancouver",
+    "west vancouver": "vancouver",
+    "esquimalt": "victoria",
+    "saanich": "victoria",
+    "oak bay": "victoria",
+}
+
+
+def _parent_city_terms(municipality: str | None) -> tuple[str, ...]:
+    key = re.sub(r"[\s\-]+", " ", nfkd_to_ascii(municipality or "").lower()).strip()
+    parent = _MUNICIPALITY_PARENT_CITY.get(key)
+    return (parent,) if parent else ()
+
 
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
@@ -2145,6 +2179,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             tl = t.lower()
                             if len(tl) > 2:
                                 location_terms_set.add(tl)
+                    municipality_terms = {nfkd_to_ascii(t) for t in location_terms_set}
+                    parent_city_terms = _parent_city_terms(municipality)
                     if province:
                         location_terms_set.add(province.lower())
                         # Full province/territory names in EN+FR (all 13 provinces + territories)
@@ -2178,7 +2214,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                                     wl = word.lower()
                                     if len(wl) > 2:
                                         location_terms_set.add(wl)
-                    location_terms = list(location_terms_set)
+                    # Accent-folded on both sides so "montreal"/"levis" match "Montréal"/"Lévis".
+                    location_terms = list({nfkd_to_ascii(t) for t in location_terms_set})
 
                     # If we have location info, validate it appears in the response
                     # UNLESS the organization has national/provincial/international scope
@@ -2195,7 +2232,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             _extra_hq_parts.append(llm_hq_prov_code.lower())
                         website_str = (discovered_website or "")
                         domain_str = extract_domain(website_str) or ""
-                        searchable_content = " ".join([
+                        searchable_content = nfkd_to_ascii(" ".join([
                             (response_text or "").lower(),
                             (result.get("description_en") or "").lower(),
                             (result.get("description_fr") or "").lower(),
@@ -2208,7 +2245,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             " ".join(p.lower() for p in _extra_hq_parts),
                             website_str.lower(),
                             domain_str.lower(),
-                        ])
+                        ]))
 
                         structured_prov = (result.get("headquarters_province") or "").lower()
                         structured_prov_code = (llm_hq_prov_code or "").lower()
@@ -2223,12 +2260,19 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             else:
                                 if term in searchable_content:
                                     matches_set.add(term)
+                        # A borough's parent city stands in for the municipality, so
+                        # it never raises the number of matches required.
+                        if not (matches_set & municipality_terms):
+                            matches_set.update(p for p in parent_city_terms if p in searchable_content)
                         matches = list(matches_set)
 
                         # Check if location appears in the organization name itself
                         raw_name_lower = raw_name.lower()
+                        folded_name = nfkd_to_ascii(raw_name_lower)
                         location_in_name = any(
-                            term in raw_name_lower for term in location_terms if len(term) > 2
+                            term in folded_name
+                            for term in (*location_terms, *parent_city_terms)
+                            if len(term) > 2
                         )
 
                         # Also check if org name contains district/neighborhood indicators
