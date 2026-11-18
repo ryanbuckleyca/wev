@@ -1,8 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getOrgGovernanceDisplayLabel,
-  hasPublicGovernanceSubtype,
-} from './governance-labels';
+import { getOrgGovernanceDisplayLabel, hasPublicGovernanceSubtype } from './governance-labels';
 
 const t = Object.assign((key: string) => key, {
   has: (key: string) =>
@@ -24,15 +21,13 @@ describe('hasPublicGovernanceSubtype', () => {
 
 describe('getOrgGovernanceDisplayLabel', () => {
   it('returns the governance subtype for SSE orgs', () => {
-    expect(
-      getOrgGovernanceDisplayLabel({ governance_subtype: 'GOV_1_1_WORKER_COOP' }, t),
-    ).toBe('governance.subtype.GOV_1_1_WORKER_COOP');
+    expect(getOrgGovernanceDisplayLabel({ governance_subtype: 'GOV_1_1_WORKER_COOP' }, t)).toBe(
+      'governance.subtype.GOV_1_1_WORKER_COOP',
+    );
   });
 
   it('returns null for EXCLUDED_NON_SSE', () => {
-    expect(
-      getOrgGovernanceDisplayLabel({ governance_subtype: 'EXCLUDED_NON_SSE' }, t),
-    ).toBeNull();
+    expect(getOrgGovernanceDisplayLabel({ governance_subtype: 'EXCLUDED_NON_SSE' }, t)).toBeNull();
   });
 
   it('returns null when governance is unset', () => {

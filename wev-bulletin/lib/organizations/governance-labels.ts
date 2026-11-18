@@ -41,13 +41,9 @@ export function getGovernanceSubtypeLabel(
  * True when the subtype is a public SSE governance form (not unset / EXCLUDED).
  * Non-SSE rows store EXCLUDED_NON_SSE and have no public governance label.
  */
-export function hasPublicGovernanceSubtype(
-  subtype: string | null | undefined,
-): boolean {
+export function hasPublicGovernanceSubtype(subtype: string | null | undefined): boolean {
   return (
-    typeof subtype === 'string' &&
-    isGovernanceSubtype(subtype) &&
-    subtype !== EXCLUDED_SUBTYPE
+    typeof subtype === 'string' && isGovernanceSubtype(subtype) && subtype !== EXCLUDED_SUBTYPE
   );
 }
 

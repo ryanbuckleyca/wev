@@ -142,7 +142,7 @@ describe('organizations/server-data', () => {
       p_sse_only: true,
       p_provinces: null,
       p_municipalities: null,
-        p_languages: null,
+      p_languages: null,
       p_sectors: null,
       p_governance_categories: null,
       p_user_id: null,
@@ -211,7 +211,7 @@ describe('organizations/server-data', () => {
         p_limit: 1,
         p_provinces: null,
         p_municipalities: null,
-            p_languages: null,
+        p_languages: null,
         p_governance_categories: null,
       }),
     );
@@ -268,14 +268,14 @@ describe('organizations/server-data', () => {
       'get_active_organizations',
       expect.objectContaining({
         p_governance_categories: ['GOV_1', 'GOV_4'],
-          }),
+      }),
     );
     expect(mockRpc).toHaveBeenNthCalledWith(
       2,
       'get_active_organizations',
       expect.objectContaining({
         p_governance_categories: null,
-          }),
+      }),
     );
   });
 

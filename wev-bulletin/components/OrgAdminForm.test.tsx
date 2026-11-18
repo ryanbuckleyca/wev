@@ -245,7 +245,7 @@ describe('OrgAdminForm', () => {
             ...parkedOrg,
             assessment_skip_reason: 'incomplete_backlog',
             sector_id: 'manufacturing-production',
-            type: 'other',
+            governance_subtype: 'EXCLUDED_NON_SSE',
             description_en: 'An aluminum producer.',
             description_fr: 'Un producteur d’aluminium.',
             language: 'bilingual',
