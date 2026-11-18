@@ -176,10 +176,6 @@ RATING_GUIDELINES = """Be strict:
 
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
-# Local Ollama truncation (llm.tavily_grounding.truncate_keep_ends) re-attaches
-# the TYPE MAPPING block, the hospital CRITICAL section, and the hospital
-# governance-taxonomy exclusion whenever the JSON type schema is kept.
-# Do not rename those headings without updating _TYPE_RULE_SPANS.
 ORG_EVALUATION_CRITERIA = """EVALUATION CRITERIA (organization-level — NOT the job posting):
 
 Rate the ORGANIZATION itself from research (official website, mission, governance,
@@ -378,6 +374,22 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
   — but a registered charity or clear community nonprofit with that mission is
   nonprofit Yes, not this greenwashing case
 - Never rate "no" because a job description is truncated or lacks compensation details"""
+
+# Short restatement of the TYPE MAPPING / CRITICAL type rules. The org prompt
+# places it next to ORGANIZATION DATA so head+tail truncation (local Ollama)
+# keeps it together with the "type" schema.
+ORG_TYPE_RULES_RECAP = """TYPE RULES RECAP (the full TYPE MAPPING and CRITICAL rules above take precedence):
+- nonprofit — registered charity / nonprofit / association / OBNL / autonomous community
+  development corp, even with municipal, provincial, or OHIP/Medicare funding.
+- cooperative — worker / consumer / producer / multi-stakeholder coop, credit union,
+  worker-owned practice or collective.
+- union — labour union.
+- government → "no" — public agency, municipality, crown corp, school board, hospital
+  authority / ministry-run facility, statutory department. Needs explicit public-sector
+  evidence: a place name in the org name or "publicly funded" language is not enough.
+- Independent registered-charity / non-profit hospitals with their own board
+  (Holland Bloorview-style) → "nonprofit", never "government".
+- other → "no" — for-profit / private company / political party / residual."""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - GOVERNANCE GATE: Yes only when the employer is nonprofit / coop / union / community —

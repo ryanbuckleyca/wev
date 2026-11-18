@@ -11,6 +11,8 @@ import time
 from abc import ABC, abstractmethod
 from typing import Callable
 
+from llm.cooldown import is_auth_permission_error
+
 logger = logging.getLogger(__name__)
 
 # Rough token estimation: 1 token ≈ 4 characters
@@ -277,6 +279,11 @@ class BaseLLMProvider(ABC):
                     raise
                 if raise_for_fallback and ("timeout" in err_str.lower() or "timed out" in err_str.lower()):
                     logger.warning(f"[batch {i}/{total_batches}] request timeout, re-raising for fallback: {e}")
+                    raise
+                if raise_for_fallback and is_auth_permission_error(e):
+                    logger.warning(
+                        f"[batch {i}/{total_batches}] auth/permission error, re-raising for fallback: {e}"
+                    )
                     raise
                 if raise_for_fallback and error_suggests_try_next_provider(e):
                     logger.warning(

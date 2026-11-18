@@ -77,6 +77,8 @@ def test_get_fallback_llm_provider_returns_chain():
 
 def test_sse_fallback_skips_groq_unless_opted_in(monkeypatch):
     monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_PRIMARY_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_LITE_MODEL", raising=False)
 
     flash = MagicMock()
     flash.is_available.return_value = True
@@ -374,6 +376,41 @@ def test_sse_fallback_gemini_model_override_not_forwarded_to_groq():
         assert flash.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert lite.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert groq.complete.call_args.kwargs.get("model") is None
+
+
+def test_sse_fallback_permission_denial_keys_on_overridden_model(monkeypatch):
+    """A 403 under a model override disables that model, not the tier's default.
+
+    Both Gemini tiers send the overridden model, so lite skips it too.
+    """
+    from llm.cooldown import clear_permission_denied_providers, is_provider_permission_denied
+
+    monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("ENABLE_LOCAL_FALLBACK", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_PRIMARY_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_LITE_MODEL", raising=False)
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = [LLMProviderError("403 PERMISSION_DENIED denied"), "flash-ok"]
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    clear_permission_denied_providers()
+    try:
+        with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini:
+            mock_gemini.side_effect = [flash, lite]
+            provider = SSEFallbackProvider()
+            with pytest.raises(LLMProviderError):
+                provider.complete("prompt", model="gemini-custom", use_grounding=False)
+            lite.complete.assert_not_called()
+            # The tier's default model is still usable on the same key.
+            assert provider.complete("prompt", use_grounding=False) == "flash-ok"
+        assert is_provider_permission_denied("gemini-custom") is True
+        assert is_provider_permission_denied(DEFAULT_GEMINI_PRIMARY) is False
+    finally:
+        clear_permission_denied_providers()
 
 
 def test_sse_fallback_gemini_model_override_not_forwarded_to_ollama():

@@ -21,6 +21,9 @@ _TRAILING_ACRONYM = re.compile(
     r"\s*[\(\[]([A-Za-z][A-Za-z0-9.&/\-]{0,14})[\)\]]\s*$"
 )
 
+# _HIRING_COUNT_SUFFIX and _PAGE_CHROME_SUFFIX are mirrored in SQL by
+# public.clean_org_display_name (migration 20261118120000); change both together.
+
 # Posting-count noise glued onto employer names by job boards, e.g.
 # "Grand River Conservation Authority (2 positions)" / "Org – 3 postes".
 _HIRING_COUNT_SUFFIX = re.compile(
@@ -47,19 +50,20 @@ _PAGE_CHROME_SUFFIX = re.compile(
     r"solo\.to|allmylinks|"
     r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
     r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
-    r"social\s+impact|forensic\s+science|"
+    r"social\s+impact|"
     r"official\s+site|our\s+story|who\s+we\s+are|get\s+involved|"
     r"facebook|instagram"
     r")"
     r"\s*$"
     r"|"
-    r"\s*[\-–—]\s*"
+    # A bare hyphen needs a space before it so "Habitat-Home" keeps its name.
+    r"(?:\s+[\-–—]|[–—])\s*"
     r"(?:"
     r"apply(?:\s+now)?|postuler|postulez|"
     r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio|"
     r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
     r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
-    r"social\s+impact|forensic\s+science"
+    r"social\s+impact"
     r")\s*$",
     re.IGNORECASE,
 )
