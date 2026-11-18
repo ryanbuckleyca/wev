@@ -1,7 +1,8 @@
 -- Drop legacy organizations.type after Migration B flipped all readers to governance.
 -- Prod/staging must have governance_subtype populated (or synced) before applying.
-
-ALTER TABLE public.organizations DROP COLUMN IF EXISTS type;
+-- Order matters: Migration B's get_active_organizations still selects o.type, so
+-- replace that RPC before DROP COLUMN (Postgres blocks the drop while the
+-- dependency exists).
 
 DROP FUNCTION IF EXISTS public.get_active_organizations(
   timestamp with time zone, integer, integer, text, boolean,
@@ -207,3 +208,6 @@ COMMENT ON FUNCTION public.get_active_organizations(
 ) IS
   'Organization directory listing. Filters by p_governance_categories '
   '(and sectors/geo/etc). Legacy organizations.type has been dropped.';
+
+-- Safe now that no remaining RPC/view body references organizations.type.
+ALTER TABLE public.organizations DROP COLUMN IF EXISTS type;
