@@ -1634,6 +1634,37 @@ def test_assess_with_outcome_reports_location_mismatch():
     assert outcome.skip_reason == SKIP_REASON_LOCATION_MISMATCH
 
 
+@pytest.mark.parametrize(
+    "municipality, province, description",
+    [
+        ("North York", "ON", "A community health centre serving Toronto, Ontario."),
+        ("Saint-Léonard", "QC", "Un organisme communautaire de Montréal, Québec."),
+        ("Esquimalt", "BC", "A food hub serving Victoria, British Columbia."),
+    ],
+)
+def test_assess_accepts_borough_when_results_name_parent_city(municipality, province, description):
+    from unittest.mock import MagicMock
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(
+        _valid_assessment_payload(
+            canonical_name="Neighbourhood Services",
+            slug="neighbourhood-services",
+            description_en=description,
+            geographic_scope="local",
+        )
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Neighbourhood Services",
+        municipality=municipality,
+        province=province,
+    )
+
+    assert outcome.result is not None
+
+
 def test_assess_with_outcome_returns_no_reason_on_success():
     from unittest.mock import MagicMock
 

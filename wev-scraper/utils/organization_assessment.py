@@ -147,6 +147,44 @@ DISTRICT_INDICATORS_PATTERN = re.compile(
     r'(?:^|\s|\b)(' + '|'.join(re.escape(i) for i in _DISTRICT_INDICATORS) + r')(?=$|\s|\b)'
 )
 
+# Boroughs / inner suburbs that org websites and search results describe by the
+# parent city. The location check also accepts the parent city's name.
+_MUNICIPALITY_PARENT_CITY: dict[str, str] = {
+    "york": "toronto",
+    "north york": "toronto",
+    "east york": "toronto",
+    "etobicoke": "toronto",
+    "scarborough": "toronto",
+    "saint leonard": "montreal",
+    "montreal nord": "montreal",
+    "saint laurent": "montreal",
+    "lasalle": "montreal",
+    "verdun": "montreal",
+    "lachine": "montreal",
+    "anjou": "montreal",
+    "outremont": "montreal",
+    "burnaby": "vancouver",
+    "north vancouver": "vancouver",
+    "west vancouver": "vancouver",
+    "esquimalt": "victoria",
+    "saanich": "victoria",
+    "oak bay": "victoria",
+}
+
+
+_PARENT_CITY_SPELLINGS: dict[str, tuple[str, ...]] = {"montreal": ("montreal", "montréal")}
+
+
+def _parent_city_terms(municipality: str | None) -> tuple[str, ...]:
+    from utils.slug import nfkd_to_ascii
+
+    key = re.sub(r"[\s\-]+", " ", nfkd_to_ascii(municipality or "").lower()).strip()
+    parent = _MUNICIPALITY_PARENT_CITY.get(key)
+    if not parent:
+        return ()
+    return _PARENT_CITY_SPELLINGS.get(parent, (parent,))
+
+
 # Hard length limits for stored LLM fields. Keep in sync with
 # wev-bulletin/lib/organizations/constants.ts (description/mission).
 # Prompt asks the model to paraphrase within the limit. If it overshoots,
@@ -2145,6 +2183,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             tl = t.lower()
                             if len(tl) > 2:
                                 location_terms_set.add(tl)
+                        location_terms_set.update(_parent_city_terms(municipality))
                     if province:
                         location_terms_set.add(province.lower())
                         # Full province/territory names in EN+FR (all 13 provinces + territories)

@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from utils.location_parser import (
     _clean_location_for_geocoding,
     _extract_explicit_location,
@@ -159,6 +161,81 @@ def test_ambiguous_st_catharines_uses_posting_and_employer():
     assert quebec["province"] == "QC"
 
     assert ambiguous_city_for("Toronto, ON", "offices in St. Catharines") is None
+
+
+@pytest.mark.parametrize(
+    "location, context, expected",
+    [
+        ("Kitchener, Waterloo", "", ("Waterloo", "ON")),
+        ("Waterloo", "", ("Waterloo", "ON")),
+        ("Waterloo, QC", "Kitchener-Waterloo Symphony", ("Waterloo", "ON")),
+        ("Waterloo, QC", "", ("Waterloo", "QC")),
+        ("Waterloo", "Festival near Granby", ("Waterloo", "QC")),
+        ("York", "", ("Toronto", "ON")),
+        ("York, PE", "Theatre Technician", ("Toronto", "ON")),
+        ("120 Industry St, York", "FoodShare Toronto", ("Toronto", "ON")),
+        ("1290 Weston Rd, York, ON M6M 4R3, Canada", "", ("Toronto", "ON")),
+        ("York", "Charlottetown, PEI", ("York", "PE")),
+    ],
+)
+def test_ambiguous_waterloo_and_york(location, context, expected):
+    from utils.location_parser import ambiguous_city_for
+
+    choice = ambiguous_city_for(location, context)
+    assert (choice["municipality"], choice["province"]) == expected
+
+
+@pytest.mark.parametrize("location", ["New York", "York Region", "North York, ON", "Waterloo Region"])
+def test_ambiguous_groups_ignore_other_places(location):
+    from utils.location_parser import ambiguous_city_for
+
+    assert ambiguous_city_for(location, "") is None
+
+
+def test_ambiguous_choice_keeps_street_in_geocode_query():
+    from utils.location_parser import parse_address_with_geocodio
+
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=None) as geocode:
+        result = parse_address_with_geocodio("120 Industry St, York")
+    geocode.assert_called_once_with("120 Industry St, York, ON", allow_us=False)
+    assert (result["municipality"], result["province"]) == ("Toronto", "ON")
+
+    with patch("utils.location_parser._geocode_with_geocodio", return_value=None) as geocode:
+        parse_address_with_geocodio("York, PE")
+    geocode.assert_called_once_with("Toronto, ON", allow_us=False)
+
+
+@pytest.mark.parametrize(
+    "location, expected",
+    [
+        ("Calgary, CA-AB, CA", "Calgary, AB"),
+        ("Fort McMurray, CA-AB, CA", "Fort McMurray, AB"),
+        ("Delta, CA-BC, CA", "Delta, BC"),
+        ("****** ÎLE DE MONTRÉAL ******", "ÎLE DE MONTRÉAL"),
+    ],
+)
+def test_normalize_messy_location_job_board_formats(location, expected):
+    from utils.location_parser import normalize_messy_location
+
+    assert normalize_messy_location(location) == expected
+
+
+@pytest.mark.parametrize(
+    "location, expected",
+    [
+        ("****** ÎLE DE MONTRÉAL ******", "Montreal, QC"),
+        ("Regional Municipality of Peel, ON, Canada +", "Brampton, ON"),
+        (
+            "Toronto/GTA ON. Virtual and In-person. Candidates should live in the GTA.",
+            "Toronto, ON",
+        ),
+        ("1950 Grand Trunk, Local 110 (au 2e étage)", "Montreal, QC"),
+    ],
+)
+def test_location_aliases_for_misgeocoded_regions(location, expected):
+    from utils.location_parser import apply_location_alias
+
+    assert apply_location_alias(location) == expected
 
 
 def test_parse_address_overrides_sainte_catherine_when_posting_is_ontario():

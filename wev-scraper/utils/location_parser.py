@@ -35,9 +35,16 @@ LOCATION_ALIASES: dict[str, str] = {
     "norfolk county": "Simcoe, ON",
     "national capital region": "Ottawa, ON",
     "montreal and surrounding area": "Montreal, QC",
+    "ile de montreal": "Montreal, QC",
+    # Geocodio mis-resolves "Peel, ON" → Poole, ON; Brampton is the regional seat
+    "regional municipality of peel": "Brampton, ON",
+    # "Toronto/GTA ON. Virtual and In-person…" → Brantford, ON
+    "toronto/gta": "Toronto, ON",
     # French short form / Sainte- after Ste- expand
     "valleyfield": "Salaberry-de-Valleyfield, QC",
     "sainte-adele": "Sainte-Adèle, QC",
+    # COCo street address with no city; Geocodio picks Grand Trunk in Chambly / AB
+    "1950 grand trunk": "Montreal, QC",
     # Org name used as location
     "collectif bienvenue - welcome collective": "Montreal, QC",
     "welcome collective": "Montreal, QC",
@@ -52,7 +59,15 @@ LOCATION_ALIASES: dict[str, str] = {
 
 # Aliases eligible for prefix matching (Geocodio anchors + long-blurb regions).
 # Everything else in LOCATION_ALIASES is matched exact-only.
-_PREFIX_MATCH_ALIASES = ("saanich", "ladner", "national capital region")
+_PREFIX_MATCH_ALIASES = (
+    "saanich",
+    "ladner",
+    "national capital region",
+    "ile de montreal",
+    "regional municipality of peel",
+    "toronto/gta",
+    "1950 grand trunk",
+)
 
 # Approx province centroids when Geocodio skips province-only queries.
 _CA_PROVINCE_CENTROIDS: dict[str, tuple[float, float]] = {
@@ -134,8 +149,9 @@ def has_repeated_location_token(location: Optional[str]) -> bool:
 def normalize_messy_location(location: Optional[str]) -> str:
     """Fix common scraper artifacts before alias lookup / Geocodio.
 
-    - Strip trailing ``+`` / junk commas
+    - Strip trailing ``+`` / junk commas and decorative ``*`` runs
     - Unicode dashes → ASCII hyphen
+    - Oracle job boards' ``Calgary, CA-AB, CA`` → ``Calgary, AB``
     - Collapse repeated city tokens (``CalgaryCalgary``, ``EloraEloraElora``)
     - Expand ``Ste-`` / ``Ste `` → ``Sainte-`` (French Sainte-)
     """
@@ -143,6 +159,8 @@ def normalize_messy_location(location: Optional[str]) -> str:
         return ""
     text = str(location).strip()
     text = text.replace("\u2013", "-").replace("\u2014", "-").replace("\u2212", "-")
+    text = text.replace("*", " ")
+    text = re.sub(r"(?i),\s*CA-([A-Z]{2})(?:\s*,\s*CA)?\s*$", r", \1", text)
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"[+\s,]+$", "", text).strip()
     # Collapse CamelCase repeats: CalgaryCalgary → Calgary, EloraEloraElora → Elora
@@ -486,6 +504,63 @@ _AMBIGUOUS_CITY_GROUPS: tuple[dict, ...] = (
             (re.compile(r"(?:qc|quebec).{0,24}(?:ste\.? catherine|sainte-catherine)"), 1),
         ),
     },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:kitchener\s*(?:[,/&-]|and)\s*)?waterloo"
+            r"(?:(?:\s*,\s*|\s+)(?:qc|quebec|on|ontario|canada|ca))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Waterloo",
+                "province": "ON",
+                "lat": 43.466874,
+                "lng": -80.524635,
+            },
+            {
+                "municipality": "Waterloo",
+                "province": "QC",
+                "lat": 45.350000,
+                "lng": -72.516667,
+            },
+        ),
+        # Kitchener-Waterloo signals win even over a stored "Waterloo, QC":
+        # earlier backfills wrote Geocodio's wrong pick back into jobs.location.
+        # Eastern Townships signals pick Quebec; otherwise Ontario.
+        "rules": (
+            (re.compile(r"kitchener|cambridge|guelph|laurier|uwaterloo|waterloo region|region of waterloo"), 0),
+            (re.compile(r"waterloo\W{0,3}(?:qc|quebec)\b"), 1),
+            (re.compile(r"granby|shefford|bromont|magog|eastern townships|cantons de l.est"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
+    {
+        "query": re.compile(
+            r"^(?:location:\s*)?(?:[^,]*\d[^,]*,\s*)?york"
+            r"(?:(?:\s*,\s*|\s+)(?:on|ontario|pe|pei|prince edward island|canada|ca"
+            r"|[a-z]\d[a-z]|\d[a-z]\d))*$"
+        ),
+        "cities": (
+            {
+                "municipality": "Toronto",
+                "province": "ON",
+                "lat": 43.689600,
+                "lng": -79.478700,
+            },
+            {
+                "municipality": "York",
+                "province": "PE",
+                "lat": 46.300000,
+                "lng": -63.070000,
+            },
+        ),
+        # Bare "York" is the former City of York, now Toronto. A stored
+        # "York, PE" alone is not enough (earlier backfills wrote that back);
+        # Prince Edward Island needs a PEI signal in the posting.
+        "rules": (
+            (re.compile(r"charlottetown|prince edward island|\bpei\b"), 1),
+            (re.compile(r""), 0),
+        ),
+    },
 )
 
 
@@ -507,6 +582,25 @@ def ambiguous_city_for(location: Optional[str], context: str = "") -> dict | Non
             if pattern.search(evidence):
                 return dict(group["cities"][index])
     return None
+
+
+_TRAILING_REGION_TOKENS_RE = re.compile(
+    r"(?:(?:\s*,\s*|\s+)(?:qc|quebec|québec|on|ontario|pe|pei|prince edward island"
+    r"|canada|ca|[a-z]\d[a-z]|\d[a-z]\d))+$",
+    re.IGNORECASE,
+)
+
+
+def _ambiguous_choice_query(cleaned: str, choice: dict) -> str:
+    """Geocodio query for an ambiguous city: keep any street, swap the province.
+
+    "120 Industry St, York" → "120 Industry St, York, ON" keeps street-level
+    coordinates; a bare name becomes the chosen "City, PROV".
+    """
+    head = _TRAILING_REGION_TOKENS_RE.sub("", cleaned).strip(" ,")
+    if "," not in head:
+        return f"{choice['municipality']}, {choice['province']}"
+    return f"{head}, {choice['province']}"
 
 
 def _apply_ambiguous_choice(result: dict | None, choice: dict) -> dict:
@@ -555,11 +649,7 @@ def parse_address_with_geocodio(
     cleaned = normalize_messy_location(location)
     choice = ambiguous_city_for(cleaned, context)
     aliased = None if choice else apply_location_alias(cleaned)
-    query = (
-        f"{choice['municipality']}, {choice['province']}"
-        if choice
-        else (aliased or cleaned)
-    )
+    query = _ambiguous_choice_query(cleaned, choice) if choice else (aliased or cleaned)
 
     # Province-scoped phrases → fill province (+ optional centroid), no city.
     scoped = _province_scoped_from_phrase(cleaned)
