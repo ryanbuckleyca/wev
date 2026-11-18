@@ -176,6 +176,10 @@ RATING_GUIDELINES = """Be strict:
 
 # Organization-level SSE criteria (NOT job-post criteria).
 # Used by OrganizationAssessor — never rate an org on job compensation/hours.
+# Local Ollama truncation (llm.tavily_grounding.truncate_keep_ends) re-attaches
+# the TYPE MAPPING block, the hospital CRITICAL section, and the hospital
+# governance-taxonomy exclusion whenever the JSON type schema is kept.
+# Do not rename those headings without updating _TYPE_RULE_SPANS.
 ORG_EVALUATION_CRITERIA = """EVALUATION CRITERIA (organization-level — NOT the job posting):
 
 Rate the ORGANIZATION itself from research (official website, mission, governance,

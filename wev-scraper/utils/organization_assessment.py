@@ -33,7 +33,11 @@ from utils.governance_taxonomy import (
 )
 from utils.job_values_prompts import get_taxonomy, get_work_values_set
 from utils.location_parser import is_province_like_municipality, parse_address_with_geocodio
-from utils.organization_cache import evidence_domain, extract_domain
+from utils.organization_cache import (
+    clean_organization_display_name,
+    evidence_domain,
+    extract_domain,
+)
 from utils.organization_language import (
     VALID_ORG_LANGUAGES,
     _detect_text_language,
@@ -951,6 +955,8 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 # Explicit private / commercial ownership signals in model text.
 # Shareholders: positive ownership only — do not match "without shareholders".
 # "for-profit" must not match inside "not-for-profit" / "not for profit".
+# Equivalent whitespace ("not  for profit", "not for  profit") is collapsed
+# before these patterns run — see _apply_private_company_sse_guard.
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
     r"(?<!not[- ])for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
     r"founder[- ]owned|owner[- ]operated|"
@@ -1036,7 +1042,10 @@ def _apply_private_company_sse_guard(
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
-    blob = _org_assessment_evidence_blob(result)
+    # Collapse equivalent whitespace so "not  for profit" and "not for  profit"
+    # are the same not-for-profit wording as "not for profit", while bare
+    # "for-profit" still matches the demotion pattern.
+    blob = re.sub(r"\s+", " ", _org_assessment_evidence_blob(result))
     org_type = result.get("type")
 
     # Strongest keep: CRA / letters patent / charity registration.
@@ -1087,6 +1096,28 @@ _EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
     r"provincial (?:agency|ministry)|federal (?:agency|department)",
     re.IGNORECASE,
 )
+# Overturn a government type only when the explanation itself treats a
+# place-name as municipal employment. Public-hospital governance or funding
+# is not that mistake.
+_PLACE_NAME_MISTAKE_RE = re.compile(
+    r"place[- ]name|"
+    r"named after (?:the )?(?:city|town|municipality|region)|"
+    r"(?:city|town|place)(?:[- ]|\s)+in(?:[- ]|\s)+(?:the[- ]|the\s+)?name|"
+    r"from the (?:city|town|place) name|"
+    r"assumed to be a public body|"
+    r"geographic branding",
+    re.IGNORECASE,
+)
+# A public hospital operator stays government even if the explanation also
+# mentions a place-name. Governance or funding wording alone is not a
+# place-name mistake and does not restore SSE.
+_PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
+    r"\bpublic hospitals?\b|"
+    r"\bhospital operators?\b|"
+    r"\bhospital authority\b|"
+    r"ministry[- ]run (?:hospitals?|facilities)",
+    re.IGNORECASE,
+)
 
 
 def _apply_community_arts_place_name_guard(
@@ -1096,8 +1127,10 @@ def _apply_community_arts_place_name_guard(
     """Correct government typing from city-in-name for community arts orgs.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to nonprofit and restore a Yes floor when the
-    model also forced No solely via that mis-type.
+    municipal employment. Remap to nonprofit and restore a Yes floor only when
+    the explanation shows that place-name mistake. Public hospital governance
+    or funding is not that mistake; a public hospital operator stays
+    government/no.
     """
     if result.get("type") != "government":
         return result
@@ -1107,7 +1140,11 @@ def _apply_community_arts_place_name_guard(
         return result
 
     blob = _org_assessment_evidence_blob(result)
+    if _PUBLIC_HOSPITAL_OPERATOR_RE.search(blob):
+        return result
     if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
+        return result
+    if not _PLACE_NAME_MISTAKE_RE.search(blob):
         return result
 
     flags = list(result.get("flags") or [])
@@ -1405,12 +1442,16 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         )
         return None
 
+    # Slug the cleaned name that is stored. If cleaning strips the whole
+    # value, keep the previous nonempty-name fallback for both fields.
+    stored_name = clean_organization_display_name(canonical_name) or canonical_name.strip()
+
     slug = _parse_text_field(data, "slug") or ""
     if not slug:
-        slug = generate_slug(canonical_name)
+        slug = generate_slug(stored_name)
         logger.warning(
             "OrganizationAssessor: LLM returned no slug for canonical_name=%r raw_name=%r — generated slug=%r",
-            canonical_name, raw_name, slug,
+            stored_name, raw_name, slug,
         )
 
     description_en, description_fr = _parse_localized_text(
@@ -1427,10 +1468,8 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
     llm_website = data.get("website")
     logger.debug(f"LLM returned website field: {llm_website!r} for org {canonical_name}")
 
-    from utils.organization_cache import clean_organization_display_name
-
     result = AssessedOrgResult(
-        canonical_name=clean_organization_display_name(canonical_name) or canonical_name.strip(),
+        canonical_name=stored_name,
         slug=slug,
         website=_parse_website(llm_website),
         description_en=description_en,

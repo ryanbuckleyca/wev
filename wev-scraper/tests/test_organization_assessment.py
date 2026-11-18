@@ -607,8 +607,8 @@ def test_org_assessment_prompt_political_parties_are_other_not_government():
 
 
 def test_org_assessment_prompt_keeps_citizens_advocacy_nonprofits():
-    from utils.organization_assessment import _build_assessment_prompt
     from utils.governance_taxonomy import format_governance_taxonomy_prompt
+    from utils.organization_assessment import _build_assessment_prompt
 
     prompt = _build_assessment_prompt("Leadnow", "Vancouver", "BC", "", "")
     assert "citizens' advocacy / campaign nonprofits are NOT political parties" in prompt
@@ -620,8 +620,8 @@ def test_org_assessment_prompt_keeps_citizens_advocacy_nonprofits():
 
 
 def test_org_assessment_prompt_keeps_publicly_funded_charity_hospitals():
-    from utils.organization_assessment import _build_assessment_prompt
     from utils.governance_taxonomy import format_governance_taxonomy_prompt
+    from utils.organization_assessment import _build_assessment_prompt
 
     prompt = _build_assessment_prompt(
         "Holland Bloorview Kids Rehabilitation Hospital", "Toronto", "ON", "", ""
@@ -1015,6 +1015,53 @@ def test_private_company_gate_keeps_not_for_profit_wording(nonprofit_phrase):
     assert not any("private_company_gate" in f for f in result["flags"])
 
 
+@pytest.mark.parametrize(
+    "nonprofit_phrase",
+    ("not  for profit", "not for  profit"),
+)
+def test_private_company_gate_keeps_irregular_not_for_profit_whitespace(nonprofit_phrase):
+    """Extra spaces between not/for/profit still count as not-for-profit wording.
+
+    No other keep cue is present, and the name has an Inc. suffix, so only the
+    collapsed not-for-profit phrase can preserve the Yes.
+    """
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Arc Poetry Society Inc.",
+            slug="arc-poetry-society",
+            type="nonprofit",
+            sse_rating="strong_yes",
+            sse_reasoning_en=(
+                f"As a {nonprofit_phrase} cultural society publishing contemporary poetry."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+            flags=[],
+        ),
+        "Arc Poetry Society Inc.",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("private_company_gate" in f for f in result["flags"])
+
+
+def test_private_company_gate_demotes_for_profit_with_extra_whitespace():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Acme Services",
+            slug="acme-services",
+            type="nonprofit",
+            sse_rating="weak_yes",
+            sse_reasoning_en="A for  profit consultancy with CSR language.",
+        ),
+        "Acme Services",
+    )
+    assert result is not None
+    assert result["type"] == "other"
+    assert result["sse_rating"] == "no"
+    assert any("private_company_gate" in f for f in result["flags"])
+
+
 def test_private_company_gate_still_demotes_bare_for_profit():
     result = _parse_response(
         _assessment_json(
@@ -1130,6 +1177,75 @@ def test_place_name_guard_keeps_true_municipal_agency():
     assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_public_hospital_operator():
+    """Place-name wording does not overturn a public hospital operator."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Named after the town of Riverside, but it is the public hospital "
+                "operator for the region."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_ignores_hospital_funding_alone():
+    """Hospital funding or governance is not a place-name mistake."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Community Orchestra",
+            slug="riverside-community-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Hospital governance and OHIP funding cover the program."
+            ),
+        ),
+        "Riverside Community Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_parse_response_missing_slug_uses_cleaned_canonical_name():
+    from utils.slug import generate_slug
+
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Clean Energy Canada | Apply",
+            slug="",
+        ),
+        "Clean Energy Canada | Apply",
+    )
+    assert result is not None
+    assert result["canonical_name"] == "Clean Energy Canada"
+    assert result["slug"] == "clean-energy-canada"
+    assert result["slug"] == generate_slug(result["canonical_name"])
+
+
+def test_parse_response_missing_slug_keeps_name_when_cleaning_is_empty():
+    from utils.slug import generate_slug
+
+    result = _parse_response(
+        _assessment_json(canonical_name="| Apply", slug=""),
+        "| Apply",
+    )
+    assert result is not None
+    assert result["canonical_name"] == "| Apply"
+    assert result["slug"] == generate_slug("| Apply")
 
 
 def test_assess_handles_null_geographic_scope():

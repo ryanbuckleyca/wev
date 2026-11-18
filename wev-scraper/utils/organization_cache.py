@@ -35,22 +35,31 @@ _HIRING_COUNT_SUFFIX = re.compile(
     re.IGNORECASE,
 )
 
-# Page-chrome noise from career/Linktree titles, e.g.
-# "Clean Energy Canada | Apply", "The Kindness and Smile Zone | Linktree".
+# Page-chrome / CTA / aggregator noise from career & profile titles, e.g.
+# "Clean Energy Canada | Apply", "The Kindness and Smile Zone | Linktree",
+# "Black Table Farm | About", "Dhyana Cleaning | Social Impact".
 _PAGE_CHROME_SUFFIX = re.compile(
     r"\s*[|\/]\s*"
     r"(?:"
     r"apply(?:\s+now)?|postuler|postulez|candidat(?:ure|er)?|"
     r"submit(?:\s+(?:an?\s+)?application)?|"
     r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio|beacons\.ai|"
-    r"solo\.to|allmylinks"
+    r"solo\.to|allmylinks|"
+    r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
+    r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
+    r"social\s+impact|forensic\s+science|"
+    r"official\s+site|our\s+story|who\s+we\s+are|get\s+involved|"
+    r"facebook|instagram"
     r")"
     r"\s*$"
     r"|"
     r"\s*[\-–—]\s*"
     r"(?:"
     r"apply(?:\s+now)?|postuler|postulez|"
-    r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio"
+    r"linktree|linktr\.ee|carrd(?:\.co)?|bio\.link|lnk\.bio|"
+    r"about(?:\s+us)?|home|accueil|welcome|bienvenue|"
+    r"careers?|jobs?|emplois?|contact(?:\s+us)?|"
+    r"social\s+impact|forensic\s+science"
     r")\s*$",
     re.IGNORECASE,
 )

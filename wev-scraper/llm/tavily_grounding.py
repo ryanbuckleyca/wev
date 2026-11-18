@@ -50,6 +50,38 @@ _TRUNCATE_MARK = (
     "\n\n…[middle truncated — use rules above + data below]\n\n"
 )
 
+# Org-assessment rules that sit in the middle of the prompt but govern the
+# "type" field kept at the tail. Local Ollama truncation re-attaches these
+# whenever that type schema survives. Markers are exact prompt substrings;
+# (start, end, include_end, max_len). End markers that begin the next section
+# are excluded. Caps reject an accidental oversized slice.
+_TYPE_RULE_SPANS: tuple[tuple[str, str, bool, int], ...] = (
+    (
+        "TYPE MAPPING (do not invent other type labels):",
+        "CRITICAL — place-name",
+        False,
+        4500,
+    ),
+    (
+        "CRITICAL — public funding is NOT government",
+        "CRITICAL — worker-owned",
+        False,
+        1500,
+    ),
+    (
+        "hospital authorities and ministry-run",
+        "public health-system funding",
+        True,
+        800,
+    ),
+    (
+        'Never type "government" / "no" solely because a registered-charity hospital',
+        "minister-appointed public bodies are government.",
+        True,
+        600,
+    ),
+)
+
 # Search is supporting context only — primary source lives in the prompt body.
 _EVIDENCE_HEADER = """SUPPORTING WEB EVIDENCE (secondary — from search):
 PRIORITY RULES (mandatory):
@@ -343,10 +375,92 @@ def max_grounded_prompt_chars() -> int:
     return _env_int("MAX_GROUNDED_PROMPT_CHARS", DEFAULT_MAX_GROUNDED_PROMPT_CHARS)
 
 
+def _middle_type_rule_pieces(text: str, middle_lo: int, middle_hi: int) -> list[str]:
+    """Return type-classification spans that head/tail truncation would drop."""
+    pieces: list[str] = []
+    for start, end, include_end, max_len in _TYPE_RULE_SPANS:
+        start_at = text.find(start)
+        if start_at < 0:
+            continue
+        end_at = text.find(end, start_at + len(start))
+        if end_at < 0:
+            continue
+        stop = end_at + len(end) if include_end else end_at
+        if stop - start_at > max_len:
+            continue
+        if start_at < middle_lo or stop > middle_hi:
+            continue
+        piece = text[start_at:stop].strip()
+        if piece:
+            pieces.append(piece)
+    return pieces
+
+
+def _fit_type_rule_pins(
+    text: str,
+    *,
+    head_len: int,
+    tail_len: int,
+    budget: int,
+    head_ratio: float,
+) -> tuple[str, int, int] | None:
+    """Keep type-classification rules when the type schema is in the tail.
+
+    Budget comes from the head first, then from tail bytes ahead of the entity
+    block. The tail is never shortened past ORGANIZATION DATA or the type
+    schema, and neither head nor tail is expanded into the dropped middle
+    (that would duplicate the pinned text).
+    """
+    type_pos = text.rfind('"type":')
+    if type_pos < 0 or type_pos < len(text) - tail_len:
+        return None
+    org_pos = text.rfind("ORGANIZATION DATA:")
+    min_tail = len(text) - type_pos
+    if org_pos >= 0 and org_pos >= len(text) - tail_len:
+        min_tail = max(min_tail, len(text) - org_pos)
+    if budget < 32 + min_tail:
+        return None
+
+    pieces = _middle_type_rule_pieces(text, head_len, len(text) - tail_len)
+    if not pieces:
+        return None
+
+    max_pin = budget - 32 - min_tail
+    chosen: list[str] = []
+    for piece in pieces:
+        candidate = "\n".join([*chosen, piece])
+        # Leading newline separates the pins from the head.
+        if len(candidate) + 1 <= max_pin:
+            chosen.append(piece)
+    if not chosen:
+        return None
+
+    pin_text = "\n".join(chosen)
+    remain = budget - len(pin_text) - 1
+    new_head = max(32, int(remain * head_ratio))
+    new_tail = remain - new_head
+    if new_tail < min_tail:
+        new_tail = min_tail
+        new_head = remain - new_tail
+    if new_head > head_len:
+        new_head = head_len
+        new_tail = remain - new_head
+    if new_tail > tail_len:
+        new_tail = tail_len
+        new_head = remain - new_tail
+    if new_head < 32 or new_tail < min_tail:
+        return None
+    return pin_text, new_head, new_tail
+
+
 def truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) -> str:
     """Keep prompt head (instructions) and tail (entity data / JSON schema).
 
     Head-only truncation drops the payload models must answer from.
+    When the retained tail still contains the org type schema, also keep the
+    TYPE MAPPING, hospital-exclusion, hospital CRITICAL, and hospital
+    governance-taxonomy spans that schema refers to. Prompts without those
+    spans keep the previous head+tail split.
     """
     if max_chars <= 0 or len(text) <= max_chars:
         return text
@@ -359,7 +473,17 @@ def truncate_keep_ends(text: str, max_chars: int, *, head_ratio: float = 0.2) ->
     if tail_len < 32:
         head_len = budget // 2
         tail_len = budget - head_len
-    return text[:head_len] + mark + text[-tail_len:]
+    fitted = _fit_type_rule_pins(
+        text,
+        head_len=head_len,
+        tail_len=tail_len,
+        budget=budget,
+        head_ratio=head_ratio,
+    )
+    if not fitted:
+        return text[:head_len] + mark + text[-tail_len:]
+    pin_text, head_len, tail_len = fitted
+    return text[:head_len] + "\n" + pin_text + mark + text[-tail_len:]
 
 
 def inject_grounding_evidence(prompt: str, evidence: str) -> str:

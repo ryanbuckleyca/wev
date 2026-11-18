@@ -64,14 +64,59 @@ COMMENT ON FUNCTION public.normalize_org_name(text) IS
   'and trailing acronyms).';
 
 -- Clean dirty display names and recompute STORED generated columns.
-UPDATE public.organizations
-SET name = btrim(regexp_replace(
-  name,
-  '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)',
-  '',
-  'i'
-))
-WHERE name ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)';
+-- Keep the original value when the strip would be empty ("| Apply") or would
+-- duplicate organizations_identity_key at the same location. Mixed values such
+-- as "Clean Energy Canada | Apply" still clean.
+
+CREATE OR REPLACE FUNCTION pg_temp.project_apply_cta_display(p_name text)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  s text := coalesce(p_name, '');
+  stripped text;
+BEGIN
+  stripped := regexp_replace(
+    s,
+    '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)',
+    '',
+    'i'
+  );
+  IF stripped IS DISTINCT FROM s THEN
+    RETURN btrim(stripped);
+  END IF;
+  RETURN s;
+END;
+$$;
+
+WITH projected AS (
+  SELECT
+    id,
+    name AS old_name,
+    pg_temp.project_apply_cta_display(name) AS new_name,
+    coalesce(nullif(lower(btrim(location)), ''), '') AS loc_key
+  FROM public.organizations
+),
+collisions AS (
+  SELECT lower(btrim(new_name)) AS name_key, loc_key
+  FROM projected
+  WHERE btrim(new_name) <> ''
+  GROUP BY 1, 2
+  HAVING count(*) > 1
+)
+UPDATE public.organizations AS o
+SET name = p.new_name
+FROM projected AS p
+WHERE o.id = p.id
+  AND p.old_name IS DISTINCT FROM p.new_name
+  AND btrim(p.new_name) <> ''
+  AND NOT EXISTS (
+    SELECT 1
+    FROM collisions AS c
+    WHERE c.name_key = lower(btrim(p.new_name))
+      AND c.loc_key = p.loc_key
+  );
 
 UPDATE public.organizations
 SET name = name
@@ -82,11 +127,15 @@ SET alternative_names = alternative_names
 WHERE alternative_names_normalized
   IS DISTINCT FROM public.normalize_org_names(alternative_names);
 
-UPDATE public.jobs
-SET organization = btrim(regexp_replace(
-  organization,
-  '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)',
-  '',
-  'i'
-))
-WHERE organization ~* '(\s*[|\/]\s*(apply(\s+now)?|postuler|postulez|candidat(ure|er)?|submit(\s+(an?\s+)?application)?)\s*$|\s*[\-–—]\s*(apply(\s+now)?|postuler|postulez)\s*$)';
+UPDATE public.jobs AS j
+SET organization = cleaned.new_name
+FROM (
+  SELECT
+    id,
+    pg_temp.project_apply_cta_display(organization) AS new_name
+  FROM public.jobs
+  WHERE organization IS NOT NULL
+) AS cleaned
+WHERE j.id = cleaned.id
+  AND j.organization IS DISTINCT FROM cleaned.new_name
+  AND btrim(cleaned.new_name) <> '';

@@ -57,14 +57,61 @@ COMMENT ON FUNCTION public.normalize_org_name(text) IS
 -- STORED generated columns (name_normalized / alternative_names_normalized) are
 -- not recomputed when an IMMUTABLE function is replaced. Clean dirty display
 -- names and force a rewrite so stored norms match the new function.
-UPDATE public.organizations
-SET name = btrim(regexp_replace(
-  name,
-  '(\s*[\(\[]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*[\)\]]|\s*[\-–—]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?))\s*$',
-  '',
-  'i'
-))
-WHERE name ~* '(\s*[\(\[]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*[\)\]]\s*$|\s*[\-–—]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*$)';
+--
+-- Skip a rewrite that would blank the name or duplicate organizations_identity_key
+-- (lower(btrim(name)) + location). That includes two dirty rows at the same
+-- location that collapse to one key. Conflicting rows keep their current names
+-- so the unique index still holds for every row.
+
+CREATE OR REPLACE FUNCTION pg_temp.project_hiring_count_display(p_name text)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  s text := coalesce(p_name, '');
+  stripped text;
+BEGIN
+  stripped := regexp_replace(
+    s,
+    '(\s*[\(\[]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?)\s*[\)\]]|\s*[\-–—]\s*\d+\s+(positions?|postes?|openings?|vacancies|roles?|offres?))\s*$',
+    '',
+    'i'
+  );
+  IF stripped IS DISTINCT FROM s THEN
+    RETURN btrim(stripped);
+  END IF;
+  RETURN s;
+END;
+$$;
+
+WITH projected AS (
+  SELECT
+    id,
+    name AS old_name,
+    pg_temp.project_hiring_count_display(name) AS new_name,
+    coalesce(nullif(lower(btrim(location)), ''), '') AS loc_key
+  FROM public.organizations
+),
+collisions AS (
+  SELECT lower(btrim(new_name)) AS name_key, loc_key
+  FROM projected
+  WHERE btrim(new_name) <> ''
+  GROUP BY 1, 2
+  HAVING count(*) > 1
+)
+UPDATE public.organizations AS o
+SET name = p.new_name
+FROM projected AS p
+WHERE o.id = p.id
+  AND p.old_name IS DISTINCT FROM p.new_name
+  AND btrim(p.new_name) <> ''
+  AND NOT EXISTS (
+    SELECT 1
+    FROM collisions AS c
+    WHERE c.name_key = lower(btrim(p.new_name))
+      AND c.loc_key = p.loc_key
+  );
 
 UPDATE public.organizations
 SET name = name
