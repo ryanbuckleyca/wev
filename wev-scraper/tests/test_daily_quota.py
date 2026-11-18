@@ -10,6 +10,7 @@ from llm.cooldown import (
     get_cooldown_seconds,
     is_auth_permission_error,
     is_daily_quota_exhausted_error,
+    is_provider_daily_exhausted,
     is_provider_permission_denied,
     is_quota_exhausted_error,
     mark_provider_permission_denied,
@@ -31,6 +32,34 @@ def test_daily_quota_requires_explicit_per_day_marker():
     # Generic free_tier without a per-day marker is soft (cooldown), not day-burn.
     assert is_daily_quota_exhausted_error(soft_free_tier_rpm) is False
     assert is_quota_exhausted_error(soft_free_tier_rpm) is True
+
+
+def test_daily_quota_detects_current_gemini_free_tier_wording():
+    """Wording seen from Gemini on 2026-11-18 (previously treated as a 15s cooldown)."""
+    day_cap = Exception(
+        "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your "
+        "current quota ... Quota exceeded for metric: generativelanguage.googleapis.com/"
+        "generate_content_free_tier_requests, limit: 20, model: gemini-3.6-flash, "
+        "description: Generate content requests per day limit exceeded on Free Tier.'}}"
+    )
+    assert is_daily_quota_exhausted_error(day_cap) is True
+    assert fallback_reason(day_cap) == "free-tier daily quota"
+
+
+def test_daily_quota_disables_provider_across_chains():
+    first = _Chain()
+    assert first._mark_provider_failure(
+        "gemini-x",
+        Exception("429 RESOURCE_EXHAUSTED requests per day limit exceeded"),
+        perm_key="gemini-x@abc",
+    ) is True
+    assert is_provider_daily_exhausted("gemini-x@abc") is True
+    second = _Chain()
+    assert second._is_provider_in_cooldown("gemini-x", perm_key="gemini-x@abc") is True
+    assert second._provider_skip_reason("gemini-x", perm_key="gemini-x@abc") == (
+        "free-tier daily quota"
+    )
+    assert second._is_provider_in_cooldown("gemini-x", perm_key="gemini-x@other") is False
 
 
 def test_daily_quota_not_rejected_when_per_minute_also_present():

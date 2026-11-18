@@ -8,8 +8,8 @@ Both ``SSEFallbackProvider`` and ``UnifiedJobProcessor`` need identical logic fo
 Import ``ProviderCooldownMixin`` and mix it into any class that manages a
 ``_exhausted_until: dict[str, float]`` and ``_cooldown_seconds: int`` pair.
 
-Permission-denied disables are process-scoped (module-level) so every chain
-instance skips the bad model after the first 403. They are keyed by model plus
+Permission-denied and daily-quota disables are process-scoped (module-level)
+so every chain instance skips the bad model after the first 403 / day-cap 429. They are keyed by model plus
 a non-secret credential fingerprint (``permission_key``), so a chain built with
 a different API key is not blocked by another key's denial. Fixing access on
 the *same* key (e.g. enabling the model on the Google project) still needs a
@@ -34,6 +34,8 @@ DEFAULT_COOLDOWN_MINUTES = 15
 
 # ``permission_key`` values that returned 403 / PERMISSION_DENIED this process.
 _permission_denied_providers: set[str] = set()
+# ``permission_key`` values that hit a daily / free-tier quota this process.
+_daily_exhausted_providers: set[str] = set()
 
 # Status-shaped auth markers only; a bare "403" inside a URL, id, or body is not enough.
 _AUTH_ERROR_TEXT_RE = re.compile(
@@ -159,6 +161,31 @@ def clear_permission_denied_providers() -> None:
     _permission_denied_providers.clear()
 
 
+def is_provider_daily_exhausted(key: str) -> bool:
+    """Return True when *key* hit a daily/free-tier quota this process."""
+    return key in _daily_exhausted_providers
+
+
+def mark_provider_daily_exhausted(key: str) -> None:
+    """Skip *key* (see ``permission_key``) until the process restarts.
+
+    Free-tier day caps reset at midnight Pacific; retrying every few seconds
+    only burns shared search credits on calls that cannot succeed.
+    """
+    if key in _daily_exhausted_providers:
+        return
+    _daily_exhausted_providers.add(key)
+    logger.warning(
+        "\U0001f6ab Daily quota exhausted for %s \u2014 skipping for rest of process",
+        key,
+    )
+
+
+def clear_daily_exhausted_providers() -> None:
+    """Re-enable every model disabled by a daily quota in this process."""
+    _daily_exhausted_providers.clear()
+
+
 def is_quota_exhausted_error(exc: Exception) -> bool:
     """Return True when *exc* signals a quota / rate-limit exhaustion."""
     err = str(exc).lower()
@@ -176,6 +203,7 @@ def is_daily_quota_exhausted_error(exc: Exception) -> bool:
     Day caps look like:
       GenerateRequestsPerDayPerProjectPerModel-FreeTier
       429 … requestsPerDay / per_day / daily quota
+      429 … "Generate content requests per day limit exceeded on Free Tier"
 
     Soft rate limits also return 429 (sometimes mentioning free-tier RPM) but
     lack an explicit per-day marker — those should backoff, not burn the
@@ -188,9 +216,8 @@ def is_daily_quota_exhausted_error(exc: Exception) -> bool:
     return (
         "perday" in err
         or "per_day" in err
-        or "requestsperday" in err
+        or "per day" in err
         or "daily quota" in err
-        or "generaterequestsperday" in err
     )
 
 
@@ -253,9 +280,14 @@ class ProviderCooldownMixin:
     _exhausted_until: dict[str, float]
     _cooldown_seconds: int
 
+    def _is_provider_disabled(self, name: str, *, perm_key: str | None = None) -> bool:
+        """Return True when disabled for the process (403 or daily quota)."""
+        key = perm_key or name
+        return is_provider_permission_denied(key) or is_provider_daily_exhausted(key)
+
     def _is_provider_in_cooldown(self, name: str, *, perm_key: str | None = None) -> bool:
-        """Return True when permission-denied (*perm_key*, default *name*) or rate-limited."""
-        if is_provider_permission_denied(perm_key or name):
+        """Return True when disabled for the process (*perm_key*, default *name*) or rate-limited."""
+        if self._is_provider_disabled(name, perm_key=perm_key):
             return True
         if name not in self._exhausted_until:
             return False
@@ -271,6 +303,8 @@ class ProviderCooldownMixin:
         """Label for a provider skipped before the HTTP call."""
         if is_provider_permission_denied(perm_key or name):
             return "permission denied"
+        if is_provider_daily_exhausted(perm_key or name):
+            return "free-tier daily quota"
         return "rate-limit cooldown"
 
     def _mark_provider_exhausted(self, name: str) -> None:
@@ -293,6 +327,9 @@ class ProviderCooldownMixin:
         """
         if is_auth_permission_error(exc):
             mark_provider_permission_denied(perm_key or name)
+            return True
+        if is_daily_quota_exhausted_error(exc):
+            mark_provider_daily_exhausted(perm_key or name)
             return True
         if is_quota_exhausted_error(exc):
             self._mark_provider_exhausted(name)

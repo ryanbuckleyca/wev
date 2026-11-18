@@ -31,8 +31,10 @@ from llm.cooldown import (
     format_fallback_chain,
     get_cooldown_seconds,
     is_daily_quota_exhausted_error,
+    is_provider_daily_exhausted,
     is_provider_permission_denied,
     is_quota_exhausted_error,
+    mark_provider_daily_exhausted,
     permission_key,
 )
 from llm.gemini import GeminiProvider
@@ -329,14 +331,19 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
 
         for provider_info in self.providers:
             provider_name = provider_info['name']
+            perm_key = self._perm_key(provider_info)
 
-            # Skip backends that already burned their daily/free-tier quota this run
-            if provider_name in self._daily_quota_exhausted:
+            # Skip backends that already burned their daily/free-tier quota this
+            # run (here or in another chain sharing the same key).
+            if (
+                provider_name in self._daily_quota_exhausted
+                or is_provider_daily_exhausted(perm_key)
+            ):
+                self._daily_quota_exhausted.add(provider_name)
                 attempted_providers.append(f"{provider_name} (daily quota)")
                 _remember(provider_name, "free-tier daily quota")
                 continue
 
-            perm_key = self._perm_key(provider_info)
             # Skip providers in cooldown / permission-denied disable
             if self._is_provider_in_cooldown(provider_name, perm_key=perm_key):
                 skip_reason = self._provider_skip_reason(provider_name, perm_key=perm_key)
@@ -443,6 +450,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 # (including Ollama). Final exhaustion check runs after the loop.
                 if is_daily_quota_exhausted_error(e):
                     self._daily_quota_exhausted.add(provider_name)
+                    mark_provider_daily_exhausted(perm_key)
                     _remember(provider_name, "free-tier daily quota")
                     print(
                         f"  ⚠️ Daily/free-tier quota hit on {provider_name} — trying next backend…",

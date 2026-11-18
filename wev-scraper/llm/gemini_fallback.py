@@ -25,7 +25,8 @@ Env overrides:
 
 A 403 / PERMISSION_DENIED on a model (e.g. gemini-3.6-flash) disables that
 model *for that API key* for the rest of the process so later orgs skip straight
-to the next backend. The key is the model actually sent (including a ``model=``
+to the next backend; a daily/free-tier 429 does the same. When every backend is
+disabled that way, ``complete`` fails before the Tavily search. The key is the model actually sent (including a ``model=``
 override). Restart the process after fixing key/model access to retry it.
 """
 
@@ -40,6 +41,7 @@ from llm.config import should_use_grounding
 from llm.cooldown import (
     ProviderCooldownMixin,
     fallback_reason,
+    format_fallback_chain,
     get_cooldown_seconds,
     permission_key,
 )
@@ -235,6 +237,8 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         prefer_hosts = provider_kwargs.pop("prefer_hosts", None)
         require_terms = provider_kwargs.pop("require_terms", None)
 
+        self._raise_if_all_providers_disabled(model)
+
         evidence = ""
         if want_grounding:
             search_query = kwargs.get("search_query") or prompt[:200]
@@ -274,6 +278,27 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
             model=model,
             system=system,
             **provider_kwargs,
+        )
+
+    def _raise_if_all_providers_disabled(self, model: str | None) -> None:
+        """Fail before Tavily when no backend can run again this process.
+
+        Covers 403s and daily-quota 429s, not short rate-limit cooldowns, so
+        callers stop spending search credits on calls that cannot succeed.
+        """
+        if not self._providers:
+            return
+        reasons: list[dict[str, str]] = []
+        for name, provider in self._providers:
+            perm_key = _backend_permission_key(name, provider, model)
+            if not self._is_provider_disabled(name, perm_key=perm_key):
+                return
+            reasons.append(
+                {"provider": name, "reason": self._provider_skip_reason(name, perm_key=perm_key)}
+            )
+        raise LLMProviderError(
+            "All SSE providers disabled for this process: "
+            + format_fallback_chain(reasons)
         )
 
     def _remember_fallback(self, name: str, reason: str) -> None:

@@ -413,6 +413,36 @@ def test_sse_fallback_permission_denial_keys_on_overridden_model(monkeypatch):
         clear_permission_denied_providers()
 
 
+def test_sse_fallback_skips_tavily_once_every_backend_hit_daily_quota(monkeypatch):
+    monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("ENABLE_LOCAL_FALLBACK", raising=False)
+    day_cap = LLMProviderError(
+        "429 RESOURCE_EXHAUSTED Generate content requests per day limit exceeded on Free Tier"
+    )
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = day_cap
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = day_cap
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE") as tavily, \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        with pytest.raises(LLMProviderError):
+            provider.complete("prompt", task="sse", search_query="q")
+        assert tavily.call_count == 1
+
+        with pytest.raises(LLMProviderError, match="free-tier daily quota"):
+            provider.complete("prompt", task="sse", search_query="q")
+        assert tavily.call_count == 1
+        assert flash.complete.call_count == 1
+        assert lite.complete.call_count == 1
+
+
 def test_sse_fallback_gemini_model_override_not_forwarded_to_ollama():
     """Gemini model override must not be passed when falling through to Ollama."""
     flash = MagicMock()
