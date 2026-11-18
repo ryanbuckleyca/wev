@@ -30,6 +30,21 @@ def _org_language_offline_by_default(monkeypatch):
     monkeypatch.setattr(org_lang, "make_llm_language_fn", lambda: None)
 
 
+@pytest.fixture(autouse=True)
+def _reset_process_provider_disables():
+    """403 / daily-quota disables are process-wide; isolate them per test."""
+    from llm.cooldown import (
+        clear_daily_exhausted_providers,
+        clear_permission_denied_providers,
+    )
+
+    clear_permission_denied_providers()
+    clear_daily_exhausted_providers()
+    yield
+    clear_permission_denied_providers()
+    clear_daily_exhausted_providers()
+
+
 @pytest.fixture(scope="session")
 def browser():
     pw = sync_playwright().start()

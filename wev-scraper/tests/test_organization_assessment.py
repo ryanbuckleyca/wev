@@ -1017,7 +1017,13 @@ def test_private_company_gate_keeps_not_for_profit_wording(nonprofit_phrase):
 
 @pytest.mark.parametrize(
     "nonprofit_phrase",
-    ("not  for profit", "not for  profit"),
+    (
+        "not  for profit",
+        "not for  profit",
+        "not\u2011for\u2011profit",
+        "not\u2013for\u2013profit",
+        "not\u00adfor\u00adprofit",
+    ),
 )
 def test_private_company_gate_keeps_irregular_not_for_profit_whitespace(nonprofit_phrase):
     """Extra spaces between not/for/profit still count as not-for-profit wording.
@@ -1045,14 +1051,18 @@ def test_private_company_gate_keeps_irregular_not_for_profit_whitespace(nonprofi
     assert not any("private_company_gate" in f for f in result["flags"])
 
 
-def test_private_company_gate_demotes_for_profit_with_extra_whitespace():
+@pytest.mark.parametrize(
+    "for_profit_phrase",
+    ("for  profit", "for\u2011profit", "for\u2014profit"),
+)
+def test_private_company_gate_demotes_for_profit_spelling_variants(for_profit_phrase):
     result = _parse_response(
         _assessment_json(
             canonical_name="Acme Services",
             slug="acme-services",
             type="nonprofit",
             sse_rating="weak_yes",
-            sse_reasoning_en="A for  profit consultancy with CSR language.",
+            sse_reasoning_en=f"A {for_profit_phrase} consultancy with CSR language.",
         ),
         "Acme Services",
     )
@@ -1218,6 +1228,120 @@ def test_place_name_guard_ignores_hospital_funding_alone():
     assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_ignores_explanation_rejecting_place_name():
+    """Mentioning (and dismissing) the place name is not a place-name basis."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Riverside in the name is geographic branding only; rated no "
+                "not because of the town name but because no public materials "
+                "describe a mission."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_remaps_when_place_name_suggests_government():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en="The town name suggests a municipal program.",
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+@pytest.mark.parametrize(
+    "reasoning, matches",
+    [
+        ("Classified as government from the town name.", True),
+        ("Labelled as a municipal body by the city name alone.", True),
+        ("The town name means it is a municipal agency.", True),
+        ("Not classified as government from the town name; it is a charity.", False),
+        ("The town name means a regional audience, not public ownership.", False),
+        ("Classified as government because council appoints the board.", False),
+    ],
+)
+def test_place_name_basis_affirmative_wording(reasoning, matches):
+    from utils.organization_assessment import _PLACE_NAME_BASIS_RE
+
+    assert bool(_PLACE_NAME_BASIS_RE.search(reasoning)) is matches
+
+
+def test_place_name_guard_ignores_place_name_suggesting_only_geography():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "The town name suggests a geographic link, not public ownership."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "government"
+    assert result["sse_rating"] == "no"
+    assert not any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_no_when_purpose_must_have_unmet():
+    """Remap the type, but an independent eligibility failure keeps No."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Classified as government because of the town name; no evidence "
+                "of a purpose beyond profit."
+            ),
+            must_haves_met=[],
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "no"
+
+
+def test_place_name_guard_hospital_as_venue_is_not_operator():
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            type="government",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Assumed to be a public body from the town name; it performs "
+                "concerts at the public hospital."
+            ),
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["type"] == "nonprofit"
+    assert result["sse_rating"] == "weak_yes"
 
 
 def test_parse_response_missing_slug_uses_cleaned_canonical_name():

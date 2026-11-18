@@ -150,6 +150,7 @@ def test_org_assessment_prompt_keeps_description_out_of_interpretive_fields():
 
 def test_org_prompt_keeps_entity_after_local_truncate():
     from utils.organization_assessment import _build_assessment_prompt
+    from utils.sse_prompts import ORG_TYPE_RULES_RECAP
 
     prompt = _build_assessment_prompt(
         "Park People",
@@ -173,11 +174,27 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         assert "Park People" in truncated
         assert "Official organization name" in truncated
         assert "parkpeople.ca" in truncated.lower()
-        # Type schema stays, so the rules it points at stay too.
+        # The type schema and the recap of the type rules travel together.
         assert '"type":' in truncated
-        assert "TYPE MAPPING (do not invent other type labels):" in truncated
-        assert "NOT registered-charity / independent-board hospitals" in truncated
-        assert "CRITICAL — public funding is NOT government" in truncated
-        assert "Holland Bloorview-style" in truncated
-        assert "hospital authorities and ministry-run" in truncated
-        assert "independent registered-charity / non-profit hospitals" in truncated
+        assert ORG_TYPE_RULES_RECAP in truncated
+
+
+def test_org_prompt_keeps_type_recap_with_capped_notes_after_truncate():
+    from utils.organization_assessment import _PROMPT_DESC_MAX_CHARS, _build_assessment_prompt
+    from utils.sse_prompts import ORG_TYPE_RULES_RECAP
+
+    prompt = _build_assessment_prompt(
+        "Park People",
+        "Toronto",
+        "ON",
+        "Coordinator",
+        "n" * _PROMPT_DESC_MAX_CHARS,
+        known_website="https://parkpeople.ca",
+        existing_description="s" * _PROMPT_DESC_MAX_CHARS,
+        listing_notes="n" * _PROMPT_DESC_MAX_CHARS,
+    )
+    for budget in (8000, 10000):
+        truncated = truncate_keep_ends(prompt, max_chars=budget)
+        assert ORG_TYPE_RULES_RECAP in truncated
+        assert '"type":' in truncated
+        assert '"canonical_name"' in truncated

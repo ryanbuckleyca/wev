@@ -77,6 +77,8 @@ def test_get_fallback_llm_provider_returns_chain():
 
 def test_sse_fallback_skips_groq_unless_opted_in(monkeypatch):
     monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_PRIMARY_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_LITE_MODEL", raising=False)
 
     flash = MagicMock()
     flash.is_available.return_value = True
@@ -374,6 +376,71 @@ def test_sse_fallback_gemini_model_override_not_forwarded_to_groq():
         assert flash.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert lite.complete.call_args.kwargs.get("model") == "gemini-3.6-flash"
         assert groq.complete.call_args.kwargs.get("model") is None
+
+
+def test_sse_fallback_permission_denial_keys_on_overridden_model(monkeypatch):
+    """A 403 under a model override disables that model, not the tier's default.
+
+    Both Gemini tiers send the overridden model, so lite skips it too.
+    """
+    from llm.cooldown import clear_permission_denied_providers, is_provider_permission_denied
+
+    monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("ENABLE_LOCAL_FALLBACK", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_PRIMARY_MODEL", raising=False)
+    monkeypatch.delenv("GEMINI_SSE_LITE_MODEL", raising=False)
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = [LLMProviderError("403 PERMISSION_DENIED denied"), "flash-ok"]
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    clear_permission_denied_providers()
+    try:
+        with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini:
+            mock_gemini.side_effect = [flash, lite]
+            provider = SSEFallbackProvider()
+            with pytest.raises(LLMProviderError):
+                provider.complete("prompt", model="gemini-custom", use_grounding=False)
+            lite.complete.assert_not_called()
+            # The tier's default model is still usable on the same key.
+            assert provider.complete("prompt", use_grounding=False) == "flash-ok"
+        assert is_provider_permission_denied("gemini-custom") is True
+        assert is_provider_permission_denied(DEFAULT_GEMINI_PRIMARY) is False
+    finally:
+        clear_permission_denied_providers()
+
+
+def test_sse_fallback_skips_tavily_once_every_backend_hit_daily_quota(monkeypatch):
+    monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+    monkeypatch.delenv("ENABLE_LOCAL_FALLBACK", raising=False)
+    day_cap = LLMProviderError(
+        "429 RESOURCE_EXHAUSTED Generate content requests per day limit exceeded on Free Tier"
+    )
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.side_effect = day_cap
+    lite = MagicMock()
+    lite.is_available.return_value = True
+    lite.complete.side_effect = day_cap
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value="EVIDENCE") as tavily, \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=True):
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        with pytest.raises(LLMProviderError):
+            provider.complete("prompt", task="sse", search_query="q")
+        assert tavily.call_count == 1
+
+        with pytest.raises(LLMProviderError, match="free-tier daily quota"):
+            provider.complete("prompt", task="sse", search_query="q")
+        assert tavily.call_count == 1
+        assert flash.complete.call_count == 1
+        assert lite.complete.call_count == 1
 
 
 def test_sse_fallback_gemini_model_override_not_forwarded_to_ollama():

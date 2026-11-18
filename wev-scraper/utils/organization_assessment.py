@@ -50,6 +50,7 @@ from utils.sse_prompts import (
     LENGTH_LIMITED_FIELD_RULES,
     ORG_EVALUATION_CRITERIA,
     ORG_RATING_GUIDELINES,
+    ORG_TYPE_RULES_RECAP,
     SSE_PRINCIPLES,
 )
 
@@ -378,6 +379,8 @@ ORGANIZATION DATA:
 SOURCE DESCRIPTION (for description_* only — omit if none):
 {source_description}
 
+{ORG_TYPE_RULES_RECAP}
+
 Evaluate the organization in ORGANIZATION DATA above. Return one JSON object
 with exactly these fields:
 {json_fields}
@@ -497,6 +500,7 @@ def _build_assessment_prompt(
         public_language_rules=_PUBLIC_LANGUAGE_RULES,
         sector_priority_rules=_SECTOR_PRIORITY_RULES,
         JSON_INSTRUCTIONS=JSON_INSTRUCTIONS,
+        ORG_TYPE_RULES_RECAP=ORG_TYPE_RULES_RECAP,
         length_limited_field_rules=LENGTH_LIMITED_FIELD_RULES,
     )
 
@@ -955,8 +959,8 @@ _CORP_LEGAL_SUFFIX_RE = re.compile(
 # Explicit private / commercial ownership signals in model text.
 # Shareholders: positive ownership only — do not match "without shareholders".
 # "for-profit" must not match inside "not-for-profit" / "not for profit".
-# Equivalent whitespace ("not  for profit", "not for  profit") is collapsed
-# before these patterns run — see _apply_private_company_sse_guard.
+# Evidence text is normalized first (hyphen variants → "-", whitespace runs →
+# one space) — see _org_assessment_evidence_blob.
 _PRIVATE_COMPANY_EVIDENCE_RE = re.compile(
     r"(?<!not[- ])for[- ]profits?|private(?:ly)?[- ]owned|private company|private business|"
     r"founder[- ]owned|owner[- ]operated|"
@@ -997,7 +1001,12 @@ _SOFT_NONPROFIT_EVIDENCE_RE = re.compile(
 )
 
 
+# Soft hyphen, Unicode hyphens/dashes, minus sign, small/full-width hyphen-minus.
+_HYPHEN_VARIANTS_RE = re.compile("[\u00ad\u2010-\u2015\u2212\ufe63\uff0d]")
+
+
 def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
+    """Model explanation text, normalized so phrase regexes see one spelling."""
     parts = [
         result.get("sse_reasoning_en") or "",
         result.get("sse_reasoning_fr") or "",
@@ -1005,7 +1014,8 @@ def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
         " ".join(str(x) for x in (result.get("must_haves_met") or [])),
         " ".join(str(x) for x in (result.get("nice_to_haves_met") or [])),
     ]
-    return " ".join(parts)
+    blob = _HYPHEN_VARIANTS_RE.sub("-", " ".join(parts))
+    return re.sub(r"\s+", " ", blob)
 
 
 def _demote_org_to_other_no(
@@ -1042,10 +1052,7 @@ def _apply_private_company_sse_guard(
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
-    # Collapse equivalent whitespace so "not  for profit" and "not for  profit"
-    # are the same not-for-profit wording as "not for profit", while bare
-    # "for-profit" still matches the demotion pattern.
-    blob = re.sub(r"\s+", " ", _org_assessment_evidence_blob(result))
+    blob = _org_assessment_evidence_blob(result)
     org_type = result.get("type")
 
     # Strongest keep: CRA / letters patent / charity registration.
@@ -1096,28 +1103,35 @@ _EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
     r"provincial (?:agency|ministry)|federal (?:agency|department)",
     re.IGNORECASE,
 )
-# Overturn a government type only when the explanation itself treats a
-# place-name as municipal employment. Public-hospital governance or funding
-# is not that mistake.
-_PLACE_NAME_MISTAKE_RE = re.compile(
-    r"place[- ]name|"
-    r"named after (?:the )?(?:city|town|municipality|region)|"
-    r"(?:city|town|place)(?:[- ]|\s)+in(?:[- ]|\s)+(?:the[- ]|the\s+)?name|"
-    r"from the (?:city|town|place) name|"
-    r"assumed to be a public body|"
-    r"geographic branding",
+# Overturn a government type only when the explanation shows the place name
+# was the *basis* for that label. Merely mentioning a place name — or rejecting
+# it as evidence ("the city name is geographic branding") — does not match.
+_PLACE_NAME_BASIS_RE = re.compile(
+    r"\b(?<!not )(?:because|since|given|due to|based (?:solely |only )?on|inferred from)\s+"
+    r"(?:of\s+)?(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)"
+    r"[- ]?(?:name|in (?:the|its) name)\b|"
+    r"\b(?<!not )(?:classified|labell?ed|typed|treated|categori[sz]ed) as (?:a |an )?"
+    r"(?:public|government|municipal)\b[^.;]{0,40}?\b(?:from|by|after|per)\s+"
+    r"(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)[- ]?name\b|"
+    r"\b(?:city|town|municipal|municipality|place|region)[- ]?name\s+"
+    r"(?:suggests|indicates|implies|shows|means|signals|makes it|points to)\s+"
+    r"(?:(?:that\s+)?it\s+is\s+)?(?:a\s+|an\s+)?"
+    r"(?:public|government|municipal)\b|"
+    r"\b(?<!not )(?<!n't )(?:assumed|presumed|inferred) to be (?:a |an )?"
+    r"(?:public|government|municipal)\b",
     re.IGNORECASE,
 )
-# A public hospital operator stays government even if the explanation also
-# mentions a place-name. Governance or funding wording alone is not a
-# place-name mistake and does not restore SSE.
+# The employer itself operates a public hospital: stays government even if the
+# explanation also blames a place name. A hospital as venue, partner, or funder
+# ("concerts at the public hospital", "OHIP funding") does not match.
 _PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
-    r"\bpublic hospitals?\b|"
-    r"\bhospital operators?\b|"
-    r"\bhospital authority\b|"
-    r"ministry[- ]run (?:hospitals?|facilities)",
+    r"\b(?:it|this|the (?:organization|organisation|employer|entity|org))\s+"
+    r"(?:is|operates|runs|manages)\s+(?:a |the )?(?:public )?hospital\b|"
+    r"\b(?:is|as) (?:a |the )?(?:public )?hospital (?:operator|authority)\b|"
+    r"\bministry[- ]run hospitals?\b",
     re.IGNORECASE,
 )
+_PURPOSE_BEYOND_PROFIT_MUST_HAVE = "clear purpose beyond profit"
 
 
 def _apply_community_arts_place_name_guard(
@@ -1127,9 +1141,10 @@ def _apply_community_arts_place_name_guard(
     """Correct government typing from city-in-name for community arts orgs.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to nonprofit and restore a Yes floor only when
-    the explanation shows that place-name mistake. Public hospital governance
-    or funding is not that mistake; a public hospital operator stays
+    municipal employment. Remap to nonprofit only when the explanation shows
+    the place name was the basis for the government label. Restore a Yes floor
+    only when that was the sole reason for No: the purpose-beyond-profit
+    must-have is still met. An employer that operates a public hospital stays
     government/no.
     """
     if result.get("type") != "government":
@@ -1144,7 +1159,7 @@ def _apply_community_arts_place_name_guard(
         return result
     if _EXPLICIT_GOVERNMENT_EVIDENCE_RE.search(blob):
         return result
-    if not _PLACE_NAME_MISTAKE_RE.search(blob):
+    if not _PLACE_NAME_BASIS_RE.search(blob):
         return result
 
     flags = list(result.get("flags") or [])
@@ -1152,8 +1167,9 @@ def _apply_community_arts_place_name_guard(
         "place_name_guard: community arts org — city/place in name is not "
         "municipal/government evidence → type=nonprofit"
     )
+    must_haves = {str(m).strip().lower() for m in (result.get("must_haves_met") or [])}
     new_rating = result.get("sse_rating") or "no"
-    if new_rating == "no":
+    if new_rating == "no" and _PURPOSE_BEYOND_PROFIT_MUST_HAVE in must_haves:
         new_rating = "weak_yes"
         flags.append(
             "place_name_guard: restored weak_yes for community arts "
