@@ -1650,6 +1650,7 @@ def test_assess_accepts_borough_when_results_name_parent_city(municipality, prov
         _valid_assessment_payload(
             canonical_name="Neighbourhood Services",
             slug="neighbourhood-services",
+            website="https://neighbourhoodservices.org",
             description_en=description,
             geographic_scope="local",
         )
@@ -1658,6 +1659,41 @@ def test_assess_accepts_borough_when_results_name_parent_city(municipality, prov
 
     outcome = assessor.assess_with_outcome(
         raw_name="Neighbourhood Services",
+        municipality=municipality,
+        province=province,
+    )
+
+    assert outcome.result is not None
+
+
+@pytest.mark.parametrize(
+    "municipality, province, description",
+    [
+        ("Levis", "QC", "A community thrift shop located in Lévis."),
+        ("Montreal", "QC", "A volunteer centre based in Montréal."),
+        ("Lemoyne", "QC", "A community development corporation for the Longueuil area."),
+    ],
+)
+def test_assess_location_check_ignores_accents(municipality, province, description):
+    from unittest.mock import MagicMock
+
+    mock_provider = MagicMock()
+    mock_provider.complete.return_value = json.dumps(
+        _valid_assessment_payload(
+            canonical_name="Services Communautaires",
+            slug="services-communautaires",
+            website="https://servicescommunautaires.org",
+            description_en=description,
+            mission_statement_en="Supporting local residents.",
+            headquarters_province=province,
+            geographic_scope="local",
+        ),
+        ensure_ascii=False,
+    )
+    assessor = _assessor_with_provider(mock_provider)
+
+    outcome = assessor.assess_with_outcome(
+        raw_name="Services Communautaires",
         municipality=municipality,
         province=province,
     )

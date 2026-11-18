@@ -44,7 +44,7 @@ from utils.organization_language import (
     classify_org_language,
 )
 from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
-from utils.slug import generate_slug
+from utils.slug import generate_slug, nfkd_to_ascii
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
     LENGTH_LIMITED_FIELD_RULES,
@@ -163,6 +163,9 @@ _MUNICIPALITY_PARENT_CITY: dict[str, str] = {
     "lachine": "montreal",
     "anjou": "montreal",
     "outremont": "montreal",
+    "lemoyne": "longueuil",
+    "saint hubert": "longueuil",
+    "greenfield park": "longueuil",
     "burnaby": "vancouver",
     "north vancouver": "vancouver",
     "west vancouver": "vancouver",
@@ -172,17 +175,10 @@ _MUNICIPALITY_PARENT_CITY: dict[str, str] = {
 }
 
 
-_PARENT_CITY_SPELLINGS: dict[str, tuple[str, ...]] = {"montreal": ("montreal", "montréal")}
-
-
 def _parent_city_terms(municipality: str | None) -> tuple[str, ...]:
-    from utils.slug import nfkd_to_ascii
-
     key = re.sub(r"[\s\-]+", " ", nfkd_to_ascii(municipality or "").lower()).strip()
     parent = _MUNICIPALITY_PARENT_CITY.get(key)
-    if not parent:
-        return ()
-    return _PARENT_CITY_SPELLINGS.get(parent, (parent,))
+    return (parent,) if parent else ()
 
 
 # Hard length limits for stored LLM fields. Keep in sync with
@@ -2217,7 +2213,8 @@ class OrganizationAssessor(BaseGroundedClassifier):
                                     wl = word.lower()
                                     if len(wl) > 2:
                                         location_terms_set.add(wl)
-                    location_terms = list(location_terms_set)
+                    # Accent-folded on both sides so "montreal"/"levis" match "Montréal"/"Lévis".
+                    location_terms = list({nfkd_to_ascii(t) for t in location_terms_set})
 
                     # If we have location info, validate it appears in the response
                     # UNLESS the organization has national/provincial/international scope
@@ -2234,7 +2231,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             _extra_hq_parts.append(llm_hq_prov_code.lower())
                         website_str = (discovered_website or "")
                         domain_str = extract_domain(website_str) or ""
-                        searchable_content = " ".join([
+                        searchable_content = nfkd_to_ascii(" ".join([
                             (response_text or "").lower(),
                             (result.get("description_en") or "").lower(),
                             (result.get("description_fr") or "").lower(),
@@ -2247,7 +2244,7 @@ class OrganizationAssessor(BaseGroundedClassifier):
                             " ".join(p.lower() for p in _extra_hq_parts),
                             website_str.lower(),
                             domain_str.lower(),
-                        ])
+                        ]))
 
                         structured_prov = (result.get("headquarters_province") or "").lower()
                         structured_prov_code = (llm_hq_prov_code or "").lower()
@@ -2266,8 +2263,9 @@ class OrganizationAssessor(BaseGroundedClassifier):
 
                         # Check if location appears in the organization name itself
                         raw_name_lower = raw_name.lower()
+                        folded_name = nfkd_to_ascii(raw_name_lower)
                         location_in_name = any(
-                            term in raw_name_lower for term in location_terms if len(term) > 2
+                            term in folded_name for term in location_terms if len(term) > 2
                         )
 
                         # Also check if org name contains district/neighborhood indicators
