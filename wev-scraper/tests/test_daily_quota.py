@@ -4,7 +4,9 @@ import pytest
 
 from llm.base import BaseLLMProvider, LLMProviderError
 from llm.cooldown import (
+    DailyQuotaExhaustedError,
     ProviderCooldownMixin,
+    clear_daily_exhausted_providers,
     clear_permission_denied_providers,
     fallback_reason,
     get_cooldown_seconds,
@@ -13,6 +15,7 @@ from llm.cooldown import (
     is_provider_daily_exhausted,
     is_provider_permission_denied,
     is_quota_exhausted_error,
+    mark_provider_daily_exhausted,
     mark_provider_permission_denied,
     permission_key,
 )
@@ -196,7 +199,6 @@ def _unified_with(*providers: tuple[str, BaseLLMProvider]) -> UnifiedJobProcesso
     proc = UnifiedJobProcessor.__new__(UnifiedJobProcessor)
     proc._exhausted_until = {}
     proc._cooldown_seconds = 15
-    proc._daily_quota_exhausted = set()
     proc.providers = [
         {"name": n, "provider": p, "description": n} for n, p in providers
     ]
@@ -226,13 +228,26 @@ def test_unified_daily_quota_abort_ignores_permission_denied_tiers():
         primary = _FailingProvider(LLMProviderError("unused"))
         lite = _FailingProvider(LLMProviderError("unused"))
         proc = _unified_with(("gemini-primary", primary), ("gemini-lite", lite))
-        proc._daily_quota_exhausted.add("gemini-lite")
+        mark_provider_daily_exhausted(proc._perm_key(proc.providers[1]))
         assert proc._all_api_daily_quotas_exhausted() is False
 
         mark_provider_permission_denied(proc._perm_key(proc.providers[0]))
         assert proc._all_api_daily_quotas_exhausted() is True
     finally:
         clear_permission_denied_providers()
+
+
+def test_unified_daily_quota_reset_reenables_existing_processor():
+    proc = _unified_with(("gemini-primary", _FailingProvider(LLMProviderError("unused"))))
+    mark_provider_daily_exhausted(proc._perm_key(proc.providers[0]))
+    assert proc._all_api_daily_quotas_exhausted() is True
+    with pytest.raises(DailyQuotaExhaustedError):
+        proc.process_jobs([{"id": 1, "title": "x", "description": "y"}])
+
+    clear_daily_exhausted_providers()
+    assert proc._all_api_daily_quotas_exhausted() is False
+    retried = proc.process_jobs([{"id": 1, "title": "x", "description": "y"}])
+    assert "gemini-primary (daily quota)" not in retried.get("attempted_providers", [])
 
 
 def test_unified_all_skipped_reports_permission_denied():

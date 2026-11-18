@@ -1268,6 +1268,23 @@ def test_place_name_guard_remaps_when_place_name_suggests_government():
     assert any("place_name_guard" in f for f in result["flags"])
 
 
+@pytest.mark.parametrize(
+    "reasoning, matches",
+    [
+        ("Classified as government from the town name.", True),
+        ("Labelled as a municipal body by the city name alone.", True),
+        ("The town name means it is a municipal agency.", True),
+        ("Not classified as government from the town name; it is a charity.", False),
+        ("The town name means a regional audience, not public ownership.", False),
+        ("Classified as government because council appoints the board.", False),
+    ],
+)
+def test_place_name_basis_affirmative_wording(reasoning, matches):
+    from utils.organization_assessment import _PLACE_NAME_BASIS_RE
+
+    assert bool(_PLACE_NAME_BASIS_RE.search(reasoning)) is matches
+
+
 def test_place_name_guard_ignores_place_name_suggesting_only_geography():
     result = _parse_response(
         _assessment_json(

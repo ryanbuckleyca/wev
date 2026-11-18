@@ -1110,8 +1110,12 @@ _PLACE_NAME_BASIS_RE = re.compile(
     r"\b(?<!not )(?:because|since|given|due to|based (?:solely |only )?on|inferred from)\s+"
     r"(?:of\s+)?(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)"
     r"[- ]?(?:name|in (?:the|its) name)\b|"
+    r"\b(?<!not )(?:classified|labell?ed|typed|treated|categori[sz]ed) as (?:a |an )?"
+    r"(?:public|government|municipal)\b[^.;]{0,40}?\b(?:from|by|after|per)\s+"
+    r"(?:the\s+|its\s+)?(?:city|town|municipal|municipality|place|region)[- ]?name\b|"
     r"\b(?:city|town|municipal|municipality|place|region)[- ]?name\s+"
-    r"(?:suggests|indicates|implies|shows)\s+(?:(?:that\s+)?it\s+is\s+)?(?:a\s+|an\s+)?"
+    r"(?:suggests|indicates|implies|shows|means|signals|makes it|points to)\s+"
+    r"(?:(?:that\s+)?it\s+is\s+)?(?:a\s+|an\s+)?"
     r"(?:public|government|municipal)\b|"
     r"\b(?<!not )(?<!n't )(?:assumed|presumed|inferred) to be (?:a |an )?"
     r"(?:public|government|municipal)\b",

@@ -71,8 +71,6 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         # Track providers with quota exhaustion and when they can be retried
         self._exhausted_until: dict[str, float] = {}
         self._cooldown_seconds = get_cooldown_seconds()
-        # Providers that hit a hard daily/free-tier 429 this process — skip for the rest of the run
-        self._daily_quota_exhausted: set[str] = set()
 
         primary = gemini_sse_primary_model()
         lite = gemini_sse_lite_model()
@@ -136,22 +134,27 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
     def _perm_key(provider_info: dict) -> str:
         return permission_key(provider_info["name"], provider_info["provider"])
 
-    def _api_provider_names(self) -> list[str]:
+    def _api_providers(self) -> list[dict]:
         """Backends that count toward 'all models exhausted'.
 
         Excludes ollama and tiers disabled by a 403 this process: those cannot
         recover with a quota reset, so they must not block the daily-quota abort.
         """
         return [
-            p["name"]
+            p
             for p in self.providers
             if p["name"] != "ollama"
             and not is_provider_permission_denied(self._perm_key(p))
         ]
 
+    def _api_provider_names(self) -> list[str]:
+        return [p["name"] for p in self._api_providers()]
+
     def _all_api_daily_quotas_exhausted(self) -> bool:
-        names = self._api_provider_names()
-        return bool(names) and all(n in self._daily_quota_exhausted for n in names)
+        providers = self._api_providers()
+        return bool(providers) and all(
+            is_provider_daily_exhausted(self._perm_key(p)) for p in providers
+        )
 
     def _raise_if_all_daily_quotas_exhausted(
         self,
@@ -333,13 +336,9 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             provider_name = provider_info['name']
             perm_key = self._perm_key(provider_info)
 
-            # Skip backends that already burned their daily/free-tier quota this
-            # run (here or in another chain sharing the same key).
-            if (
-                provider_name in self._daily_quota_exhausted
-                or is_provider_daily_exhausted(perm_key)
-            ):
-                self._daily_quota_exhausted.add(provider_name)
+            # Skip backends whose key already hit its daily/free-tier quota this
+            # process (here or in another chain sharing the same key).
+            if is_provider_daily_exhausted(perm_key):
                 attempted_providers.append(f"{provider_name} (daily quota)")
                 _remember(provider_name, "free-tier daily quota")
                 continue
@@ -449,7 +448,6 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 # Hard daily/free-tier 429: burn this backend for the run, try the next
                 # (including Ollama). Final exhaustion check runs after the loop.
                 if is_daily_quota_exhausted_error(e):
-                    self._daily_quota_exhausted.add(provider_name)
                     mark_provider_daily_exhausted(perm_key)
                     _remember(provider_name, "free-tier daily quota")
                     print(
