@@ -3,8 +3,8 @@
 Order (free tiers first, then local):
   1. gemini-3.6-flash
   2. gemini-3.5-flash-lite
-  3. groq
-  4. ollama (LocalGroundedProvider)
+  3. ollama (LocalGroundedProvider) when ENABLE_LOCAL_FALLBACK
+  4. groq only when SSE_INCLUDE_GROQ=1 (off by default for org/SSE assessment)
 
 Shared Tavily snippets are preferred so all backends see the same evidence.
 Gemini native Google Search is **never** enabled by this provider — grounding
@@ -19,7 +19,13 @@ Env overrides:
   GEMINI_SSE_LITE_MODEL      default gemini-3.5-flash-lite
   USE_GOOGLE_SEARCH_GROUNDING  unset|0 → off; 1 → force Google Search on Gemini
   MAX_GROUNDED_PROMPT_CHARS  default 100000; head+tail cap for Gemini/Groq
-  QUOTA_COOLDOWN_MINUTES     default 15; cooldown period after quota exhaustion
+  QUOTA_COOLDOWN_SECONDS     default 15; soft RPM/TPM cooldown after 429
+  QUOTA_COOLDOWN_MINUTES     legacy override (minutes) if SECONDS unset
+  SSE_INCLUDE_GROQ           set 1 to put groq back in the SSE/org chain
+
+A 403 / PERMISSION_DENIED on a model (e.g. gemini-3.6-flash) disables that
+model for the rest of the process so later orgs skip straight to the next
+backend. Restart the process after fixing key/model access to retry it.
 """
 
 from __future__ import annotations
@@ -33,8 +39,7 @@ from llm.config import should_use_grounding
 from llm.cooldown import (
     ProviderCooldownMixin,
     fallback_reason,
-    get_cooldown_minutes,
-    is_quota_exhausted_error,
+    get_cooldown_seconds,
 )
 from llm.gemini import GeminiProvider
 from llm.groq import GroqProvider
@@ -54,8 +59,6 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_GEMINI_PRIMARY = "gemini-3.6-flash"
 DEFAULT_GEMINI_LITE = "gemini-3.5-flash-lite"
-DEFAULT_COOLDOWN_MINUTES = 15
-
 # Backends that must never run nested search / Google Search when shared
 # Tavily evidence is (or isn't) injected upstream.
 _NON_GEMINI_BACKENDS = frozenset({"groq", "ollama", "cerebras"})
@@ -141,7 +144,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         # Track providers with quota exhaustion and when they can be retried
         # Maps provider name → timestamp when cooldown expires
         self._exhausted_until: dict[str, float] = {}
-        self._cooldown_seconds = get_cooldown_minutes() * 60
+        self._cooldown_seconds = get_cooldown_seconds()
         # Skipped backends for this process, so catch-up can print why a model fell through.
         self.fallback_notes: list[dict[str, str]] = []
 
@@ -156,10 +159,14 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         ]
 
         enable_local = os.environ.get("ENABLE_LOCAL_FALLBACK", "").strip().lower() in ("1", "true", "yes", "on")
+        include_groq = os.environ.get("SSE_INCLUDE_GROQ", "").strip().lower() in ("1", "true", "yes", "on")
 
         for name, factory in candidates:
             if not enable_local and name == "ollama":
                 logger.warning("SSE fallback: skipping ollama (ENABLE_LOCAL_FALLBACK not set)")
+                continue
+            if name == "groq" and not include_groq:
+                logger.warning("SSE fallback: skipping groq (SSE_INCLUDE_GROQ not set)")
                 continue
             try:
                 provider = factory()
@@ -283,10 +290,10 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         last_error: Exception | None = None
         failed: list[str] = []
         for name, provider in self._providers:
-            # Skip providers in cooldown period after quota exhaustion
+            # Skip providers in cooldown / permission-denied disable
             if self._is_provider_in_cooldown(name):
                 failed.append(name)
-                self._remember_fallback(name, "rate-limit cooldown")
+                self._remember_fallback(name, self._provider_skip_reason(name))
                 continue
 
             ev = evidence
@@ -335,11 +342,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 last_error = exc
                 failed.append(name)
                 self._remember_fallback(name, fallback_reason(exc))
-
-                # Mark provider as exhausted with time-bounded cooldown if quota error
-                if is_quota_exhausted_error(exc):
-                    self._mark_provider_exhausted(name)
-                else:
+                if not self._mark_provider_failure(name, exc):
                     logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 
@@ -364,10 +367,10 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
         # Gemini-specific model override must not leak to Groq/Ollama.
         model_override = kwargs.pop("model", None)
         for name, provider in self._providers:
-            # Skip providers in cooldown period after quota exhaustion
+            # Skip providers in cooldown / permission-denied disable
             if self._is_provider_in_cooldown(name):
                 failed.append(name)
-                self._remember_fallback(name, "rate-limit cooldown")
+                self._remember_fallback(name, self._provider_skip_reason(name))
                 continue
 
             try:
@@ -398,11 +401,7 @@ class SSEFallbackProvider(ProviderCooldownMixin, BaseLLMProvider):
                 last_error = exc
                 failed.append(name)
                 self._remember_fallback(name, fallback_reason(exc))
-
-                # Mark provider as exhausted with time-bounded cooldown if quota error
-                if is_quota_exhausted_error(exc):
-                    self._mark_provider_exhausted(name)
-                else:
+                if not self._mark_provider_failure(name, exc):
                     logger.warning("SSE provider %s failed: %s", name, exc)
                 continue
 

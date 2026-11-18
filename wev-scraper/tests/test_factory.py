@@ -14,6 +14,8 @@ from llm.gemini_fallback import (
 @pytest.fixture(autouse=True)
 def enable_local_fallback(monkeypatch):
     monkeypatch.setenv("ENABLE_LOCAL_FALLBACK", "1")
+    # Most chain tests still exercise the optional groq tier.
+    monkeypatch.setenv("SSE_INCLUDE_GROQ", "1")
 
 def test_get_job_summary_provider_local():
     provider_mock = MagicMock()
@@ -71,6 +73,33 @@ def test_get_fallback_llm_provider_returns_chain():
         with patch("llm.gemini_fallback.SSEFallbackProvider", return_value=chain):
             assert get_fallback_llm_provider() is chain
             assert get_sse_provider() is chain
+
+
+def test_sse_fallback_skips_groq_unless_opted_in(monkeypatch):
+    monkeypatch.delenv("SSE_INCLUDE_GROQ", raising=False)
+
+    flash = MagicMock()
+    flash.is_available.return_value = True
+    flash.complete.return_value = "ok"
+
+    lite = MagicMock()
+    lite.is_available.return_value = True
+
+    groq = MagicMock()
+    groq.is_available.return_value = True
+
+    with patch("llm.gemini_fallback.GeminiProvider") as mock_gemini, \
+         patch("llm.gemini_fallback.GroqProvider", return_value=groq), \
+         patch("llm.gemini_fallback.LocalGroundedProvider") as mock_ollama, \
+         patch("llm.gemini_fallback.fetch_tavily_context", return_value=""), \
+         patch("llm.gemini_fallback.is_tavily_available", return_value=False):
+        mock_ollama.return_value.is_available.return_value = False
+        mock_gemini.side_effect = [flash, lite]
+        provider = SSEFallbackProvider()
+        names = [n for n, _ in provider._providers]
+        assert "groq" not in names
+        assert names == [DEFAULT_GEMINI_PRIMARY, DEFAULT_GEMINI_LITE]
+        groq.is_available.assert_not_called()
 
 
 def test_sse_fallback_tries_flash_then_lite_then_groq_then_ollama():

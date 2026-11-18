@@ -2,8 +2,9 @@
 
 Default: Groq for most tasks (summarization, location extraction, values tagging).
 SSE / org assessment chain (``get_sse_provider`` / ``get_fallback_llm_provider``):
-  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+  gemini-3.6-flash → gemini-3.5-flash-lite → ollama (optional)
 with shared Tavily evidence (see ``llm.gemini_fallback`` / ``llm.tavily_grounding``).
+Groq is off for assessment unless ``SSE_INCLUDE_GROQ=1``.
 """
 
 import logging
@@ -112,7 +113,8 @@ def get_fallback_llm_provider() -> BaseLLMProvider | None:
     """Return multi-tier LLM provider with runtime fallback.
 
     Always uses ``SSEFallbackProvider`` when available:
-      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (if ENABLE_LOCAL_FALLBACK)
+      gemini-3.6-flash → gemini-3.5-flash-lite → ollama (if ENABLE_LOCAL_FALLBACK)
+      (+ groq only if SSE_INCLUDE_GROQ=1)
 
     Shared Tavily evidence is injected once for ``task=sse`` so every backend
     sees the same snippets. Providers that fail to initialize are skipped.
@@ -148,8 +150,8 @@ def get_sse_provider() -> BaseLLMProvider | None:
 def get_unified_processor(**kwargs) -> "UnifiedJobProcessor":
     """Return the unified job processor with intelligent fallback.
 
-    Fallback order matches SSE:
-      gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama
+    Fallback order matches SSE (Gemini first; groq opt-in via UNIFIED_INCLUDE_GROQ):
+      gemini-3.6-flash → gemini-3.5-flash-lite → ollama
 
     Args:
         **kwargs: Passed to UnifiedJobProcessor constructor (e.g. api_key).

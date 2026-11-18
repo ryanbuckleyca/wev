@@ -1,9 +1,10 @@
 """Unified LLM provider with multi-tier fallback for complete job processing.
 
 Tries backends in order:
-  gemini-3.6-flash → gemini-3.5-flash-lite → groq → ollama (when available).
-Hard daily/free-tier 429s burn that backend for the process; the run aborts
-only once every API backend in the chain has hit one.
+  gemini-3.6-flash → gemini-3.5-flash-lite → ollama (when available).
+Groq is omitted by default for job assessment (set ``UNIFIED_INCLUDE_GROQ=1``
+to re-enable). Hard daily/free-tier 429s burn that backend for the process;
+the run aborts only once every API backend in the chain has hit one.
 When ``ENV_MODE=local``, Ollama is also tried earlier for offline preference on
 unified (non-SSE-grounded) batches.
 
@@ -25,7 +26,7 @@ from llm.cooldown import (
     DailyQuotaExhaustedError,
     ProviderCooldownMixin,
     fallback_reason,
-    get_cooldown_minutes,
+    get_cooldown_seconds,
     is_daily_quota_exhausted_error,
     is_quota_exhausted_error,
 )
@@ -62,7 +63,7 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
         self.api_key = api_key
         # Track providers with quota exhaustion and when they can be retried
         self._exhausted_until: dict[str, float] = {}
-        self._cooldown_seconds = get_cooldown_minutes() * 60
+        self._cooldown_seconds = get_cooldown_seconds()
         # Providers that hit a hard daily/free-tier 429 this process — skip for the rest of the run
         self._daily_quota_exhausted: set[str] = set()
 
@@ -74,6 +75,11 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             ("ollama", lambda: LocalGroundedProvider(), "Ollama (local LLM)"),
         ] if is_local_env() else []
 
+        # Assessment stays on Gemini (+ optional Ollama). Opt in to Groq explicitly.
+        include_groq = os.environ.get("UNIFIED_INCLUDE_GROQ", "").strip().lower() in (
+            "1", "true", "yes", "on",
+        )
+        # Legacy: UNIFIED_SKIP_GROQ=1 remains an explicit skip even if INCLUDE is set.
         skip_groq = os.environ.get("UNIFIED_SKIP_GROQ", "").strip().lower() in (
             "1", "true", "yes", "on",
         )
@@ -83,10 +89,12 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
             (primary, lambda: GeminiProvider(api_key=api_key, model=primary), f"Gemini ({primary})"),
             (lite, lambda: GeminiProvider(api_key=api_key, model=lite), f"Gemini ({lite})"),
         ]
-        if not skip_groq:
+        if include_groq and not skip_groq:
             candidates.append(("groq", lambda: GroqProvider(), "Groq"))
         else:
-            logger.warning("Skipping LLM provider groq (UNIFIED_SKIP_GROQ set)")
+            logger.warning(
+                "Skipping LLM provider groq (set UNIFIED_INCLUDE_GROQ=1 to enable for unified)"
+            )
         # Always append Ollama last when not already first (API-exhausted fallback).
         if not is_local_env():
             candidates.append(
@@ -308,10 +316,16 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                 _remember(provider_name, "free-tier daily quota")
                 continue
 
-            # Skip providers in cooldown period after soft RPM/TPM exhaustion
+            # Skip providers in cooldown / permission-denied disable
             if self._is_provider_in_cooldown(provider_name):
-                attempted_providers.append(f"{provider_name} (cooldown)")
-                _remember(provider_name, "rate-limit cooldown")
+                skip_reason = self._provider_skip_reason(provider_name)
+                label = (
+                    "permission denied"
+                    if skip_reason == "permission denied"
+                    else "cooldown"
+                )
+                attempted_providers.append(f"{provider_name} ({label})")
+                _remember(provider_name, skip_reason)
                 continue
 
             attempted_providers.append(provider_name)
@@ -415,11 +429,11 @@ class UnifiedJobProcessor(ProviderCooldownMixin):
                     )
                     continue
 
-                # Soft RPM/TPM: mark cooldown and try the next provider
+                # Soft RPM/TPM or auth: cooldown / process-disable, then next provider
                 _remember(provider_name, fallback_reason(e))
-                if is_quota_exhausted_error(e):
-                    self._mark_provider_exhausted(provider_name)
-                elif "not available" in error_msg:
+                if self._mark_provider_failure(provider_name, e):
+                    continue
+                if "not available" in error_msg:
                     logger.warning(f"❌ Provider {provider_name} not available: {e}")
                 else:
                     logger.warning(f"💥 Failed with {provider_name}: {e}")
