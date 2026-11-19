@@ -15,23 +15,54 @@ def reset_settings_state(monkeypatch):
     monkeypatch.setattr(settings, "_ENV_LOADED", False)
 
 
-def test_ensure_env_loaded_only_loads_dotenv_once(monkeypatch):
+def test_ensure_env_loaded_only_loads_dotenv_once(monkeypatch, tmp_path):
     calls: list[str | None] = []
+    scraper_env = tmp_path / "wev-scraper" / ".env"
+    root_env = tmp_path / ".env"
+    scraper_env.parent.mkdir()
+    scraper_env.write_text("SCRAPER_ONLY=1\n")
+    root_env.write_text("ROOT_ONLY=1\nSHARED=root\n")
 
     def fake_load_dotenv(path: str | None = None):
-        calls.append(path)
+        calls.append(str(path) if path is not None else None)
         return True
 
-    def fake_find_dotenv():
-        return str(settings.SCRAPER_ROOT / ".env")
+    def fake_find_dotenv(*_args, **_kwargs):
+        return str(root_env)
 
+    monkeypatch.setattr(settings, "SCRAPER_ROOT", scraper_env.parent)
     monkeypatch.setattr(settings, "load_dotenv", fake_load_dotenv)
     monkeypatch.setattr(settings, "find_dotenv", fake_find_dotenv)
 
     settings.ensure_env_loaded()
     settings.ensure_env_loaded()
 
-    assert calls == [str(settings.SCRAPER_ROOT / ".env")]
+    assert calls == [str(root_env.resolve()), str(scraper_env.resolve())]
+
+
+def test_ensure_env_loaded_fills_package_keys_after_root(monkeypatch, tmp_path):
+    scraper_env = tmp_path / "wev-scraper" / ".env"
+    root_env = tmp_path / ".env"
+    scraper_env.parent.mkdir()
+    scraper_env.write_text("SCRAPER_ONLY=from-scraper\nSHARED=from-scraper\n")
+    root_env.write_text("ROOT_ONLY=from-root\nSHARED=from-root\n")
+
+    monkeypatch.setattr(settings, "SCRAPER_ROOT", scraper_env.parent)
+    monkeypatch.setattr(
+        settings,
+        "find_dotenv",
+        lambda *args, **kwargs: str(root_env),
+    )
+    monkeypatch.delenv("SCRAPER_ONLY", raising=False)
+    monkeypatch.delenv("ROOT_ONLY", raising=False)
+    monkeypatch.delenv("SHARED", raising=False)
+
+    settings.ensure_env_loaded()
+
+    assert os.environ["ROOT_ONLY"] == "from-root"
+    assert os.environ["SCRAPER_ONLY"] == "from-scraper"
+    # First load wins for duplicates (established precedence).
+    assert os.environ["SHARED"] == "from-root"
 
 
 def test_get_supabase_settings_uses_prod_credentials_when_enabled():

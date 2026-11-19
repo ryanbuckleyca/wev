@@ -1,38 +1,56 @@
 {
   "taxonomy": {
     "sectors": {
-      "agriculture-food-systems": {
-        "label": "Agriculture et systèmes alimentaires"
-      },
-      "arts-culture-information": {
-        "label": "Arts, culture et information"
-      },
-      "care-health-social-services": {
-        "label": "Soins, santé et services sociaux"
+      "social-health-care-services": {
+        "label": "Services sociaux, de santé et de soins"
       },
       "education-knowledge": {
-        "label": "Éducation et savoir"
+        "label": "Éducation, petite enfance et savoirs"
       },
-      "environment-circular-economy": {
-        "label": "Environnement et économie circulaire"
-      },
-      "financial-insurance-services": {
-        "label": "Services financiers et d'assurance"
+      "employment-workforce-integration": {
+        "label": "Emploi et insertion socioprofessionnelle"
       },
       "housing-collective-real-estate": {
         "label": "Logement et immobilier collectif"
       },
-      "manufacturing-production": {
-        "label": "Fabrication et production"
+      "arts-culture-media": {
+        "label": "Arts, culture et médias communautaires"
+      },
+      "recreation-tourism-hospitality": {
+        "label": "Loisir, tourisme et restauration collective"
+      },
+      "agriculture-food-systems": {
+        "label": "Agriculture durable et systèmes alimentaires"
+      },
+      "environment-circular-economy": {
+        "label": "Environnement, énergie et économie circulaire"
+      },
+      "financial-insurance-services": {
+        "label": "Services financiers et assurance solidaire"
       },
       "retail-consumer-goods": {
-        "label": "Commerce de détail et biens de consommation"
+        "label": "Commerce de détail et consommation responsable"
+      },
+      "production-construction-transportation": {
+        "label": "Production, écoconstruction et transports"
       },
       "technology-digital-infrastructure": {
-        "label": "Technologie et infrastructure numérique"
+        "label": "Technologies, numérique et communs digitaux"
       },
-      "community-civic-infrastructure": {
-        "label": "Infrastructure communautaire et civique"
+      "business-professional-services": {
+        "label": "Services aux entreprises et professionnels"
+      },
+      "advocacy-rights-representation": {
+        "label": "Défense des droits, plaidoyer et concertation"
+      },
+      "community-development-philanthropy-volunteering": {
+        "label": "Développement local, philanthropie et bénévolat"
+      },
+      "international-cooperation-development": {
+        "label": "Coopération internationale et développement"
+      },
+      "other-nec": {
+        "label": "Autre / non classé ailleurs"
       }
     }
   },

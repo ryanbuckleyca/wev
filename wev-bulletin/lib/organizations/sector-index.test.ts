@@ -9,10 +9,10 @@ describe('sectorBlurb', () => {
     expect(blurb).toMatch(/csa|farm|food/i);
   });
 
-  it('strips the Exemple prefix in French', () => {
-    const blurb = sectorBlurb('agriculture-food-systems', 'fr');
-    expect(blurb).toBeTruthy();
-    expect(blurb!.toLowerCase().startsWith('exemple')).toBe(false);
+  it('returns null for French when MASTER has no FR example blurb', () => {
+    // Scope inclusions in the workbook are English-only; importer leaves example_fr empty
+    // rather than repeating the sector heading.
+    expect(sectorBlurb('agriculture-food-systems', 'fr')).toBeNull();
   });
 
   it('returns null for unknown sectors', () => {
@@ -46,17 +46,23 @@ describe('buildSectorIndexCards', () => {
       {
         name: 'Radio Co-op',
         governance_category: 'GOV_1',
-        sector_id: 'arts-culture-information',
+        sector_id: 'arts-culture-media',
       },
       { name: 'No Sector', governance_category: 'GOV_4', sector_id: null },
       { name: 'Bad Sector', governance_category: 'GOV_4', sector_id: 'not-real' },
+      {
+        name: 'Legacy Arts Org',
+        governance_category: 'GOV_1',
+        sector_id: 'arts-culture-information',
+      },
     ]);
 
-    expect(cards.map((c) => c.id)).toEqual([
-      'agriculture-food-systems',
-      'arts-culture-information',
-    ]);
-    expect(cards[0]).toEqual({
+    // MASTER v2.5 order: arts (SSE_SEC_05) before agriculture (SSE_SEC_07).
+    // Legacy arts-culture-information remaps onto arts-culture-media.
+    expect(cards.map((c) => c.id)).toEqual(['arts-culture-media', 'agriculture-food-systems']);
+    expect(cards[0].orgCount).toBe(2);
+    expect(cards[0].sampleNames).toEqual(['Legacy Arts Org', 'Radio Co-op']);
+    expect(cards[1]).toEqual({
       id: 'agriculture-food-systems',
       orgCount: 4,
       typeCounts: [
@@ -65,7 +71,5 @@ describe('buildSectorIndexCards', () => {
       ],
       sampleNames: ['Alpha Farm', 'Beta Bank', 'Extra Farm'],
     });
-    expect(cards[1].orgCount).toBe(1);
-    expect(cards[1].sampleNames).toEqual(['Radio Co-op']);
   });
 });

@@ -14,6 +14,11 @@ import logging
 import sys
 from pathlib import Path
 
+# Ensure wev-scraper root is on sys.path when run as scripts/backfill_org_sectors.py
+_SCRAPER_DIR = Path(__file__).resolve().parent.parent
+if str(_SCRAPER_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRAPER_DIR))
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,9 +40,9 @@ from utils.base_grounded_classifier import BaseGroundedClassifier  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.sector_prompts import (  # noqa: E402
     SECTOR_BATCH_PROMPT_TEMPLATE,
+    canonicalize_sector_id,
     format_org_chunks,
     get_formatted_sector_taxonomy,
-    get_sector_ids_set,
 )
 
 
@@ -53,9 +58,19 @@ class SectorBatchAssessor(BaseGroundedClassifier):
         if not orgs:
             return {}
 
+        # Hoist extra.source_categories to the top-level key format_org_chunks expects.
+        prepared: list[dict] = []
+        for org in orgs:
+            row = dict(org)
+            if row.get("source_categories") is None:
+                extra = row.get("extra")
+                if isinstance(extra, dict) and extra.get("source_categories") is not None:
+                    row["source_categories"] = extra["source_categories"]
+            prepared.append(row)
+
         prompt = SECTOR_BATCH_PROMPT_TEMPLATE.format(
             taxonomy=get_formatted_sector_taxonomy(),
-            organizations_text=format_org_chunks(orgs),
+            organizations_text=format_org_chunks(prepared),
         )
 
         try:
@@ -80,7 +95,6 @@ class SectorBatchAssessor(BaseGroundedClassifier):
             logger.warning("Expected 'results' to be a list, got %s", type(results).__name__)
             return {}
 
-        valid_sectors = get_sector_ids_set()
         mapping = {}
         for r in results:
             if not isinstance(r, dict):
@@ -95,9 +109,14 @@ class SectorBatchAssessor(BaseGroundedClassifier):
             except (TypeError, ValueError):
                 continue
 
-            sector_id = r.get("sector_id")
-            if sector_id and sector_id not in valid_sectors:
-                sector_id = None
+            raw_sector = r.get("sector_id")
+            sector_id = canonicalize_sector_id(raw_sector)
+            if raw_sector and sector_id is None:
+                logger.warning(
+                    "Rejected unrecognized sector_id %r for org %s",
+                    raw_sector,
+                    org_id,
+                )
 
             mapping[org_id] = sector_id
 
@@ -120,35 +139,63 @@ def main():
         logger.error("Failed to initialize assessor: %s", exc)
         sys.exit(1)
 
-    logger.info("Fetching organizations with missing sector_id...")
+    logger.info(
+        "Fetching organizations for sector backfill "
+        "(sector_remap_v25_community_civic cohort, then other null sector_id)..."
+    )
 
+    # Exact former community-civic-infrastructure IDs persisted by the v2.5 remap
+    # migration. Select by that table (plus null sector_id) so reassessment does
+    # not rely only on a blind null scan — tourist-lodging and other ambiguous
+    # residual rows stay identifiable after sector_id was cleared.
+    cohort_ids: list[int] = []
+    try:
+        page_size = 1000
+        offset = 0
+        while True:
+            cohort_resp = (
+                supabase.table("sector_remap_v25_community_civic")
+                .select("organization_id")
+                .order("organization_id")
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+            rows = cohort_resp.data or []
+            for row in rows:
+                oid = row.get("organization_id")
+                if oid is not None:
+                    cohort_ids.append(int(oid))
+            if len(rows) < page_size:
+                break
+            offset += page_size
+        if cohort_ids:
+            logger.info(
+                "Loaded %d orgs from sector_remap_v25_community_civic for reassessment",
+                len(cohort_ids),
+            )
+    except Exception as exc:
+        logger.warning(
+            "Could not load sector_remap_v25_community_civic cohort (%s); "
+            "falling back to null sector_id only",
+            exc,
+        )
+
+    select_cols = "id, name, website, description, mission_statement, extra"
+    cohort_id_set = set(cohort_ids)
     processed = 0
     updated = 0
-    last_id = 0
     batch_num = 1
 
-    while True:
-        query = supabase.table("organizations").select("id, name, website, description, mission_statement").is_("sector_id", "null")
-        if args.sse_only:
-            query = query.eq("is_sse", True)
-
-        fetch_limit = 1000
-        if args.limit:
-            remaining = args.limit - processed
-            if remaining <= 0:
-                break
-            fetch_limit = min(remaining, 1000)
-
-        response = query.order("id").gt("id", last_id).limit(fetch_limit).execute()
-        orgs = response.data
-
-        if not orgs:
-            if processed == 0:
-                logger.info("No organizations found missing sector_id.")
-            break
-
+    def _process_orgs(orgs: list[dict]) -> None:
+        nonlocal processed, updated, batch_num
         for i in range(0, len(orgs), args.batch_size):
-            batch = orgs[i:i + args.batch_size]
+            if args.limit is not None and processed >= args.limit:
+                return
+            batch = orgs[i : i + args.batch_size]
+            if args.limit is not None:
+                batch = batch[: max(0, args.limit - processed)]
+            if not batch:
+                return
             logger.info("Processing batch %d (size %d)...", batch_num, len(batch))
             batch_num += 1
 
@@ -164,13 +211,55 @@ def main():
                 logger.info("Org %d (%s) -> %s", org_id, org.get("name", "Unknown"), sector_id)
 
                 if not args.dry_run:
-                    # Update DB
-                    supabase.table("organizations").update({"sector_id": sector_id}).eq("id", org_id).execute()
+                    supabase.table("organizations").update({"sector_id": sector_id}).eq(
+                        "id", org_id
+                    ).execute()
                     updated += 1
 
             processed += len(batch)
 
-        last_id = orgs[-1]["id"]
+    # Pass 1: exact remap cohort (still null after migration).
+    for offset in range(0, len(cohort_ids), 500):
+        if args.limit is not None and processed >= args.limit:
+            break
+        page_ids = cohort_ids[offset : offset + 500]
+        query = (
+            supabase.table("organizations")
+            .select(select_cols)
+            .in_("id", page_ids)
+            .is_("sector_id", "null")
+        )
+        if args.sse_only:
+            query = query.eq("is_sse", True)
+        response = query.order("id").execute()
+        _process_orgs(response.data or [])
+
+    # Pass 2: remaining null sector_id rows (never-tagged / other).
+    last_id = 0
+    while True:
+        if args.limit is not None and processed >= args.limit:
+            break
+        fetch_limit = 1000
+        if args.limit is not None:
+            fetch_limit = min(args.limit - processed, 1000)
+
+        query = (
+            supabase.table("organizations")
+            .select(select_cols)
+            .is_("sector_id", "null")
+        )
+        if args.sse_only:
+            query = query.eq("is_sse", True)
+        response = query.order("id").gt("id", last_id).limit(fetch_limit).execute()
+        rows = response.data or []
+        if not rows:
+            if processed == 0:
+                logger.info("No organizations found missing sector_id.")
+            break
+        last_id = rows[-1]["id"]
+        orgs = [row for row in rows if int(row["id"]) not in cohort_id_set]
+        if orgs:
+            _process_orgs(orgs)
 
     logger.info("Done. Processed %d orgs, updated %d orgs.", processed, updated)
 

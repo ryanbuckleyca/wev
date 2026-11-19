@@ -1,17 +1,26 @@
 {
   "taxonomy": {
     "sectors": {
-      "agriculture-food-systems": {
-        "label": "Agriculture & Food Systems"
-      },
-      "arts-culture-information": {
-        "label": "Arts, Culture & Information"
-      },
-      "care-health-social-services": {
-        "label": "Care, Health & Social Services"
+      "social-health-care-services": {
+        "label": "Social, Health & Care Services"
       },
       "education-knowledge": {
         "label": "Education & Knowledge"
+      },
+      "employment-workforce-integration": {
+        "label": "Employment & Workforce Integration"
+      },
+      "housing-collective-real-estate": {
+        "label": "Housing & Collective Real Estate"
+      },
+      "arts-culture-media": {
+        "label": "Arts, Culture & Media"
+      },
+      "recreation-tourism-hospitality": {
+        "label": "Recreation, Tourism & Hospitality"
+      },
+      "agriculture-food-systems": {
+        "label": "Agriculture & Food Systems"
       },
       "environment-circular-economy": {
         "label": "Environment & Circular Economy"
@@ -19,20 +28,29 @@
       "financial-insurance-services": {
         "label": "Financial & Insurance Services"
       },
-      "housing-collective-real-estate": {
-        "label": "Housing & Collective Real Estate"
-      },
-      "manufacturing-production": {
-        "label": "Manufacturing & Production"
-      },
       "retail-consumer-goods": {
         "label": "Retail & Consumer Goods"
+      },
+      "production-construction-transportation": {
+        "label": "Production, Construction & Transportation"
       },
       "technology-digital-infrastructure": {
         "label": "Technology & Digital Infrastructure"
       },
-      "community-civic-infrastructure": {
-        "label": "Community & Civic Infrastructure"
+      "business-professional-services": {
+        "label": "Business & Professional Services"
+      },
+      "advocacy-rights-representation": {
+        "label": "Advocacy, Rights & Representation"
+      },
+      "community-development-philanthropy-volunteering": {
+        "label": "Community Development, Philanthropy & Volunteering"
+      },
+      "international-cooperation-development": {
+        "label": "International Cooperation & Development"
+      },
+      "other-nec": {
+        "label": "Other / not elsewhere classified"
       }
     }
   },

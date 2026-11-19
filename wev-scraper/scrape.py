@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Set
 
 from settings import ensure_env_loaded, load_env_file
-from utils.prod_env import apply_prod_overrides, confirm_prod_run, resolve_prod_env_path
+from utils.prod_env import (
+    apply_prod_overrides,
+    confirm_prod_run,
+    resolve_prod_env_path,
+    resolve_staging_env_path,
+)
 
 # Ensure CI sees output immediately
 if hasattr(sys.stdout, "reconfigure"):
@@ -666,7 +671,9 @@ def initialize_runtime_env(env: str):
         load_env_file(base_env)
 
     if env == "staging":
-        staging_env = root_dir / ".env.staging" if (root_dir / ".env.staging").exists() else script_dir / ".env.staging"
+        # Same search order as helper scripts (resolve_staging_env_path):
+        # repo root → wev-scraper/ → repo parent.
+        staging_env = resolve_staging_env_path(script_dir / "scrape.py")
         if staging_env.exists():
             _log(f"▶ Loading Staging Overrides from {staging_env.name}")
             load_env_file(staging_env)

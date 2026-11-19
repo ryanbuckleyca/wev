@@ -1122,7 +1122,7 @@ def test_place_name_guard_remaps_community_orchestra_from_government():
             governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             governance_confidence=0.7,
             governance_reasoning="Assumed municipal from the place name.",
-            sector_id="community-civic-infrastructure",
+            sector_id="community-development-philanthropy-volunteering",
             sse_rating="no",
             sse_reasoning_en=(
                 "Named after the town of Riverside; assumed to be a public body "
@@ -1138,11 +1138,41 @@ def test_place_name_guard_remaps_community_orchestra_from_government():
     )
     assert result is not None
     assert result["sse_rating"] == "weak_yes"
-    assert result["sector_id"] == "arts-culture-information"
+    assert result["sector_id"] == "arts-culture-media"
     # Cleared false EXCLUDED; do not invent GOV_4_1 without membership evidence.
     assert result["governance_subtype"] is None
     assert result["governance_confidence"] is None
     assert result["governance_reasoning"] is None
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_remaps_other_nec_community_orchestra():
+    """Place-name-only exclusion with residual other-nec still remaps to arts."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
+            governance_confidence=0.7,
+            governance_reasoning="Assumed municipal from the place name.",
+            sector_id="other-nec",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Named after the town of Riverside; assumed to be a public body "
+                "from the place name alone."
+            ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "weak_yes"
+    assert result["sector_id"] == "arts-culture-media"
+    assert result["governance_subtype"] is None
     assert any("place_name_guard" in f for f in result["flags"])
 
 
@@ -1450,7 +1480,7 @@ def test_assess_passes_prefer_hosts_for_known_website():
         "canonical_name": "PARO Centre for Women's Enterprise",
         "slug": "paro-centre-for-womens-enterprise",
         "governance_subtype_code": "GOV_4_1_MEMBER_NPO", "governance_category_id": "GOV_4",
-        "sector_id": "community-civic-infrastructure",
+        "sector_id": "community-development-philanthropy-volunteering",
         "values": ["Community"],
         "values_raw": "Community",
         "sse_rating": "strong_yes",

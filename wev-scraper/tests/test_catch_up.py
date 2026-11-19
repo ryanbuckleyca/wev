@@ -1252,7 +1252,7 @@ def test_parked_intro_partial_fill_lists_missing_and_allows_multi_site():
     intro = _parked_intro(
         {
             "assessment_skip_reason": "partial_fill",
-            "sector_id": "community-civic-infrastructure",
+            "sector_id": "community-development-philanthropy-volunteering",
             "language": "en",
             "governance_subtype": None,
             "description_en": None,

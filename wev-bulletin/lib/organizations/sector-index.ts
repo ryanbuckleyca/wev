@@ -1,6 +1,6 @@
 import sharedSectors from '@shared/taxonomy/sectors.json';
 import { isGovernanceCategory } from '@/lib/organizations/governance-taxonomy';
-import { SECTORS_LIST } from '@/lib/sectors';
+import { canonicalizeSectorId, SECTORS_LIST } from '@/lib/sectors';
 
 export type SectorIndexTypeCount = {
   type: string;
@@ -24,7 +24,9 @@ const EXAMPLE_PREFIX = /^(example|exemple)\s*:\s*/i;
 
 /** Public blurb for a sector card — taxonomy example with the "Example:" prefix stripped. */
 export function sectorBlurb(sectorId: string, locale: string): string | null {
-  const entry = sharedSectors.sectors.find((s) => s.id === sectorId);
+  const canonical = canonicalizeSectorId(sectorId);
+  if (!canonical) return null;
+  const entry = sharedSectors.sectors.find((s) => s.id === canonical);
   if (!entry) return null;
   const raw = locale.startsWith('fr') ? entry.example_fr : entry.example_en;
   if (!raw?.trim()) return null;
@@ -34,6 +36,15 @@ export function sectorBlurb(sectorId: string, locale: string): string | null {
 /**
  * Aggregate org rows into one card per taxonomy sector (taxonomy order).
  * Mix counts use governance_category (SSE categories only).
+ *
+ * Rollout window: deploy the remap migration
+ * (`20261119120000_remap_org_sector_ids_v25`) with this UI. Cards canonicalize
+ * legacy v1 `sector_id` values so counts stay populated if the UI briefly leads
+ * the migration; list filters expand canonical IDs with matching legacy stored
+ * IDs via `expandSectorFilterIds` so `get_active_organizations` stays consistent
+ * with these card counts during that window. Ambiguous
+ * `community-civic-infrastructure` rows are cleared to NULL for LLM reassessment
+ * rather than force-mapped — they do not inflate the community-development card.
  */
 export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   const bySector = new Map<
@@ -42,8 +53,8 @@ export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   >();
 
   for (const row of rows) {
-    const sectorId = row.sector_id?.trim();
-    if (!sectorId || !SECTORS_LIST.includes(sectorId)) continue;
+    const sectorId = canonicalizeSectorId(row.sector_id);
+    if (!sectorId) continue;
 
     let bucket = bySector.get(sectorId);
     if (!bucket) {

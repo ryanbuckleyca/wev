@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServer } from '@/lib/supabase-server';
 import { attachSkillLabels, parseLocale, resolveSkillLabels } from '@/lib/resolve-skill-labels';
+import { expandSectorFilterIds } from '@/lib/sectors';
 import { ORG_INDEX_PAGE_SIZE, ORG_JOBS_PER_PAGE, ORG_CACHE_TAG } from './constants';
 import { buildSectorIndexCards, type SectorIndexCard } from './sector-index';
 import { buildGovernanceIndexCards, type GovernanceIndexCard } from './governance-index';
@@ -124,7 +125,7 @@ async function fetchOrganizationIndexUncached(
     p_provinces: provinces.length > 0 ? provinces : null,
     p_municipalities: municipalities.length > 0 ? municipalities : null,
     p_languages: languages.length > 0 ? languages : null,
-    p_sectors: sectors.length > 0 ? sectors : null,
+    p_sectors: sectors.length > 0 ? expandSectorFilterIds(sectors) : null,
     p_governance_categories: governanceCategories.length > 0 ? governanceCategories : null,
     p_limit: limit,
     p_offset: offset,
