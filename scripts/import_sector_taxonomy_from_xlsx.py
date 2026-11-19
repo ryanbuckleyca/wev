@@ -358,6 +358,26 @@ def main() -> int:
 
     sssom_ws = workbook["SSSOM Mapping Set (Export)"]
     sssom_headers = [cell_str(sssom_ws, 3, col) for col in range(1, 10)]
+
+    # Validate required SSSOM headers before processing mapping rows
+    required_sssom_headers = [
+        "subject_id",
+        "subject_label",
+        "predicate_id",
+        "object_id",
+        "object_label",
+        "match_type",
+        "confidence",
+    ]
+    missing_headers = [h for h in required_sssom_headers if h not in sssom_headers]
+    if missing_headers:
+        print(
+            f"ERROR: SSSOM sheet missing required headers: {', '.join(missing_headers)}",
+            file=sys.stderr,
+        )
+        print(f"Found headers: {sssom_headers}", file=sys.stderr)
+        raise SystemExit(1)
+
     sssom: list[dict[str, Any]] = []
     for row in range(4, 24):
         record = {
