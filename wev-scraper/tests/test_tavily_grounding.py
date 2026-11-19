@@ -177,6 +177,8 @@ def test_org_prompt_keeps_entity_after_local_truncate():
         # Governance subtype schema and the rules recap travel together.
         assert '"governance_subtype_code"' in truncated
         assert ORG_TYPE_RULES_RECAP in truncated
+        # Leaf codes ride in the recap so they survive mid-prompt taxonomy truncation.
+        assert "GOV_1_1_WORKER_COOP" in truncated
 
 
 def test_org_prompt_keeps_type_recap_with_capped_notes_after_truncate():
@@ -198,3 +200,4 @@ def test_org_prompt_keeps_type_recap_with_capped_notes_after_truncate():
         assert ORG_TYPE_RULES_RECAP in truncated
         assert '"governance_subtype_code"' in truncated
         assert '"canonical_name"' in truncated
+        assert "GOV_4_1_MEMBER_NPO" in truncated

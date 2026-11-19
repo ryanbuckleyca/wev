@@ -141,7 +141,7 @@ def fetch_unprocessed_orgs(include_parked=False):
             resp = (
                 supabase.table("organizations")
                 .select(
-                    "id,name,sector_id,type,description,description_en,"
+                    "id,name,sector_id,governance_subtype,description,description_en,"
                     "description_fr,website,location,is_sse,sse_rating,"
                     "mission_statement,values_list,values_rated,language,"
                     "municipality,province,lat,lng,geocode_accuracy_type,created_at,"

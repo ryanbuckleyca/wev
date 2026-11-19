@@ -1,5 +1,7 @@
 """SSE Classification prompt templates for Gemini."""
 
+from utils.governance_taxonomy import EXCLUDED_SUBTYPE, GOVERNANCE_SUBTYPES
+
 # Keywords added to organization searches to find mission/values/governance info
 # Focused on "information containers" that describe structure (bylaws, reports, etc.)
 SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
@@ -387,8 +389,15 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
 
 # Short restatement of governance/exclusion rules next to the JSON schema so
 # head+tail truncation (local Ollama) keeps them with governance_subtype_code.
-ORG_TYPE_RULES_RECAP = """GOVERNANCE RULES RECAP (full GOVERNANCE TAXONOMY above takes precedence):
-- Pick one governance_subtype_code (GOV_* or EXCLUDED_NON_SSE), never invent labels.
+# Leaf codes are listed so controlled values survive when the mid-prompt taxonomy
+# is truncated away.
+_GOVERNANCE_SUBTYPE_CODES_RECAP = ", ".join(
+    list(GOVERNANCE_SUBTYPES.keys()) + [EXCLUDED_SUBTYPE]
+)
+
+ORG_TYPE_RULES_RECAP = f"""GOVERNANCE RULES RECAP (full GOVERNANCE TAXONOMY above takes precedence):
+- Pick one governance_subtype_code from this controlled set only (never invent):
+  {_GOVERNANCE_SUBTYPE_CODES_RECAP}.
 - Government / public agency / municipality / crown corp / school board /
   ministry-run hospital → EXCLUDED_NON_SSE and sse_rating "no". A place name in
   the org name alone is not enough.

@@ -822,6 +822,8 @@ def test_private_company_gate_demotes_inc_with_commercial_ownership():
             canonical_name="Family Music Programs Inc.",
             slug="family-music-programs-inc",
             governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
+            governance_confidence=0.88,
+            governance_reasoning="Member NPO with a board.",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A privately owned commercial music school offering fee-based "
@@ -834,6 +836,9 @@ def test_private_company_gate_demotes_inc_with_commercial_ownership():
     )
     assert result is not None
     assert result["sse_rating"] == "no"
+    assert result["governance_subtype"] == "EXCLUDED_NON_SSE"
+    assert result["governance_confidence"] is None
+    assert result["governance_reasoning"] is None
     assert any("private_company_gate" in f for f in result["flags"])
 
 
@@ -1115,18 +1120,51 @@ def test_place_name_guard_remaps_community_orchestra_from_government():
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
             governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
+            governance_confidence=0.7,
+            governance_reasoning="Assumed municipal from the place name.",
             sector_id="community-civic-infrastructure",
             sse_rating="no",
             sse_reasoning_en=(
                 "Named after the town of Riverside; assumed to be a public body "
                 "from the place name alone."
             ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
         ),
         "Riverside Wind Orchestra",
     )
     assert result is not None
     assert result["sse_rating"] == "weak_yes"
     assert result["sector_id"] == "arts-culture-information"
+    # Cleared false EXCLUDED; do not invent GOV_4_1 without membership evidence.
+    assert result["governance_subtype"] is None
+    assert result["governance_confidence"] is None
+    assert result["governance_reasoning"] is None
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_no_when_only_purpose_must_have_met():
+    """Purpose alone is not enough to restore Yes after a place-name false No."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Classified as government because of the town name; thin mission "
+                "evidence beyond a purpose statement."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert result["governance_subtype"] is None
     assert any("place_name_guard" in f for f in result["flags"])
 
 
@@ -1290,6 +1328,11 @@ def test_place_name_guard_hospital_as_venue_is_not_operator():
                 "Assumed to be a public body from the town name; it performs "
                 "concerts at the public hospital."
             ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
         ),
         "Riverside Wind Orchestra",
     )

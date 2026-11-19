@@ -1003,12 +1003,21 @@ def _demote_org_to_excluded_no(
 ) -> AssessedOrgResult:
     flags = list(result.get("flags") or [])
     flags.append(flag)
+    # Subtype changed → drop model confidence/reasoning that described the
+    # previous classification (see _result_to_db_fields gate comparison).
+    subtype_changed = result.get("governance_subtype") != EXCLUDED_SUBTYPE
     return AssessedOrgResult(
         **{
             **result,
             "sse_rating": "no",
             "governance_subtype": EXCLUDED_SUBTYPE,
             "governance_category": EXCLUDED_CATEGORY,
+            "governance_confidence": (
+                None if subtype_changed else result.get("governance_confidence")
+            ),
+            "governance_reasoning": (
+                None if subtype_changed else result.get("governance_reasoning")
+            ),
             "flags": flags,
         }
     )
@@ -1120,7 +1129,15 @@ _PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
     r"\bministry[- ]run hospitals?\b",
     re.IGNORECASE,
 )
-_PURPOSE_BEYOND_PROFIT_MUST_HAVE = "clear purpose beyond profit"
+# All three org must-haves (lowercased) — required before restoring Yes after a
+# false place-name government exclusion. Purpose alone is not enough.
+_ORG_MUST_HAVES_FOR_YES = frozenset(
+    {
+        "clear purpose beyond profit",
+        "impact described intentionally",
+        "organization's work contributes to social/community/environmental good",
+    }
+)
 
 
 def _apply_community_arts_place_name_guard(
@@ -1130,10 +1147,11 @@ def _apply_community_arts_place_name_guard(
     """Correct false EXCLUDED/government from city-in-name for community arts.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to GOV_4_1_MEMBER_NPO when the explanation shows
-    the place name was the basis for exclusion. Restore a Yes floor only when
-    that was the sole reason for No: the purpose-beyond-profit must-have is
-    still met. An employer that operates a public hospital stays excluded/no.
+    municipal employment. When the explanation shows the place name was the
+    basis for exclusion, clear the false EXCLUDED subtype (leave unset — do not
+    invent GOV_4_1_MEMBER_NPO without membership-control evidence). Restore a
+    Yes floor only when every org must-have is met (place-name was the sole
+    automatic No). An employer that operates a public hospital stays excluded/no.
     """
     if result.get("governance_subtype") not in (EXCLUDED_SUBTYPE, None):
         return result
@@ -1153,25 +1171,34 @@ def _apply_community_arts_place_name_guard(
     flags = list(result.get("flags") or [])
     flags.append(
         "place_name_guard: community arts org — city/place in name is not "
-        "municipal/government evidence → GOV_4_1_MEMBER_NPO"
+        "municipal/government evidence; cleared false EXCLUDED subtype"
     )
     must_haves = {str(m).strip().lower() for m in (result.get("must_haves_met") or [])}
     new_rating = result.get("sse_rating") or "no"
-    if new_rating == "no" and _PURPOSE_BEYOND_PROFIT_MUST_HAVE in must_haves:
+    if new_rating == "no" and _ORG_MUST_HAVES_FOR_YES.issubset(must_haves):
         new_rating = "weak_yes"
         flags.append(
-            "place_name_guard: restored weak_yes for community arts "
-            "member-governed non-profit after false government exclusion"
+            "place_name_guard: restored weak_yes for community arts org after "
+            "false government exclusion (all org must-haves met)"
         )
     sector = result.get("sector_id")
     if sector in (None, "community-civic-infrastructure"):
         sector = "arts-culture-information"
 
+    previous_subtype = result.get("governance_subtype")
+    # Leave subtype unset: GOV_4_1_MEMBER_NPO requires voting-member evidence
+    # the place-name correction alone does not establish.
     return AssessedOrgResult(
         **{
             **result,
-            "governance_subtype": "GOV_4_1_MEMBER_NPO",
-            "governance_category": "GOV_4",
+            "governance_subtype": None,
+            "governance_category": None,
+            "governance_confidence": (
+                None if previous_subtype is not None else result.get("governance_confidence")
+            ),
+            "governance_reasoning": (
+                None if previous_subtype is not None else result.get("governance_reasoning")
+            ),
             "sse_rating": new_rating,
             "sector_id": sector,
             "flags": flags,

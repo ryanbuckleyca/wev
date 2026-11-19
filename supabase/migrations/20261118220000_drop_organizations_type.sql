@@ -210,4 +210,7 @@ COMMENT ON FUNCTION public.get_active_organizations(
   '(and sectors/geo/etc). Legacy organizations.type has been dropped.';
 
 -- Safe now that no remaining RPC/view body references organizations.type.
+-- Deploy order: roll out the scraper build that no longer writes type (and
+-- drain/stop any previous-release workers) before applying this DROP COLUMN,
+-- or inserts from old workers will fail once the column is gone.
 ALTER TABLE public.organizations DROP COLUMN IF EXISTS type;
