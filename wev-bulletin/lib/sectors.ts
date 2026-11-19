@@ -130,7 +130,10 @@ const SOURCE_WRAPPERS: Array<{ token: string; sourceKey: string }> = (() => {
  * Preserves colons inside facet labels (e.g. "Not a sector: role / function").
  */
 function splitSourceWrapper(raw: string): { sourceKey: string | null; text: string } {
-  let text = raw.trim().replace(/\s+(jobs|tags)$/i, '').trim();
+  const text = raw
+    .trim()
+    .replace(/\s+(jobs|tags)$/i, '')
+    .trim();
   for (const { token, sourceKey } of SOURCE_WRAPPERS) {
     const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const withColon = new RegExp(`^${escaped}\\s*:\\s*(.+)$`, 'i');
