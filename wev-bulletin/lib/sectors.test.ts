@@ -49,15 +49,15 @@ describe('crosswalk resolution', () => {
   });
 
   it('keeps CMC source terms from matching GoodWork lookups', () => {
-    expect(
-      resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'cmc'),
-    ).toBe('housing-collective-real-estate');
+    expect(resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'cmc')).toBe(
+      'housing-collective-real-estate',
+    );
     expect(
       resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'goodwork'),
     ).toBeNull();
-    expect(
-      resolveSectorFromCrosswalk('Housing & Collective Real Estate', 'goodwork'),
-    ).toBe('housing-collective-real-estate');
+    expect(resolveSectorFromCrosswalk('Housing & Collective Real Estate', 'goodwork')).toBe(
+      'housing-collective-real-estate',
+    );
   });
 
   it('normalizes accents', () => {
