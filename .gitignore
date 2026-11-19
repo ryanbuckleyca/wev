@@ -79,6 +79,9 @@ trunk_results.txt
 # wev-ig is local WIP for now (tracked on the wev-ig branch when ready)
 wev-ig/
 
+# wev-ig is tracked on the wev-instagram branch
+wev-ig/
+
 # Trunk / local tooling caches
 .trunk-cache/
 
