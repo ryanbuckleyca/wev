@@ -1,0 +1,13 @@
+{
+  "verdict": "APPROVED",
+  "findings": [
+    "Import script output order — Sort sectors by category_id before publishing so workbook row reordering doesn't change the generated taxonomy order.",
+    "JSON serialization safety — Add allow_nan=False to json.dumps so non-finite floats fail serialization before the file is replaced.",
+    "Concurrent import collision — Use tempfile.mkstemp to generate unique temporary files per invocation, preventing collisions when imports run concurrently.",
+    "ISIC mapping granularity — Change Environment & Circular Economy / ISIC Rev. 4 waste division 38 from skos:exactMatch to skos:broadMatch since the sector includes renewable energy and climate advocacy beyond just waste management.",
+    "Migration atomicity — Combine organization clearing and cohort recording in a data-modifying CTE so the recorded IDs are exactly those whose sector_id was cleared.",
+    "Test precision — Assert that resolveCrosswalkMatches returns an empty array for CQCM labels with wrong source, not just that no match has that source.",
+    "Whitespace-only source normalization — Normalize whitespace-only source values to None before lookup key generation so label-only matches can resolve."
+  ],
+  "reviewDoc": "/Users/ry/code/wev/.agents/tasks/sector-taxonomy-fix-review.md"
+}
