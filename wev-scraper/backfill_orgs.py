@@ -47,7 +47,8 @@ def main(argv=None):
     print("=" * 80)
 
     # Find organizations that need backfilling
-    # Missing: sector_id, type, description_en, description_fr, or mission_statement_en
+    # Missing: sector_id, governance_subtype, description_en, description_fr,
+    # or mission_statement_en
 
     all_orgs = []
     last_id = 0
@@ -76,8 +77,8 @@ def main(argv=None):
         missing_critical = []
         if not org.get('sector_id'):
             missing_critical.append('sector_id')
-        if not org.get('type'):
-            missing_critical.append('type')
+        if not org.get('governance_subtype'):
+            missing_critical.append('governance_subtype')
         if not org.get('description_en'):
             missing_critical.append('description_en')
         if not org.get('description_fr'):
@@ -99,7 +100,7 @@ def main(argv=None):
     # Show what's missing
     missing_stats = {
         'sector_id': 0,
-        'type': 0,
+        'governance_subtype': 0,
         'description_en': 0,
         'description_fr': 0,
     }

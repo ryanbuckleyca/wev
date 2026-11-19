@@ -43,7 +43,7 @@ describe('job-query', () => {
   const defaultFilters: BulletinFilters = {
     searchQuery: '',
     selectedOrganizations: [],
-    selectedOrgTypes: [],
+    selectedGovernanceCategories: [],
     selectedSectors: [],
     selectedProvinces: [],
     selectedMunicipalities: [],

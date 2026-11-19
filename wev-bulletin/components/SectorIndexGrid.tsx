@@ -1,8 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
 import { sectorBlurb, type SectorIndexCard } from '@/lib/organizations/sector-index';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
 
 interface SectorIndexGridProps {
   sectors: SectorIndexCard[];
@@ -12,19 +12,19 @@ interface SectorIndexGridProps {
 
 function typeMixLabel(
   typeCounts: SectorIndexCard['typeCounts'],
-  getTypeLabel: (type: string | null) => string,
+  getMixLabel: (key: string) => string,
 ): string | null {
   if (typeCounts.length === 0) return null;
   return typeCounts
     .slice(0, 3)
-    .map(({ type, count }) => `${count} ${getTypeLabel(type)}`)
+    .map(({ type, count }) => `${count} ${getMixLabel(type)}`)
     .join(' · ');
 }
 
 export default function SectorIndexGrid({ sectors, locale, onSelectSector }: SectorIndexGridProps) {
   const t = useTranslations('organizations');
   const tSectors = useTranslations('taxonomy.sectors');
-  const getTypeLabel = (orgType: string | null) => getOrganizationTypeLabel(orgType, t) ?? '';
+  const getMixLabel = (key: string) => getGovernanceCategoryLabel(key, t) ?? key;
 
   if (sectors.length === 0) return null;
 
@@ -39,7 +39,7 @@ export default function SectorIndexGrid({ sectors, locale, onSelectSector }: Sec
         {sectors.map((sector) => {
           const label = tSectors(`${sector.id}.label`);
           const blurb = sectorBlurb(sector.id, locale);
-          const mix = typeMixLabel(sector.typeCounts, getTypeLabel);
+          const mix = typeMixLabel(sector.typeCounts, getMixLabel);
 
           return (
             <li key={sector.id}>

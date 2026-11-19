@@ -14,7 +14,6 @@ import { throwBulletinQueryError } from './fts-errors';
 import { resolveOrgSlugs } from './resolve-org-slugs';
 import { formatSearchQuery, normalizeLocation } from './search-utils';
 import { expandSourceFilterSelection } from './source-brands';
-import { expandOrgTypeFilterSelection } from '@/lib/organizations/org-type';
 
 // Re-exported for callers that historically imported these from server-data.
 export {
@@ -44,7 +43,7 @@ export type BulletinQueryInput = {
   sortBy: string;
   postedWithin: string;
   orgs: string[];
-  orgTypes: string[];
+  governanceCategories: string[];
   sectors: string[];
   provs: string[];
   munis: string[];
@@ -118,10 +117,11 @@ function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
 
 function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.orgs.length) query = query.in('organization', input.orgs);
-  // Org type/sector live on matched_jobs via JOIN (org_type / org_sector_id) —
-  // same idea as get_active_organizations p_org_types / p_sectors, not an ID expand.
-  if (input.orgTypes.length) {
-    query = query.in('org_type', expandOrgTypeFilterSelection(input.orgTypes));
+  // Governance category/sector live on matched_jobs via JOIN
+  // (org_governance_category / org_sector_id) — same idea as
+  // get_active_organizations p_governance_categories / p_sectors, not an ID expand.
+  if (input.governanceCategories.length) {
+    query = query.in('org_governance_category', input.governanceCategories);
   }
   if (input.sectors.length) query = query.in('org_sector_id', input.sectors);
   if (input.provs.length) {
@@ -255,7 +255,7 @@ function productBaselineInput(locale: 'en' | 'fr'): BulletinQueryInput {
     sortBy: 'date-desc',
     postedWithin: PRODUCT_DEFAULT_POSTED_WITHIN,
     orgs: [],
-    orgTypes: [],
+    governanceCategories: [],
     sectors: [],
     provs: [],
     munis: [],

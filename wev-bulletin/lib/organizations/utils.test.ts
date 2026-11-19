@@ -1,17 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  getOrganizationTypeLabel,
-  normalizeOrgTypeKey,
-  expandOrgTypeFilterSelection,
-} from './org-type';
 import { formatOrgLocationLabel, resolveOrgSortBy } from './utils';
-
-describe('normalizeOrgTypeKey', () => {
-  it('strips spaces, hyphens, and underscores', () => {
-    expect(normalizeOrgTypeKey('non-profit')).toBe('nonprofit');
-    expect(normalizeOrgTypeKey('social enterprise')).toBe('socialenterprise');
-  });
-});
 
 describe('resolveOrgSortBy', () => {
   it('keeps date and values sorts whether or not the user is logged in', () => {
@@ -82,67 +70,5 @@ describe('formatOrgLocationLabel', () => {
     expect(
       formatOrgLocationLabel({ location: null, municipality: null, province: null }),
     ).toBeNull();
-  });
-});
-
-describe('expandOrgTypeFilterSelection', () => {
-  it('includes hyphenated legacy spellings for nonprofit', () => {
-    const values = expandOrgTypeFilterSelection(['nonprofit']);
-    expect(values).toEqual(expect.arrayContaining(['nonprofit', 'non-profit']));
-  });
-
-  it('includes spaced and cased mutual-aid spellings for nonprofit', () => {
-    const values = expandOrgTypeFilterSelection(['nonprofit']);
-    expect(values).toEqual(
-      expect.arrayContaining(['mutualaid', 'mutual aid', 'Mutual Aid', 'mutual-aid']),
-    );
-  });
-
-  it('passes through unrelated selections', () => {
-    expect(expandOrgTypeFilterSelection(['government'])).toEqual(
-      expect.arrayContaining(['government']),
-    );
-  });
-});
-
-describe('getOrganizationTypeLabel', () => {
-  const t = Object.assign(
-    (key: string) => {
-      const labels: Record<string, string> = {
-        nonprofit: 'Nonprofit',
-        'type.nonprofit': 'Nonprofit (nested)',
-      };
-      return labels[key] ?? key;
-    },
-    {
-      has: (key: string) => key === 'nonprofit' || key === 'type.nonprofit',
-    },
-  );
-
-  it('resolves non-profit via normalization', () => {
-    expect(getOrganizationTypeLabel('non-profit', t)).toBe('Nonprofit');
-  });
-
-  it('resolves aliased socialenterprise to Other', () => {
-    const tWithOther = Object.assign(
-      (key: string) => {
-        const labels: Record<string, string> = {
-          nonprofit: 'Nonprofit',
-          other: 'Other',
-        };
-        return labels[key] ?? key;
-      },
-      { has: (key: string) => key === 'nonprofit' || key === 'other' },
-    );
-    expect(getOrganizationTypeLabel('socialenterprise', tWithOther)).toBe('Other');
-    expect(getOrganizationTypeLabel('social enterprise', tWithOther)).toBe('Other');
-  });
-
-  it('returns raw type when no translation exists', () => {
-    expect(getOrganizationTypeLabel('custom-type', t)).toBe('custom-type');
-  });
-
-  it('returns null for empty input', () => {
-    expect(getOrganizationTypeLabel(null, t)).toBeNull();
   });
 });

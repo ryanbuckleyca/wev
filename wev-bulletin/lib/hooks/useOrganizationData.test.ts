@@ -9,7 +9,6 @@ const emptyFilters: OrganizationFilters = {
   showNonSse: false,
   selectedProvinces: [],
   selectedMunicipalities: [],
-  selectedTypes: [],
   selectedLanguages: [],
   selectedSectors: [],
   selectedGovernanceCategories: [],

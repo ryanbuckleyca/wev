@@ -1305,7 +1305,7 @@ def _retry_parked_org(row: Dict[str, Any]) -> str:
 
 _MISSING_FIELD_LABELS = {
     "sector_id": "sector",
-    "type": "type (nonprofit / co-op / …)",
+    "governance_subtype": "governance",
     "description_en": "English description",
     "description_fr": "French description",
     "language": "language",

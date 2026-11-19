@@ -1254,14 +1254,14 @@ def test_parked_intro_partial_fill_lists_missing_and_allows_multi_site():
             "assessment_skip_reason": "partial_fill",
             "sector_id": "community-civic-infrastructure",
             "language": "en",
-            "type": None,
+            "governance_subtype": None,
             "description_en": None,
             "description_fr": None,
             "values_list": [],
         }
     )
     assert "still incomplete" in intro.lower()
-    assert "type" in intro.lower()
+    assert "governance" in intro.lower()
     assert "home base" in intro.lower()
 
 

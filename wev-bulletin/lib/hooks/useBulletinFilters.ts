@@ -34,8 +34,8 @@ export interface BulletinFilterControls {
   setSearchQuery: QueryStateSetter<string>;
   selectedOrganizations: string[];
   setSelectedOrganizations: QueryStateSetter<string[]>;
-  selectedOrgTypes: string[];
-  setSelectedOrgTypes: QueryStateSetter<string[]>;
+  selectedGovernanceCategories: string[];
+  setSelectedGovernanceCategories: QueryStateSetter<string[]>;
   selectedSectors: string[];
   setSelectedSectors: QueryStateSetter<string[]>;
   selectedProvinces: string[];
@@ -139,8 +139,8 @@ export function useBulletinFilters(
     'org',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
-  const [selectedOrgTypes, setSelectedOrgTypes] = useQueryState(
-    'type',
+  const [selectedGovernanceCategories, setSelectedGovernanceCategories] = useQueryState(
+    'governance',
     parseAsArrayOf(parseAsString).withDefault([]),
   );
   const [selectedSectors, setSelectedSectors] = useQueryState(
@@ -323,7 +323,7 @@ export function useBulletinFilters(
     () => ({
       searchQuery,
       selectedOrganizations,
-      selectedOrgTypes,
+      selectedGovernanceCategories,
       selectedSectors,
       selectedProvinces,
       selectedMunicipalities,
@@ -338,7 +338,7 @@ export function useBulletinFilters(
     [
       searchQuery,
       selectedOrganizations,
-      selectedOrgTypes,
+      selectedGovernanceCategories,
       selectedSectors,
       selectedProvinces,
       selectedMunicipalities,
@@ -364,7 +364,7 @@ export function useBulletinFilters(
   const hasAnyFilters =
     !!searchQuery ||
     selectedOrganizations.length > 0 ||
-    selectedOrgTypes.length > 0 ||
+    selectedGovernanceCategories.length > 0 ||
     selectedSectors.length > 0 ||
     selectedProvinces.length > 0 ||
     selectedMunicipalities.length > 0 ||
@@ -382,7 +382,7 @@ export function useBulletinFilters(
   const resetCommonFilters = useCallback(() => {
     void setSearchQuery('');
     void setSelectedOrganizations([]);
-    void setSelectedOrgTypes([]);
+    void setSelectedGovernanceCategories([]);
     void setSelectedSectors([]);
     void setSelectedProvinces([]);
     void setSelectedMunicipalities([]);
@@ -392,7 +392,7 @@ export function useBulletinFilters(
   }, [
     setSearchQuery,
     setSelectedOrganizations,
-    setSelectedOrgTypes,
+    setSelectedGovernanceCategories,
     setSelectedSectors,
     setSelectedProvinces,
     setSelectedMunicipalities,
@@ -427,8 +427,8 @@ export function useBulletinFilters(
     setSearchQuery,
     selectedOrganizations,
     setSelectedOrganizations,
-    selectedOrgTypes,
-    setSelectedOrgTypes,
+    selectedGovernanceCategories,
+    setSelectedGovernanceCategories,
     selectedSectors,
     setSelectedSectors,
     selectedProvinces,

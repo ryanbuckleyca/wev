@@ -468,8 +468,6 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       description: "Partner 1 description",
       website: "https://wev-partner-1.example.com",
       location: "Montreal, QC",
-      // Legacy axis kept through Migration B; governance is the new source of truth.
-      type: "non-profit",
       governance_subtype: "GOV_4_1_MEMBER_NPO",
       governance_category: "GOV_4",
       is_sse: true,
@@ -490,7 +488,6 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       description: "Partner 2 description",
       website: "https://wev-partner-2.example.com",
       location: "Ottawa, ON",
-      type: "cooperative",
       governance_subtype: "GOV_1_1_WORKER_COOP",
       governance_category: "GOV_1",
       is_sse: true,
@@ -511,7 +508,6 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       description: "Partner 3 description",
       website: "https://wev-partner-3.example.com",
       location: "Toronto, ON",
-      type: "non-profit",
       governance_subtype: "EXCLUDED_NON_SSE",
       governance_category: "EXCLUDED",
       is_sse: false,
@@ -526,7 +522,6 @@ function createOrganizationFixtures(now: Date): TableInsert<"organizations">[] {
       description: "Partner 4 description",
       website: "https://wev-partner-4.example.com",
       location: "Quebec City, QC",
-      type: "private",
       governance_subtype: "EXCLUDED_NON_SSE",
       governance_category: "EXCLUDED",
       is_sse: false,
@@ -598,7 +593,8 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     toronto: 0,
   };
   const organizationCounts = { partner1: 0 };
-  const orgTypeCounts = { nonprofit: 0, cooperative: 0 };
+  /** Keyed by org governance_category (GOV_4 = Partner 1, GOV_1 = Partner 2). */
+  const governanceCounts = { gov1: 0, gov4: 0 };
   const provinceCounts = { on: 0, qc: 0 };
   const sourceCounts = {
     csi: 0,
@@ -633,9 +629,9 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
 
     if (job.organization === "WEV Partner 1") {
       organizationCounts.partner1++;
-      orgTypeCounts.nonprofit++;
+      governanceCounts.gov4++;
     }
-    if (job.organization === "WEV Partner 2") orgTypeCounts.cooperative++;
+    if (job.organization === "WEV Partner 2") governanceCounts.gov1++;
 
     if (!job.is_remote && job.province === "ON") provinceCounts.on++;
     if (!job.is_remote && job.province === "QC") provinceCounts.qc++;
@@ -665,7 +661,7 @@ export const SEEDED_JOB_BOARD_EXPECTATIONS = (() => {
     municipalityCounts,
     oneWeekCount,
     organizationCounts,
-    orgTypeCounts,
+    governanceCounts,
     provinceCounts,
     /** SSE ∩ listed pay ∩ 2-week window — same as jobCount under product defaults. */
     salaryListedCount: baselineJobs.length,

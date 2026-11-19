@@ -16,7 +16,7 @@ vi.mock('next-intl', () => ({
 const emptyFilters: BulletinFilters = {
   searchQuery: '',
   selectedOrganizations: [],
-  selectedOrgTypes: [],
+  selectedGovernanceCategories: [],
   selectedSectors: [],
   selectedProvinces: [],
   selectedMunicipalities: [],

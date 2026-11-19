@@ -47,7 +47,6 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     sseOnly,
     provinces,
     municipalities,
-    orgTypes,
     languages,
     sectors,
     governanceCategories,
@@ -61,7 +60,6 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
     sseOnly &&
     provinces.length === 0 &&
     municipalities.length === 0 &&
-    orgTypes.length === 0 &&
     languages.length === 0 &&
     sectors.length === 0 &&
     governanceCategories.length === 0 &&
@@ -74,7 +72,6 @@ export default async function OrganizationsIndexPage({ params, searchParams }: P
       sseOnly,
       provinces,
       municipalities,
-      orgTypes,
       languages,
       sectors,
       governanceCategories,

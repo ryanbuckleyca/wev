@@ -87,10 +87,11 @@ print("=" * 70)
 print("UNPROCESSED ORGANIZATIONS")
 print("=" * 70)
 
-# Organizations: unprocessed = missing sector_id OR missing type OR missing description_en OR missing description_fr OR missing language
+# Organizations: unprocessed = missing sector_id OR missing governance_subtype OR
+# missing description_en OR missing description_fr OR missing language
 # First check columns exist
 try:
-    org_resp = supabase.table("organizations").select("id, name, sector_id, type, description, description_en, description_fr, mission_statement, values_list, values_rated, language, municipality, province, slug, website, location, is_sse, sse_rating, created_at, updated_at").execute()
+    org_resp = supabase.table("organizations").select("id, name, sector_id, governance_subtype, description, description_en, description_fr, mission_statement, values_list, values_rated, language, municipality, province, slug, website, location, is_sse, sse_rating, created_at, updated_at").execute()
 except Exception as e:
     print(f"Warning: Some columns may not exist, trying reduced select: {e}")
     org_resp = supabase.table("organizations").select("*").execute()
@@ -103,8 +104,8 @@ for o in all_orgs:
     reasons = []
     if not o.get("sector_id"):
         reasons.append("no_sector")
-    if not o.get("type"):
-        reasons.append("no_type")
+    if not o.get("governance_subtype"):
+        reasons.append("no_governance")
     # description_en/description_fr might be stored as description with locale suffix
     desc_en = o.get("description_en") or o.get("description")
     desc_fr = o.get("description_fr")

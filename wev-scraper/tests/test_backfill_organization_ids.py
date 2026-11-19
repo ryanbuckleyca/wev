@@ -238,7 +238,7 @@ def _make_unrated_org(org_id=1, name="Test Org"):
         "id": org_id,
         "name": name,
         "description": "desc",
-        "type": "nonprofit",
+        "governance_subtype": "GOV_4_1_MEMBER_NPO",
         "website": None,
         "values": None,
     }
@@ -247,7 +247,7 @@ class TestPhase2SSEBackfill:
     _ASSESS_RETURN = {
         "description": "desc",
         "mission_statement": None,
-        "type": "nonprofit",
+        "governance_subtype": "GOV_4_1_MEMBER_NPO",
         "values": "values",
         "values_list": ["Advancement"],
         "values_rated": [{"value": "Advancement", "rank": 1}],

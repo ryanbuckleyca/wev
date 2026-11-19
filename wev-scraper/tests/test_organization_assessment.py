@@ -75,7 +75,7 @@ def _assessment_json(**overrides) -> str:
         "description_fr": "Une courte description.",
         "mission_statement_en": "Promote conservation through storytelling.",
         "mission_statement_fr": "Promouvoir la conservation par le récit.",
-        "type": "nonprofit",
+        "governance_subtype_code": "GOV_4_1_MEMBER_NPO", "governance_category_id": "GOV_4",
         "values_raw": None,
         "values": ["Help Society"],
         "sse_rating": "strong_yes",
@@ -143,7 +143,7 @@ def test_ensure_length_limits_truncates_oversize_fields(mock_get_sse_provider):
         description_fr=None,
         mission_statement_en=None,
         mission_statement_fr=None,
-        type="nonprofit",
+        governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
         sector_id=None,
         values_raw=None,
         values=[],
@@ -245,7 +245,7 @@ def test_org_assessment_prompt_requires_evidence_not_type_label_alone():
         description="listing notes",
     )
     assert "evidence over labels" in prompt
-    assert "NOT from the \"type\" string alone" in prompt
+    assert "subtype alone is\nnever sufficient" in prompt or "subtype alone is never sufficient" in prompt
     assert "Base the rating on mission/governance evidence" in prompt
 
 
@@ -410,7 +410,7 @@ def test_org_parse_strips_job_leaked_must_haves():
         _assessment_json(
             canonical_name="Community Hub",
             slug="community-hub",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             must_haves_met=[
                 "Clear purpose beyond profit",
@@ -431,7 +431,7 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
         _assessment_json(
             canonical_name="Aliments Prémont Inc.",
             slug="aliments-premont-inc",
-            type="other",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "Mission mentions respect for individuals and the environment."
@@ -446,7 +446,7 @@ def test_governance_gate_forces_for_profit_weak_yes_to_no():
 
 def test_governance_gate_keeps_nonprofit_yes():
     result = _parse_response(
-        _assessment_json(type="nonprofit", sse_rating="strong_yes"),
+        _assessment_json(governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4", sse_rating="strong_yes"),
         "Nature Visuals",
     )
     assert result is not None
@@ -462,27 +462,20 @@ def test_org_assessment_prompt_excludes_government_from_sse():
 
 
 def test_org_assessment_prompt_rejects_mission_only_private_enterprise():
-    """Mission-driven private schools must be typed other, not invented SE."""
+    """Mission-driven private schools must be excluded, not invented SE."""
     from utils.organization_assessment import _build_assessment_prompt
 
     prompt = _build_assessment_prompt("Toronto Nature School", "Toronto", "ON", "", "")
-    assert "Mission-driven private enterprise is not SSE" in prompt
-    assert 'There is no "social enterprise" type' in prompt
-    assert "type alone is never sufficient" in prompt or "Type is necessary but not sufficient" in prompt
+    assert "EXCLUDED_NON_SSE" in prompt or "excluded" in prompt.lower()
+    assert "GOVERNANCE" in prompt or "governance" in prompt.lower()
 
-
-def test_normalize_type_maps_social_enterprise_to_other():
-    from utils.organization_assessment import _normalize_type
-
-    assert _normalize_type("social enterprise") == "other"
-    assert _normalize_type("Social Enterprise") == "other"
 
 
 def test_governance_gate_forces_government_yes_to_no():
     """Public-sector orgs are not SSE governance forms (intentional)."""
     result = _parse_response(
         _assessment_json(
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="strong_yes",
             sse_reasoning_en="Public agency serving community needs.",
         ),
@@ -497,7 +490,7 @@ def test_governance_gate_keeps_yes_when_type_is_null():
     """Null type means unknown — do not demote a model Yes."""
     result = _parse_response(
         _assessment_json(
-            type=None,
+            governance_subtype_code=None, governance_category_id=None,
             sse_rating="strong_yes",
             sse_reasoning_en="Clear community ownership and mission.",
         ),
@@ -511,7 +504,7 @@ def test_governance_gate_keeps_yes_when_type_is_null():
 def test_governance_gate_forces_other_yes_to_no():
     result = _parse_response(
         _assessment_json(
-            type="other",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="weak_yes",
             sse_reasoning_en="Mentions environment in CSR copy.",
         ),
@@ -522,39 +515,25 @@ def test_governance_gate_forces_other_yes_to_no():
     assert any("governance_gate" in f for f in result["flags"])
 
 
-def test_governance_gate_keeps_aliased_mutual_forms_as_nonprofit_yes():
-    """Model may say mutual/community; we store nonprofit and keep Yes."""
-    for raw_type in ("mutual", "community", "mutual-aid"):
-        result = _parse_response(
-            _assessment_json(
-                type=raw_type,
-                sse_rating="strong_yes",
-                sse_reasoning_en="Member-owned mutual support structure.",
-            ),
-            "Grassroots Org",
-        )
-        assert result is not None
-        assert result["type"] == "nonprofit"
-        assert result["sse_rating"] == "strong_yes"
-        assert not any("governance_gate" in f for f in result["flags"])
+def test_governance_gate_keeps_member_npo_yes():
+    """SSE governance subtypes keep a model Yes."""
+    result = _parse_response(
+        _assessment_json(
+            governance_subtype_code="GOV_4_1_MEMBER_NPO",
+            governance_category_id="GOV_4",
+            sse_rating="strong_yes",
+            sse_reasoning_en="Member-owned mutual support structure.",
+        ),
+        "Grassroots Org",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "strong_yes"
+    assert not any("governance_gate" in f for f in result["flags"])
 
-
-def test_normalize_type_aliases_mutual_and_community_to_nonprofit():
-    from utils.organization_assessment import _normalize_type
-
-    assert _normalize_type("mutual-aid") == "nonprofit"
-    assert _normalize_type("Mutual Aid Group") == "nonprofit"
-    assert _normalize_type("community association") == "nonprofit"
-    assert _normalize_type("community_project") == "nonprofit"
-    assert _normalize_type("credit union") == "cooperative"
-    assert _normalize_type("worker-owned") == "cooperative"
-    assert _normalize_type("worker coop") == "cooperative"
-    assert _normalize_type("worker cooperative") == "cooperative"
-    assert _normalize_type("coop") == "cooperative"
 
 
 def test_org_assessment_prompt_charity_community_nonprofit_floor():
-    """Charities/community env nonprofits → nonprofit + ≥weak_yes, not other/no."""
+    """Charities/community env nonprofits → GOV_4 + ≥weak_yes, not EXCLUDED/no."""
     from utils.organization_assessment import _build_assessment_prompt
 
     prompt = _build_assessment_prompt(
@@ -564,11 +543,9 @@ def test_org_assessment_prompt_charity_community_nonprofit_floor():
         job_title="",
         description="",
     )
-    assert "charities are never \"other\" for lacking cooperative governance" in prompt
+    assert "charities are never EXCLUDED for lacking cooperative governance" in prompt
     assert 'AT LEAST "weak_yes"' in prompt
-    assert "board+ED charities stay nonprofit" in prompt or (
-        "board + executive director is still nonprofit" in prompt
-    )
+    assert "board + executive director is still a GOV_4 subtype" in prompt
     assert "NEVER rate a registered charity" in prompt
 
 
@@ -598,12 +575,11 @@ def test_org_assessment_prompt_political_parties_are_other_not_government():
         "",
     )
     assert "Political parties and electoral organizations" in prompt
-    assert 'type "other", rating "no"' in prompt
+    assert "EXCLUDED_NON_SSE" in prompt
+    assert "rating \"no\"" in prompt
     assert "parties are NOT 'government'" in prompt or "NOT political parties" in prompt
     # Must not instruct mapping parties to government
-    assert "political parties are not public bodies" in prompt.lower() or (
-        "NOT political parties — parties are not public bodies" in prompt
-    )
+    assert "NOT political parties — parties are also EXCLUDED_NON_SSE" in prompt
 
 
 def test_org_assessment_prompt_keeps_citizens_advocacy_nonprofits():
@@ -641,7 +617,7 @@ def test_governance_gate_keeps_charity_nonprofit_weak_yes():
         _assessment_json(
             canonical_name="Community Ecology Centre",
             slug="community-ecology-centre",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "Registered community environmental charity with clear public-benefit mission."
@@ -655,7 +631,6 @@ def test_governance_gate_keeps_charity_nonprofit_weak_yes():
         "Community Ecology Centre",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "weak_yes"
     assert not any("governance_gate" in f for f in result["flags"])
 
@@ -794,7 +769,7 @@ def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
         _assessment_json(
             canonical_name="Community Care Inc.",
             slug="community-care-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             sse_reasoning_en=(
                 "A mission-driven nonprofit with a clear public-benefit mandate "
@@ -810,7 +785,6 @@ def test_private_company_gate_keeps_inc_charity_with_mission_no_cra():
         "Community Care Inc.",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "strong_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -821,7 +795,7 @@ def test_private_company_gate_keeps_inc_without_shareholders_soft_path():
         _assessment_json(
             canonical_name="Community Arts Collective Inc.",
             slug="community-arts-collective-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             sse_reasoning_en=(
                 "A mission-driven community arts group without shareholders; "
@@ -837,7 +811,6 @@ def test_private_company_gate_keeps_inc_without_shareholders_soft_path():
         "Community Arts Collective Inc.",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "strong_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -848,7 +821,9 @@ def test_private_company_gate_demotes_inc_with_commercial_ownership():
         _assessment_json(
             canonical_name="Family Music Programs Inc.",
             slug="family-music-programs-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
+            governance_confidence=0.88,
+            governance_reasoning="Member NPO with a board.",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A privately owned commercial music school offering fee-based "
@@ -860,8 +835,10 @@ def test_private_company_gate_demotes_inc_with_commercial_ownership():
         "Family Music Programs Inc.",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
+    assert result["governance_subtype"] == "EXCLUDED_NON_SSE"
+    assert result["governance_confidence"] is None
+    assert result["governance_reasoning"] is None
     assert any("private_company_gate" in f for f in result["flags"])
 
 
@@ -871,7 +848,7 @@ def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues()
         _assessment_json(
             canonical_name="Harmony Music Academy Inc.",
             slug="harmony-music-academy-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A privately owned commercial for-profit music school with a "
@@ -883,7 +860,6 @@ def test_private_company_gate_demotes_inc_commercial_despite_soft_mission_cues()
         "Harmony Music Academy Inc.",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("private_company_gate" in f for f in result["flags"])
 
@@ -894,7 +870,7 @@ def test_private_company_gate_keeps_community_service_language():
         _assessment_json(
             canonical_name="Melody Music School Inc.",
             slug="melody-music-school-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A nonprofit music school offering lessons and community "
@@ -907,7 +883,6 @@ def test_private_company_gate_keeps_community_service_language():
     )
     assert result is not None
     # "community recitals" matches SOFT_NONPROFIT_EVIDENCE_RE pattern
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "weak_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -918,7 +893,7 @@ def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
         _assessment_json(
             canonical_name="Northwind Consulting Inc.",
             slug="northwind-consulting-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "An environmental consulting firm helping clients meet "
@@ -930,7 +905,6 @@ def test_private_company_gate_demotes_consulting_inc_without_strong_soft():
         "Northwind Consulting Inc.",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("private_company_gate" in f for f in result["flags"])
 
@@ -942,7 +916,7 @@ def test_private_company_gate_skips_coop_union_with_corp_suffix(org_type):
         _assessment_json(
             canonical_name="Workers Collective Inc.",
             slug="workers-collective-inc",
-            type=org_type,
+            governance_subtype_code=("GOV_1_1_WORKER_COOP" if org_type == "cooperative" else "GOV_5_3_DEMOCRATIC_UNION"), governance_category_id=("GOV_1" if org_type == "cooperative" else "GOV_5"),
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A member-run organization providing mutual support; "
@@ -954,7 +928,6 @@ def test_private_company_gate_skips_coop_union_with_corp_suffix(org_type):
         "Workers Collective Inc.",
     )
     assert result is not None
-    assert result["type"] == org_type
     assert result["sse_rating"] == "weak_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -964,7 +937,7 @@ def test_private_company_gate_demotes_explicit_for_profit_evidence():
         _assessment_json(
             canonical_name="Green Consult Co",
             slug="green-consult-co",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A privately owned environmental consultancy with CSR language."
@@ -973,7 +946,6 @@ def test_private_company_gate_demotes_explicit_for_profit_evidence():
         "Green Consult Co",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("private_company_gate" in f for f in result["flags"])
 
@@ -994,7 +966,7 @@ def test_private_company_gate_keeps_not_for_profit_wording(nonprofit_phrase):
         _assessment_json(
             canonical_name="Arc Poetry Society Inc.",
             slug="arc-poetry-society",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             sse_reasoning_en=(
                 f"As a {nonprofit_phrase} cultural society publishing "
@@ -1010,7 +982,6 @@ def test_private_company_gate_keeps_not_for_profit_wording(nonprofit_phrase):
         "Arc Poetry Society Inc.",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "strong_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -1035,7 +1006,7 @@ def test_private_company_gate_keeps_irregular_not_for_profit_whitespace(nonprofi
         _assessment_json(
             canonical_name="Arc Poetry Society Inc.",
             slug="arc-poetry-society",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             sse_reasoning_en=(
                 f"As a {nonprofit_phrase} cultural society publishing contemporary poetry."
@@ -1046,7 +1017,6 @@ def test_private_company_gate_keeps_irregular_not_for_profit_whitespace(nonprofi
         "Arc Poetry Society Inc.",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "strong_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -1060,14 +1030,13 @@ def test_private_company_gate_demotes_for_profit_spelling_variants(for_profit_ph
         _assessment_json(
             canonical_name="Acme Services",
             slug="acme-services",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=f"A {for_profit_phrase} consultancy with CSR language.",
         ),
         "Acme Services",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("private_company_gate" in f for f in result["flags"])
 
@@ -1077,7 +1046,7 @@ def test_private_company_gate_still_demotes_bare_for_profit():
         _assessment_json(
             canonical_name="Acme Services",
             slug="acme-services",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="weak_yes",
             sse_reasoning_en=(
                 "A for-profit consultancy with CSR language."
@@ -1086,7 +1055,6 @@ def test_private_company_gate_still_demotes_bare_for_profit():
         "Acme Services",
     )
     assert result is not None
-    assert result["type"] == "other"
     assert result["sse_rating"] == "no"
     assert any("private_company_gate" in f for f in result["flags"])
 
@@ -1096,7 +1064,7 @@ def test_private_company_gate_keeps_inc_with_charity_registration_evidence():
         _assessment_json(
             canonical_name="Community Care Inc.",
             slug="community-care-inc",
-            type="nonprofit",
+            governance_subtype_code="GOV_4_1_MEMBER_NPO", governance_category_id="GOV_4",
             sse_rating="strong_yes",
             sse_reasoning_en=(
                 "Registered charity with a clear public-benefit mission and "
@@ -1111,7 +1079,6 @@ def test_private_company_gate_keeps_inc_with_charity_registration_evidence():
         "Community Care Inc.",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "strong_yes"
     assert not any("private_company_gate" in f for f in result["flags"])
 
@@ -1152,20 +1119,52 @@ def test_place_name_guard_remaps_community_orchestra_from_government():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
+            governance_confidence=0.7,
+            governance_reasoning="Assumed municipal from the place name.",
             sector_id="community-civic-infrastructure",
             sse_rating="no",
             sse_reasoning_en=(
                 "Named after the town of Riverside; assumed to be a public body "
                 "from the place name alone."
             ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
         ),
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "weak_yes"
     assert result["sector_id"] == "arts-culture-information"
+    # Cleared false EXCLUDED; do not invent GOV_4_1 without membership evidence.
+    assert result["governance_subtype"] is None
+    assert result["governance_confidence"] is None
+    assert result["governance_reasoning"] is None
+    assert any("place_name_guard" in f for f in result["flags"])
+
+
+def test_place_name_guard_keeps_no_when_only_purpose_must_have_met():
+    """Purpose alone is not enough to restore Yes after a place-name false No."""
+    result = _parse_response(
+        _assessment_json(
+            canonical_name="Riverside Wind Orchestra",
+            slug="riverside-wind-orchestra",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
+            sse_rating="no",
+            sse_reasoning_en=(
+                "Classified as government because of the town name; thin mission "
+                "evidence beyond a purpose statement."
+            ),
+            must_haves_met=["Clear purpose beyond profit"],
+        ),
+        "Riverside Wind Orchestra",
+    )
+    assert result is not None
+    assert result["sse_rating"] == "no"
+    assert result["governance_subtype"] is None
     assert any("place_name_guard" in f for f in result["flags"])
 
 
@@ -1174,7 +1173,7 @@ def test_place_name_guard_keeps_true_municipal_agency():
         _assessment_json(
             canonical_name="Riverside Community Orchestra",
             slug="riverside-community-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "A municipal department of the City of Riverside Parks Division "
@@ -1184,7 +1183,6 @@ def test_place_name_guard_keeps_true_municipal_agency():
         "Riverside Community Orchestra",
     )
     assert result is not None
-    assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
 
@@ -1195,7 +1193,7 @@ def test_place_name_guard_keeps_public_hospital_operator():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "Named after the town of Riverside, but it is the public hospital "
@@ -1205,7 +1203,6 @@ def test_place_name_guard_keeps_public_hospital_operator():
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
 
@@ -1216,7 +1213,7 @@ def test_place_name_guard_ignores_hospital_funding_alone():
         _assessment_json(
             canonical_name="Riverside Community Orchestra",
             slug="riverside-community-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "Hospital governance and OHIP funding cover the program."
@@ -1225,7 +1222,6 @@ def test_place_name_guard_ignores_hospital_funding_alone():
         "Riverside Community Orchestra",
     )
     assert result is not None
-    assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
 
@@ -1236,7 +1232,7 @@ def test_place_name_guard_ignores_explanation_rejecting_place_name():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "Riverside in the name is geographic branding only; rated no "
@@ -1247,7 +1243,6 @@ def test_place_name_guard_ignores_explanation_rejecting_place_name():
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
 
@@ -1257,14 +1252,13 @@ def test_place_name_guard_remaps_when_place_name_suggests_government():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en="The town name suggests a municipal program.",
         ),
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert any("place_name_guard" in f for f in result["flags"])
 
 
@@ -1290,7 +1284,7 @@ def test_place_name_guard_ignores_place_name_suggesting_only_geography():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "The town name suggests a geographic link, not public ownership."
@@ -1299,18 +1293,17 @@ def test_place_name_guard_ignores_place_name_suggesting_only_geography():
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "government"
     assert result["sse_rating"] == "no"
     assert not any("place_name_guard" in f for f in result["flags"])
 
 
 def test_place_name_guard_keeps_no_when_purpose_must_have_unmet():
-    """Remap the type, but an independent eligibility failure keeps No."""
+    """Remap the subtype, but an independent eligibility failure keeps No."""
     result = _parse_response(
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "Classified as government because of the town name; no evidence "
@@ -1321,7 +1314,6 @@ def test_place_name_guard_keeps_no_when_purpose_must_have_unmet():
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "no"
 
 
@@ -1330,17 +1322,21 @@ def test_place_name_guard_hospital_as_venue_is_not_operator():
         _assessment_json(
             canonical_name="Riverside Wind Orchestra",
             slug="riverside-wind-orchestra",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             sse_rating="no",
             sse_reasoning_en=(
                 "Assumed to be a public body from the town name; it performs "
                 "concerts at the public hospital."
             ),
+            must_haves_met=[
+                "Clear purpose beyond profit",
+                "Impact described intentionally",
+                "Organization's work contributes to social/community/environmental good",
+            ],
         ),
         "Riverside Wind Orchestra",
     )
     assert result is not None
-    assert result["type"] == "nonprofit"
     assert result["sse_rating"] == "weak_yes"
 
 
@@ -1382,7 +1378,7 @@ def test_assess_handles_null_geographic_scope():
     mock_provider.complete.return_value = json.dumps({
         "canonical_name": "Net Zero Atlantic",
         "slug": "net-zero-atlantic",
-        "type": "nonprofit",
+        "governance_subtype_code": "GOV_4_1_MEMBER_NPO", "governance_category_id": "GOV_4",
         "sector_id": "energy-utilities",
         "values": ["sustainability"],
         "values_raw": "Sustainability",
@@ -1453,7 +1449,7 @@ def test_assess_passes_prefer_hosts_for_known_website():
     mock_provider.complete.return_value = json.dumps({
         "canonical_name": "PARO Centre for Women's Enterprise",
         "slug": "paro-centre-for-womens-enterprise",
-        "type": "nonprofit",
+        "governance_subtype_code": "GOV_4_1_MEMBER_NPO", "governance_category_id": "GOV_4",
         "sector_id": "community-civic-infrastructure",
         "values": ["Community"],
         "values_raw": "Community",
@@ -1503,7 +1499,7 @@ def _valid_assessment_payload(**overrides):
     payload = {
         "canonical_name": "Riverside Housing Co-op",
         "slug": "riverside-housing-co-op",
-        "type": "cooperative",
+        "governance_subtype_code": "GOV_1_1_WORKER_COOP", "governance_category_id": "GOV_1",
         "sector_id": "housing",
         "values": ["Community"],
         "values_raw": "Community",
@@ -1615,7 +1611,7 @@ def test_assess_with_outcome_reports_location_mismatch():
         _valid_assessment_payload(
             canonical_name="City of St. Catharines",
             slug="city-of-st-catharines",
-            type="government",
+            governance_subtype_code="EXCLUDED_NON_SSE", governance_category_id="EXCLUDED",
             website="https://stcatharines.ca",
             description_en="The municipal government of St. Catharines, Ontario.",
             mission_statement_en="Serving St. Catharines residents.",
@@ -1968,14 +1964,13 @@ def test_parse_response_reads_governance_fields():
     assert result["operational_tags"] == ["platform_co_op", "b2b_procurement"]
 
 
-def test_result_to_db_fields_persists_governance_and_keeps_type():
+def test_result_to_db_fields_persists_governance():
     from utils.governance_taxonomy import GOVERNANCE_TAXONOMY_VERSION
     from utils.organization_assessment import _result_to_db_fields
 
     result = _parse_response(
         _assessment_json(
             sse_rating="strong_yes",
-            type="cooperative",
             governance_subtype_code="GOV_1_1_WORKER_COOP",
             governance_category_id="GOV_2",  # wrong; derived from subtype instead
             governance_confidence=0.9,
@@ -1985,9 +1980,7 @@ def test_result_to_db_fields_persists_governance_and_keeps_type():
     )
     fields = _result_to_db_fields(result)
 
-    # Legacy `type` is still written during the transition (retired atomically
-    # with its readers in the governance-reader migration).
-    assert fields["type"] == "cooperative"
+    assert "type" not in fields
     assert fields["governance_subtype"] == "GOV_1_1_WORKER_COOP"
     assert fields["governance_category"] == "GOV_1"  # derived from subtype
     assert fields["is_sse"] is True

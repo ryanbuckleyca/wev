@@ -267,6 +267,6 @@ class TestSSEMethods:
         assert rows == [{"id": 456, "name": "Test Org"}]
         sb.table.assert_called_with("organizations")
         sb.table.return_value.select.assert_called_with(
-            "id, name, description, type, website, values, "
+            "id, name, description, governance_subtype, website, values, "
             "municipality, province, location, language, sse_details"
         )

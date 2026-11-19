@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { generateSlug } from '@/lib/slug';
 import type { LocationSelection } from '@/components/profile/LocationAutocomplete';
 import type { OrgRecord } from '@/lib/organizations/types';
-import { normalizeOrgType } from '@/lib/organizations/org-type';
 import { EXCLUDED_SUBTYPE, isGovernanceSubtype } from '@/lib/organizations/governance-taxonomy';
 import type { OrgFormInput } from '@/lib/organizations/validate';
 
@@ -65,7 +64,6 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     initialLocationState.selection,
   );
   const [locationHasCoords, setLocationHasCoords] = useState(initialLocationState.hasCoords);
-  const [type, setType] = useState(() => normalizeOrgType(initialValues?.type) || '');
   const [governanceSubtype, setGovernanceSubtype] = useState(() => {
     const raw = initialValues?.governance_subtype?.trim() || '';
     return raw && isGovernanceSubtype(raw) ? raw : '';
@@ -121,7 +119,6 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
       lat: hasCoords ? location!.lat : null,
       lng: hasCoords ? location!.lng : null,
       geocode_accuracy_type: hasCoords ? 'city' : null,
-      type: type || null,
       governance_subtype: governanceSubtype || null,
       sector_id: sectorId || null,
       is_sse: isSse,
@@ -138,7 +135,6 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     website,
     location,
     locationHasCoords,
-    type,
     governanceSubtype,
     sectorId,
     isSse,
@@ -164,8 +160,6 @@ export function useOrgAdminFormState(initialValues?: Partial<OrgRecord>) {
     setWebsite,
     location,
     setLocationSelection,
-    type,
-    setType,
     governanceSubtype,
     setGovernanceSubtype,
     sectorId,

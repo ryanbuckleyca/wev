@@ -14,8 +14,8 @@ const FILTER_LABELS = {
   municipality: {
     toronto: "Toronto",
   },
-  organizationType: {
-    nonprofit: "Nonprofit",
+  governance: {
+    gov4: "Participatory Non-Profits & Social Enterprises",
   },
   postedWithin: {
     oneWeek: "1 week",
@@ -204,21 +204,21 @@ test.describe("Job board", () => {
     });
   }
 
-  test("filters by organization type", async ({
+  test("filters by governance category", async ({
     jobBoardPage,
     expectations,
   }) => {
     await loadEnglishJobBoard(jobBoardPage);
 
     await jobBoardPage.toggleFilterCheckbox(
-      "organizationType",
-      FILTER_LABELS.organizationType.nonprofit,
+      "governance",
+      FILTER_LABELS.governance.gov4,
     );
     await jobBoardPage.waitForResultsToUpdate();
 
     await expectVisibleResults(
       jobBoardPage,
-      expectations.orgTypeCounts.nonprofit,
+      expectations.governanceCounts.gov4,
       expectations,
     );
   });

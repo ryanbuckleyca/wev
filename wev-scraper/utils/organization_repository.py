@@ -217,7 +217,7 @@ class OrganizationRepository:
             resp = (
                 self._supabase.table("organizations")
                 .select(
-                    "id, name, description, type, website, values, "
+                    "id, name, description, governance_subtype, website, values, "
                     "municipality, province, location, language, sse_details"
                 )
                 .is_("sse_rating", "null")

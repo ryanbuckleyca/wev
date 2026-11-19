@@ -2,8 +2,6 @@
  * Shared utilities for organization display logic.
  */
 
-export { getOrganizationTypeLabel, normalizeOrgTypeKey, orgTypeI18nKey } from './org-type';
-
 /** Sort options offered on the org index (SortDropdown optionValues). */
 export const ORG_INDEX_SORT_OPTIONS = [
   'date-desc',

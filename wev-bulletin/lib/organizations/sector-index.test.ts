@@ -21,15 +21,35 @@ describe('sectorBlurb', () => {
 });
 
 describe('buildSectorIndexCards', () => {
-  it('aggregates counts, type mix, and sample names in taxonomy order', () => {
+  it('aggregates counts, governance mix, and sample names in taxonomy order', () => {
     const cards = buildSectorIndexCards([
-      { name: 'Zulu Co-op', type: 'cooperative', sector_id: 'agriculture-food-systems' },
-      { name: 'Alpha Farm', type: 'nonprofit', sector_id: 'agriculture-food-systems' },
-      { name: 'Beta Bank', type: 'nonprofit', sector_id: 'agriculture-food-systems' },
-      { name: 'Extra Farm', type: 'nonprofit', sector_id: 'agriculture-food-systems' },
-      { name: 'Radio Co-op', type: 'cooperative', sector_id: 'arts-culture-information' },
-      { name: 'No Sector', type: 'nonprofit', sector_id: null },
-      { name: 'Bad Sector', type: 'nonprofit', sector_id: 'not-real' },
+      {
+        name: 'Zulu Co-op',
+        governance_category: 'GOV_1',
+        sector_id: 'agriculture-food-systems',
+      },
+      {
+        name: 'Alpha Farm',
+        governance_category: 'GOV_4',
+        sector_id: 'agriculture-food-systems',
+      },
+      {
+        name: 'Beta Bank',
+        governance_category: 'GOV_4',
+        sector_id: 'agriculture-food-systems',
+      },
+      {
+        name: 'Extra Farm',
+        governance_category: 'GOV_4',
+        sector_id: 'agriculture-food-systems',
+      },
+      {
+        name: 'Radio Co-op',
+        governance_category: 'GOV_1',
+        sector_id: 'arts-culture-information',
+      },
+      { name: 'No Sector', governance_category: 'GOV_4', sector_id: null },
+      { name: 'Bad Sector', governance_category: 'GOV_4', sector_id: 'not-real' },
     ]);
 
     expect(cards.map((c) => c.id)).toEqual([
@@ -40,8 +60,8 @@ describe('buildSectorIndexCards', () => {
       id: 'agriculture-food-systems',
       orgCount: 4,
       typeCounts: [
-        { type: 'nonprofit', count: 3 },
-        { type: 'cooperative', count: 1 },
+        { type: 'GOV_4', count: 3 },
+        { type: 'GOV_1', count: 1 },
       ],
       sampleNames: ['Alpha Farm', 'Beta Bank', 'Extra Farm'],
     });
