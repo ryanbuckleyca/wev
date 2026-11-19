@@ -25,7 +25,7 @@ describe('sector taxonomy document', () => {
     expect(entry?.label_en).toMatch(/Agriculture/i);
     expect(entry?.definition_en).toMatch(/food/i);
     expect(Object.keys(entry?.term_crosswalk ?? {}).sort()).toEqual(
-      [...CROSSWALK_SOURCE_IDS].sort()
+      [...CROSSWALK_SOURCE_IDS].sort(),
     );
   });
 });
@@ -43,7 +43,7 @@ describe('crosswalk cell parsing', () => {
 
   it('normalizes accents and punctuation', () => {
     expect(normalizeCrosswalkTerm('Santé & Services aux personnes')).toBe(
-      normalizeCrosswalkTerm('Sante and Services aux personnes')
+      normalizeCrosswalkTerm('Sante and Services aux personnes'),
     );
   });
 });
@@ -51,18 +51,16 @@ describe('crosswalk cell parsing', () => {
 describe('resolveSectorFromCrosswalk', () => {
   it('maps exact directory terms to sector ids', () => {
     expect(resolveSectorFromCrosswalk('Agroalimentaire', 'chantier')).toBe(
-      'agriculture-food-systems'
+      'agriculture-food-systems',
     );
     expect(resolveSectorFromCrosswalk('Housing', 'cmc')).toBe('housing-collective-real-estate');
-    expect(resolveSectorFromCrosswalk('TIC', 'chantier')).toBe(
-      'technology-digital-infrastructure'
-    );
+    expect(resolveSectorFromCrosswalk('TIC', 'chantier')).toBe('technology-digital-infrastructure');
   });
 
   it('treats RIPESS Media & Digital Commons as ambiguous', () => {
     const matches = resolveCrosswalkMatches('Media & Digital Commons', 'ripess');
     expect(new Set(matches.map((m) => m.sectorId))).toEqual(
-      new Set(['arts-culture-information', 'technology-digital-infrastructure'])
+      new Set(['arts-culture-information', 'technology-digital-infrastructure']),
     );
     expect(resolveSectorFromCrosswalk('Media & Digital Commons', 'ripess')).toBeNull();
   });
@@ -77,13 +75,10 @@ describe('buildSourceCategoriesPayload', () => {
   it('partitions resolved, ambiguous, and unresolved terms', () => {
     const payload = buildSourceCategoriesPayload(
       ['Agroalimentaire', 'Media & Digital Commons', 'Not A Real Category'],
-      'chantier'
+      'chantier',
     );
     expect(payload.resolved_sector_ids).toEqual(['agriculture-food-systems']);
-    expect(payload.unresolved_terms).toEqual([
-      'Media & Digital Commons',
-      'Not A Real Category',
-    ]);
+    expect(payload.unresolved_terms).toEqual(['Media & Digital Commons', 'Not A Real Category']);
     expect(payload.vocab).toBe('chantier');
   });
 });

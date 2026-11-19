@@ -8,7 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-
 CROSSWALK_SOURCE_IDS: tuple[str, ...] = (
     "cmc",
     "chantier",

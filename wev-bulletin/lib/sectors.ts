@@ -5,12 +5,7 @@ export const SECTOR_TAXONOMY_VERSION =
     ? sharedSectors.version
     : '1.0';
 
-export const CROSSWALK_SOURCE_IDS = [
-  'cmc',
-  'chantier',
-  'ccednet_buy_social',
-  'ripess',
-] as const;
+export const CROSSWALK_SOURCE_IDS = ['cmc', 'chantier', 'ccednet_buy_social', 'ripess'] as const;
 
 export type CrosswalkSourceId = (typeof CROSSWALK_SOURCE_IDS)[number];
 
@@ -58,7 +53,12 @@ export function parseCrosswalkCell(raw: string | null | undefined): string[] {
   const seen = new Set<string>();
   for (const part of cell.split(';')) {
     const term = part.trim();
-    if (!term || NO_EQUIVALENT_RE.test(term) || INCLUDED_IN_RE.test(term) || COVERED_UNDER_RE.test(term)) {
+    if (
+      !term ||
+      NO_EQUIVALENT_RE.test(term) ||
+      INCLUDED_IN_RE.test(term) ||
+      COVERED_UNDER_RE.test(term)
+    ) {
       continue;
     }
     const candidates = [term];
@@ -126,7 +126,7 @@ function getCrosswalkIndex(): Map<string, CrosswalkAlias[]> {
 /** Resolve a scraped/source category to sector matches (0..n). */
 export function resolveCrosswalkMatches(
   term: string | null | undefined,
-  source?: CrosswalkSourceId | null
+  source?: CrosswalkSourceId | null,
 ): CrosswalkMatch[] {
   const key = normalizeCrosswalkTerm(term);
   if (!key) return [];
@@ -151,7 +151,7 @@ export function resolveCrosswalkMatches(
 /** Unique sector id for a source term, or null when missing/ambiguous. */
 export function resolveSectorFromCrosswalk(
   term: string | null | undefined,
-  source?: CrosswalkSourceId | null
+  source?: CrosswalkSourceId | null,
 ): string | null {
   const matches = resolveCrosswalkMatches(term, source);
   if (matches.length !== 1 || matches[0].confidence !== 'exact') return null;
@@ -169,7 +169,7 @@ export type SourceCategoriesPayload = {
 /** Structure scraped categories for jobs.extra / org metadata. */
 export function buildSourceCategoriesPayload(
   categories: string[] | string | null | undefined,
-  vocab?: CrosswalkSourceId | null
+  vocab?: CrosswalkSourceId | null,
 ): SourceCategoriesPayload {
   const rawList = Array.isArray(categories)
     ? categories.map((c) => c.trim()).filter(Boolean)
