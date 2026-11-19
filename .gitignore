@@ -34,6 +34,7 @@ wev-bulletin/test_output.txt
 wev-bulletin/test_output*.txt
 
 # Editor / AI tools
+.agents/
 .ai/
 .antigravity/
 .cursor/
