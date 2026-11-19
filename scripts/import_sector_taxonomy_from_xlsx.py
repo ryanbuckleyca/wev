@@ -5,6 +5,7 @@ Usage:
   python3 scripts/import_sector_taxonomy_from_xlsx.py \
     [path/to/SSE_sector_taxonomy_crosswalk_MASTER.xlsx]
 """
+
 from __future__ import annotations
 
 import json
@@ -12,8 +13,10 @@ import re
 import sys
 import unicodedata
 from pathlib import Path
+from typing import Any
 
 from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_XLSX = ROOT / "shared" / "taxonomy" / "SSE_sector_taxonomy_crosswalk_MASTER.xlsx"
@@ -41,6 +44,24 @@ CATEGORY_IDS = {
     "SSE_FAC_19": "facet-population-cause-geography",
     "SSE_FAC_20": "facet-employer-type",
 }
+
+
+def cell_value(ws: Worksheet, row: int, col: int) -> Any:
+    return ws.cell(row, col).value
+
+
+def cell_str(ws: Worksheet, row: int, col: int) -> str:
+    value = cell_value(ws, row, col)
+    if value is None:
+        return ""
+    return str(value)
+
+
+def cell_float(ws: Worksheet, row: int, col: int) -> float | None:
+    value = cell_value(ws, row, col)
+    if value is None:
+        return None
+    return float(value)
 
 
 def source_key(header: str) -> str:
@@ -99,19 +120,25 @@ def source_key(header: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
-def parse_scope(scope: str):
-    inclusions, exclusions, usage = [], [], None
+def parse_scope(scope: str) -> tuple[list[str], list[str], str | None]:
+    inclusions: list[str] = []
+    exclusions: list[str] = []
+    usage: str | None = None
     if not scope:
         return inclusions, exclusions, usage
-    m = re.search(r"Inclusions:\s*(.+?)(?:\.\s*Exclusions:|$)", scope, re.I | re.S)
-    if m:
-        inclusions = [p.strip(" .") for p in re.split(r",|;", m.group(1)) if p.strip(" .")]
-    m = re.search(r"Exclusions:\s*(.+)$", scope, re.I | re.S)
-    if m:
-        exclusions = [p.strip(" .") for p in re.split(r",|;", m.group(1)) if p.strip(" .")]
-    m = re.search(r"Usage:\s*(.+)$", scope, re.I | re.S)
-    if m:
-        usage = m.group(1).strip()
+    match = re.search(r"Inclusions:\s*(.+?)(?:\.\s*Exclusions:|$)", scope, re.I | re.S)
+    if match:
+        inclusions = [
+            part.strip(" .") for part in re.split(r",|;", match.group(1)) if part.strip(" .")
+        ]
+    match = re.search(r"Exclusions:\s*(.+)$", scope, re.I | re.S)
+    if match:
+        exclusions = [
+            part.strip(" .") for part in re.split(r",|;", match.group(1)) if part.strip(" .")
+        ]
+    match = re.search(r"Usage:\s*(.+)$", scope, re.I | re.S)
+    if match:
+        usage = match.group(1).strip()
     return inclusions, exclusions, usage
 
 
@@ -123,7 +150,9 @@ def extract_aliases(raw: str, label_en: str, label_fr: str) -> list[str]:
     text2 = re.sub(r"^[^:]+:\s*", "", text)
     text2 = re.sub(r"\s+(jobs|tags)$", "", text2, flags=re.I).strip()
     text3 = re.sub(
-        r"^(CQCM|Chantier|CMC|CCEDNet|RIPESS|SolidarityNYC|UNTFSSE|ICA|SEUK|USFWC|NEC|CSMO-ESAC|StatsQc|BuySocial|SolidarityEconomy|ImagineCanada|EspaceOBNL|StatistiqueQc|ISIC Rev 4 Code for|TorontoBetter)\s+",
+        r"^(CQCM|Chantier|CMC|CCEDNet|RIPESS|SolidarityNYC|UNTFSSE|ICA|SEUK|USFWC|NEC|"
+        r"CSMO-ESAC|StatsQc|BuySocial|SolidarityEconomy|ImagineCanada|EspaceOBNL|"
+        r"StatistiqueQc|ISIC Rev 4 Code for|TorontoBetter)\s+",
         "",
         text2,
         flags=re.I,
@@ -136,53 +165,56 @@ def extract_aliases(raw: str, label_en: str, label_fr: str) -> list[str]:
 
 def main() -> int:
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
-    wb = load_workbook(xlsx, data_only=True)
-    ws = wb["Final Crosswalk (Full)"]
-    headers = [ws.cell(4, c).value for c in range(1, 56)]
-    sources = []
-    for c, h in enumerate(headers[11:], 12):
+    workbook = load_workbook(xlsx, data_only=True)
+    worksheet = workbook["Final Crosswalk (Full)"]
+    headers = [cell_str(worksheet, 4, col) for col in range(1, 56)]
+    sources: list[dict[str, Any]] = []
+    for col, header in enumerate(headers[11:], 12):
         kind = "sse_core"
-        if "(Reference)" in h:
+        if "(Reference)" in header:
             kind = "reference"
-        elif "(Scraped" in h:
+        elif "(Scraped" in header:
             kind = "scraped"
-        elif "(Candidate)" in h:
+        elif "(Candidate)" in header:
             kind = "candidate"
         sources.append(
             {
-                "key": source_key(h),
+                "key": source_key(header),
                 "label": re.sub(
-                    r"\s*\((SSE Core|Reference|Scraped.*?|Candidate)\)\s*$", "", h
+                    r"\s*\((SSE Core|Reference|Scraped.*?|Candidate)\)\s*$",
+                    "",
+                    header,
                 ).strip(),
                 "kind": kind,
-                "column": c,
+                "column": col,
             }
         )
 
-    sectors, facets = [], []
-    for r in range(5, 25):
-        cat_id = ws.cell(r, 1).value
-        label_en = ws.cell(r, 2).value
-        label_fr = ws.cell(r, 3).value
-        definition = ws.cell(r, 4).value or ""
-        scope = ws.cell(r, 5).value or ""
+    sectors: list[dict[str, Any]] = []
+    facets: list[dict[str, Any]] = []
+    for row in range(5, 25):
+        cat_id = cell_str(worksheet, row, 1)
+        label_en = cell_str(worksheet, row, 2)
+        label_fr = cell_str(worksheet, row, 3)
+        definition = cell_str(worksheet, row, 4)
+        scope = cell_str(worksheet, row, 5)
         inclusions, exclusions, usage = parse_scope(scope)
-        kind = "facet" if str(cat_id).startswith("SSE_FAC_") else "sector"
+        kind = "facet" if cat_id.startswith("SSE_FAC_") else "sector"
         entry_id = CATEGORY_IDS[cat_id]
-        term_crosswalk = {}
+        term_crosswalk: dict[str, str] = {}
         all_aliases: set[str] = set()
         for src in sources:
-            raw = ws.cell(r, src["column"]).value
-            if raw is None:
+            raw = cell_str(worksheet, row, int(src["column"]))
+            if not raw:
                 continue
-            term_crosswalk[src["key"]] = str(raw)
-            all_aliases.update(extract_aliases(str(raw), label_en, label_fr))
-        signals_en = []
-        for inc in inclusions:
-            piece = re.split(r"[/(]", inc)[0].strip()
+            term_crosswalk[str(src["key"])] = raw
+            all_aliases.update(extract_aliases(raw, label_en, label_fr))
+        signals_en: list[str] = []
+        for inclusion in inclusions:
+            piece = re.split(r"[/(]", inclusion)[0].strip()
             if piece and len(piece) < 80:
                 signals_en.append(piece)
-        entry = {
+        entry: dict[str, Any] = {
             "id": entry_id,
             "category_id": cat_id,
             "kind": kind,
@@ -195,7 +227,9 @@ def main() -> int:
             "exclusions": exclusions,
             "signals_en": signals_en[:12],
             "signals_fr": [],
-            "example_en": (f"Example: {'; '.join(inclusions[:3])}." if inclusions else ""),
+            "example_en": (
+                f"Example: {'; '.join(inclusions[:3])}." if inclusions else ""
+            ),
             "example_fr": f"Exemple : {label_fr}.",
             "boundary_note_en": (
                 f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
@@ -204,12 +238,10 @@ def main() -> int:
                 f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
             ),
             "skos": {
-                "mapping_predicate": ws.cell(r, 6).value,
-                "sssom_match_type": ws.cell(r, 7).value,
-                "sssom_confidence": (
-                    float(ws.cell(r, 8).value) if ws.cell(r, 8).value is not None else None
-                ),
-                "compound_mapping_rule": ws.cell(r, 9).value,
+                "mapping_predicate": cell_str(worksheet, row, 6) or None,
+                "sssom_match_type": cell_str(worksheet, row, 7) or None,
+                "sssom_confidence": cell_float(worksheet, row, 8),
+                "compound_mapping_rule": cell_str(worksheet, row, 9) or None,
             },
             "aliases": sorted(all_aliases, key=lambda s: (len(s), s.lower())),
             "term_crosswalk": term_crosswalk,
@@ -220,42 +252,47 @@ def main() -> int:
         else:
             sectors.append(entry)
 
-    rules_ws = wb["Logic & Decision Rules"]
-    decision_rules = []
-    for r in range(4, 11):
-        rid = rules_ws.cell(r, 1).value
-        if not rid:
+    rules_ws = workbook["Logic & Decision Rules"]
+    decision_rules: list[dict[str, Any]] = []
+    for row in range(4, 11):
+        rule_id = cell_str(rules_ws, row, 1)
+        if not rule_id:
             continue
         decision_rules.append(
             {
-                "id": rid,
-                "target": rules_ws.cell(r, 2).value,
-                "issue": rules_ws.cell(r, 3).value,
-                "rule": rules_ws.cell(r, 4).value,
-                "reference": rules_ws.cell(r, 5).value,
+                "id": rule_id,
+                "target": cell_str(rules_ws, row, 2),
+                "issue": cell_str(rules_ws, row, 3),
+                "rule": cell_str(rules_ws, row, 4),
+                "reference": cell_str(rules_ws, row, 5),
             }
         )
 
-    sssom_ws = wb["SSSOM Mapping Set (Export)"]
-    sssom_headers = [sssom_ws.cell(3, c).value for c in range(1, 10)]
-    sssom = []
-    for r in range(4, 24):
-        row = {sssom_headers[c - 1]: sssom_ws.cell(r, c).value for c in range(1, 10)}
-        if row.get("subject_id"):
-            if row.get("confidence") is not None:
-                row["confidence"] = float(row["confidence"])
-            sssom.append(row)
+    sssom_ws = workbook["SSSOM Mapping Set (Export)"]
+    sssom_headers = [cell_str(sssom_ws, 3, col) for col in range(1, 10)]
+    sssom: list[dict[str, Any]] = []
+    for row in range(4, 24):
+        record = {
+            sssom_headers[col - 1]: cell_value(sssom_ws, row, col) for col in range(1, 10)
+        }
+        if not record.get("subject_id"):
+            continue
+        confidence = record.get("confidence")
+        if confidence is not None:
+            record["confidence"] = float(confidence)
+        sssom.append(record)
 
     out = {
         "version": "2.5",
         "description": (
             "Unified SSE Sector Taxonomy Crosswalk v2.5 (FAIR & SKOS). "
-            "17 industry sectors + 3 non-sector facets (role, population/cause, employer type). "
+            "17 industry sectors + 3 non-sector facets "
+            "(role, population/cause, employer type). "
             "Imported from SSE sector taxonomy crosswalk MASTER.xlsx."
         ),
         "source_workbook": "shared/taxonomy/SSE_sector_taxonomy_crosswalk_MASTER.xlsx",
         "crosswalk_sources": {
-            s["key"]: {"label": s["label"], "kind": s["kind"]} for s in sources
+            str(src["key"]): {"label": src["label"], "kind": src["kind"]} for src in sources
         },
         "legacy_id_map": {
             "care-health-social-services": "social-health-care-services",

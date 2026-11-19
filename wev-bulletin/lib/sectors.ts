@@ -8,9 +8,7 @@ export const SECTOR_TAXONOMY_VERSION =
 export type SectorTaxonomyEntry = (typeof sharedSectors.sectors)[number];
 export type SectorFacetEntry = (typeof sharedSectors.facets)[number];
 
-export const CROSSWALK_SOURCE_IDS = Object.keys(
-  sharedSectors.crosswalk_sources ?? {}
-) as string[];
+export const CROSSWALK_SOURCE_IDS = Object.keys(sharedSectors.crosswalk_sources ?? {}) as string[];
 
 export type CrosswalkSourceId = string;
 
@@ -84,7 +82,7 @@ let _indexCache: Map<string, CrosswalkAlias[]> | null = null;
 
 function aliasesForEntry(
   entry: SectorTaxonomyEntry | SectorFacetEntry,
-  kind: 'sector' | 'facet'
+  kind: 'sector' | 'facet',
 ): CrosswalkAlias[] {
   const terms = new Set<string>();
   terms.add(entry.label_en);
@@ -167,7 +165,7 @@ function candidateKeys(term: string | null | undefined): string[] {
 export function resolveCrosswalkMatches(
   term: string | null | undefined,
   source?: CrosswalkSourceId | null,
-  includeFacets = true
+  includeFacets = true,
 ): CrosswalkMatch[] {
   const keys = candidateKeys(term);
   if (!keys.length) return [];
@@ -206,11 +204,9 @@ export function resolveCrosswalkMatches(
 
 export function resolveSectorFromCrosswalk(
   term: string | null | undefined,
-  source?: CrosswalkSourceId | null
+  source?: CrosswalkSourceId | null,
 ): string | null {
-  const matches = resolveCrosswalkMatches(term, source, false).filter(
-    (m) => m.kind === 'sector'
-  );
+  const matches = resolveCrosswalkMatches(term, source, false).filter((m) => m.kind === 'sector');
   const ids = [...new Set(matches.map((m) => m.entryId))];
   return ids.length === 1 ? ids[0] : null;
 }
@@ -230,7 +226,7 @@ export type SourceCategoriesPayload = {
 
 export function buildSourceCategoriesPayload(
   categories: string[] | string | null | undefined,
-  vocab?: CrosswalkSourceId | null
+  vocab?: CrosswalkSourceId | null,
 ): SourceCategoriesPayload {
   const rawList = Array.isArray(categories)
     ? categories.map((c) => c.trim()).filter(Boolean)
@@ -250,9 +246,7 @@ export function buildSourceCategoriesPayload(
     const sectorIds = [
       ...new Set(matches.filter((m) => m.kind === 'sector').map((m) => m.entryId)),
     ];
-    const facets = [
-      ...new Set(matches.filter((m) => m.kind === 'facet').map((m) => m.entryId)),
-    ];
+    const facets = [...new Set(matches.filter((m) => m.kind === 'facet').map((m) => m.entryId))];
     if (sectorIds.length === 1 && facets.length === 0) {
       if (!seenSectors.has(sectorIds[0])) {
         seenSectors.add(sectorIds[0]);

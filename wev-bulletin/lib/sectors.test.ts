@@ -24,28 +24,26 @@ describe('sector taxonomy v2.5', () => {
     expect(entry?.category_id).toBe('SSE_SEC_07');
     expect(entry?.definition_en).toMatch(/Sustainable farming/i);
     expect(canonicalizeSectorId('arts-culture-information')).toBe('arts-culture-media');
-    expect(canonicalizeSectorId('care-health-social-services')).toBe(
-      'social-health-care-services'
-    );
+    expect(canonicalizeSectorId('care-health-social-services')).toBe('social-health-care-services');
   });
 });
 
 describe('crosswalk resolution', () => {
   it('maps unified EN/FR labels to sector ids', () => {
     expect(resolveSectorFromCrosswalk('Agriculture & Food Systems')).toBe(
-      'agriculture-food-systems'
+      'agriculture-food-systems',
     );
-    expect(
-      resolveSectorFromCrosswalk('Agriculture durable et systèmes alimentaires')
-    ).toBe('agriculture-food-systems');
+    expect(resolveSectorFromCrosswalk('Agriculture durable et systèmes alimentaires')).toBe(
+      'agriculture-food-systems',
+    );
     expect(resolveSectorFromCrosswalk('Advocacy, Rights & Representation')).toBe(
-      'advocacy-rights-representation'
+      'advocacy-rights-representation',
     );
   });
 
   it('normalizes accents', () => {
     expect(normalizeCrosswalkTerm('Éducation, petite enfance et savoirs')).toBe(
-      normalizeCrosswalkTerm('Education, petite enfance et savoirs')
+      normalizeCrosswalkTerm('Education, petite enfance et savoirs'),
     );
   });
 });

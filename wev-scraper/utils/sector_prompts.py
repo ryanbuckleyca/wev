@@ -8,7 +8,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-
 _SECTOR_JSON = (
     Path(__file__).resolve().parents[2] / "shared" / "taxonomy" / "sectors.json"
 )

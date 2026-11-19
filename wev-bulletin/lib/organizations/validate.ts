@@ -316,8 +316,7 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyLocationFields(data));
   }
 
-  if (data.sector_id !== undefined)
-    updates.sector_id = canonicalizeSectorId(data.sector_id);
+  if (data.sector_id !== undefined) updates.sector_id = canonicalizeSectorId(data.sector_id);
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));
