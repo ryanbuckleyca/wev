@@ -53,10 +53,7 @@ describe('buildSectorIndexCards', () => {
     ]);
 
     // MASTER v2.5 order: arts (SSE_SEC_05) before agriculture (SSE_SEC_07).
-    expect(cards.map((c) => c.id)).toEqual([
-      'arts-culture-media',
-      'agriculture-food-systems',
-    ]);
+    expect(cards.map((c) => c.id)).toEqual(['arts-culture-media', 'agriculture-food-systems']);
     expect(cards[0].orgCount).toBe(1);
     expect(cards[0].sampleNames).toEqual(['Radio Co-op']);
     expect(cards[1]).toEqual({

@@ -419,10 +419,7 @@ describe('organizations/server-data', () => {
       expect(organizationsQuery.not).toHaveBeenCalledWith('sector_id', 'is', null);
       expect(organizationsQuery.order).toHaveBeenCalledWith('id', { ascending: true });
       expect(organizationsQuery.range).toHaveBeenCalledWith(0, 999);
-      expect(cards.map((c) => c.id)).toEqual([
-        'arts-culture-media',
-        'agriculture-food-systems',
-      ]);
+      expect(cards.map((c) => c.id)).toEqual(['arts-culture-media', 'agriculture-food-systems']);
       expect(cards[0].orgCount).toBe(1);
     });
   });

@@ -23,11 +23,30 @@ def ensure_env_loaded() -> None:
 
     Subsequent calls are no-ops. Use load_env_file() to explicitly load
     an override file (e.g. .env.staging) on top of the base env.
+
+    When find_dotenv finds nothing from cwd, also try wev-scraper/.env,
+    the repo root, and the repo's parent directory (common when secrets
+    live beside the monorepo checkout).
     """
     global _ENV_LOADED
     if _ENV_LOADED:
         return
-    load_dotenv(find_dotenv())
+    try:
+        discovered = find_dotenv(usecwd=True)
+    except TypeError:
+        # Tests may stub find_dotenv without kwargs.
+        discovered = find_dotenv()
+    if discovered:
+        load_dotenv(discovered)
+    else:
+        for path in (
+            SCRAPER_ROOT / ".env",
+            SCRAPER_ROOT.parent / ".env",
+            SCRAPER_ROOT.parent.parent / ".env",
+        ):
+            if path.is_file():
+                load_dotenv(path)
+                break
     _ENV_LOADED = True
 
 

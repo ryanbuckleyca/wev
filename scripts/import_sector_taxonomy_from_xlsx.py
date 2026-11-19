@@ -15,8 +15,7 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-from openpyxl import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl import load_workbook  # pyright: ignore[reportMissingModuleSource]
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_XLSX = ROOT / "shared" / "taxonomy" / "SSE_sector_taxonomy_crosswalk_MASTER.xlsx"
@@ -46,18 +45,18 @@ CATEGORY_IDS = {
 }
 
 
-def cell_value(ws: Worksheet, row: int, col: int) -> Any:
+def cell_value(ws: Any, row: int, col: int) -> Any:
     return ws.cell(row, col).value
 
 
-def cell_str(ws: Worksheet, row: int, col: int) -> str:
+def cell_str(ws: Any, row: int, col: int) -> str:
     value = cell_value(ws, row, col)
     if value is None:
         return ""
     return str(value)
 
 
-def cell_float(ws: Worksheet, row: int, col: int) -> float | None:
+def cell_float(ws: Any, row: int, col: int) -> float | None:
     value = cell_value(ws, row, col)
     if value is None:
         return None
