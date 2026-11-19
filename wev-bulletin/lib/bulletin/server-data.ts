@@ -14,6 +14,7 @@ import { throwBulletinQueryError } from './fts-errors';
 import { resolveOrgSlugs } from './resolve-org-slugs';
 import { formatSearchQuery, normalizeLocation } from './search-utils';
 import { expandSourceFilterSelection } from './source-brands';
+import { expandSectorFilterIds } from '@/lib/sectors';
 
 // Re-exported for callers that historically imported these from server-data.
 export {
@@ -118,12 +119,14 @@ function applyNonFacetFilters(query: any, input: BulletinQueryInput) {
 function applyBulletinFilters(query: any, input: BulletinQueryInput) {
   if (input.orgs.length) query = query.in('organization', input.orgs);
   // Governance category/sector live on matched_jobs via JOIN
-  // (org_governance_category / org_sector_id) — same idea as
-  // get_active_organizations p_governance_categories / p_sectors, not an ID expand.
+  // (org_governance_category / org_sector_id) — expand canonical sector IDs
+  // with legacy stored IDs so filters match both during the v2.5 rollout window.
   if (input.governanceCategories.length) {
     query = query.in('org_governance_category', input.governanceCategories);
   }
-  if (input.sectors.length) query = query.in('org_sector_id', input.sectors);
+  if (input.sectors.length) {
+    query = query.in('org_sector_id', expandSectorFilterIds(input.sectors));
+  }
   if (input.provs.length) {
     const normalizedProvs = input.provs.map(normalizeLocation);
     query = query.in('search_province', normalizedProvs);
