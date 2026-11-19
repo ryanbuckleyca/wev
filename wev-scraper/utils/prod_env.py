@@ -90,7 +90,7 @@ def apply_prod_overrides(prod_env: Path, *, full_prod: bool) -> None:
 
 
 def resolve_staging_env_path(script_file: Path) -> Path:
-    """Return the path to .env.staging (repo root or scraper package)."""
+    """Return the path to .env.staging (repo root, scraper package, or repo parent)."""
     scraper_dir = script_file.resolve().parent
     if scraper_dir.name == "scripts":
         root_dir = scraper_dir.parent.parent
@@ -98,7 +98,11 @@ def resolve_staging_env_path(script_file: Path) -> Path:
     else:
         root_dir = scraper_dir.parent
         scraper_pkg = scraper_dir
-    for candidate in (root_dir / ".env.staging", scraper_pkg / ".env.staging"):
+    for candidate in (
+        root_dir / ".env.staging",
+        scraper_pkg / ".env.staging",
+        root_dir.parent / ".env.staging",
+    ):
         if candidate.exists():
             return candidate
     return root_dir / ".env.staging"

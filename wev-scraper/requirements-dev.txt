@@ -7,6 +7,7 @@ ollama
 ruff
 pyright
 datamodel-code-generator==0.33.0
+openpyxl
 
 # Local Jina v3 embedding model (ENV_MODE=local) + property-based testing.
 # Versions are pinned for cross-platform compatibility:

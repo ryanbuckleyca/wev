@@ -36,6 +36,20 @@ describe('validateOrgInput', () => {
 });
 
 describe('buildOrgPayload', () => {
+  it('leaves ambiguous community-civic unclassified instead of remapping', () => {
+    const payload = buildOrgPayload({
+      name: 'Legacy Civic Org',
+      slug: 'legacy-civic-org',
+      sector_id: 'community-civic-infrastructure',
+    });
+    expect(payload.sector_id).toBeNull();
+
+    const updated = buildOrgUpdateFields({
+      sector_id: 'community-civic-infrastructure',
+    });
+    expect(updated.sector_id).toBeNull();
+  });
+
   it('stores city autocomplete fields with city accuracy', () => {
     const payload = buildOrgPayload({
       name: 'Co-op Example',

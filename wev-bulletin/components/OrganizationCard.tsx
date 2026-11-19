@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { formatOrgLocationLabel } from '@/lib/organizations/utils';
 import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
+import { canonicalizeSectorId } from '@/lib/sectors';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
@@ -188,8 +189,12 @@ export default function OrganizationCard({
 
   const getGovernanceLabel = (entry: OrgIndexEntry) =>
     getOrgGovernanceDisplayLabel(entry, tOrgs) ?? '';
-  const getSectorLabel = (sectorId: string | null) =>
-    sectorId ? tSectors(`${sectorId}.label`) : '';
+  const getSectorLabel = (sectorId: string | null) => {
+    if (!sectorId) return '';
+    // Prefer canonical v2.5 id so legacy DB values still resolve to i18n labels.
+    const canonical = canonicalizeSectorId(sectorId) ?? sectorId;
+    return tSectors(`${canonical}.label`);
+  };
 
   const locationLabel = formatOrgLocationLabel(org);
   const hasFooter =

@@ -45,14 +45,14 @@ describe('GET /api/organizations', () => {
   it('forwards sector query params to fetchOrganizationIndex', async () => {
     const response = await GET(
       new Request(
-        'http://localhost/api/organizations?sector=arts-culture-information&sector=community-civic-infrastructure',
+        'http://localhost/api/organizations?sector=arts-culture-media&sector=community-development-philanthropy-volunteering',
       ),
     );
 
     expect(response.status).toBe(200);
     expect(mockFetchOrganizationIndex).toHaveBeenCalledWith(
       expect.objectContaining({
-        sectors: ['arts-culture-information', 'community-civic-infrastructure'],
+        sectors: ['arts-culture-media', 'community-development-philanthropy-volunteering'],
       }),
       undefined,
     );
