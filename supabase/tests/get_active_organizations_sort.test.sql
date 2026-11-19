@@ -30,7 +30,7 @@ select is(
     select name from (
       select name, row_number() over () as rn
       from public.get_active_organizations(
-        '2000-01-01'::timestamptz, 20, 0, null, true, null, null, null, null, 'date-desc'
+        '2000-01-01'::timestamptz, 20, 0, null, true, null, null, null, 'date-desc'
       )
     ) ranked
     where rn = 1
@@ -45,7 +45,7 @@ select is(
     select name from (
       select name, row_number() over () as rn
       from public.get_active_organizations(
-        '2000-01-01'::timestamptz, 20, 0, null, true, null, null, null, null, 'org-asc'
+        '2000-01-01'::timestamptz, 20, 0, null, true, null, null, null, 'org-asc'
       )
     ) ranked
     where rn = 1

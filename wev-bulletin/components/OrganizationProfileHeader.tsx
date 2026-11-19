@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { safeUrl } from '@/lib/url';
-import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { formatOrgLocationLabel } from '@/lib/organizations/utils';
 import {
   getOrgGovernanceDisplayLabel,
   hasPublicGovernanceSubtype,
@@ -54,9 +54,7 @@ export default function OrganizationProfileHeader({
   const locationLabel = formatOrgLocationLabel(org);
   const description = pickOrgLocalizedText(org, 'description', locale);
   const mission = pickOrgLocalizedText(org, 'mission_statement', locale);
-  const governanceLabel = getOrgGovernanceDisplayLabel(org, t, (type) =>
-    getOrganizationTypeLabel(type, t),
-  );
+  const governanceLabel = getOrgGovernanceDisplayLabel(org, t);
 
   return (
     <div className="mb-8">

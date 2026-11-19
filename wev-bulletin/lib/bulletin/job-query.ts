@@ -31,7 +31,7 @@ export type JobSortOption = (typeof JOB_SORT_OPTIONS)[number];
 export type BulletinFilters = {
   searchQuery: string;
   selectedOrganizations: string[];
-  selectedOrgTypes: string[];
+  selectedGovernanceCategories: string[];
   selectedSectors: string[];
   selectedProvinces: string[];
   selectedMunicipalities: string[];
@@ -74,8 +74,8 @@ function matchesSelection<T>(value: T | null | undefined, selectedValues: T[]): 
 }
 
 export function filterJobs(jobs: JobPosting[], filters: BulletinFilters): JobPosting[] {
-  // selectedOrgTypes / selectedSectors are applied server-side on matched_jobs
-  // org_type / org_sector_id (JobPosting has no type/sector fields).
+  // selectedGovernanceCategories / selectedSectors are applied server-side on matched_jobs
+  // org_governance_category / org_sector_id (JobPosting has no governance/sector fields).
   const lowerQuery = filters.searchQuery ? filters.searchQuery.trim().toLowerCase() : '';
   const cutoffMs =
     filters.postedWithin !== 'any'

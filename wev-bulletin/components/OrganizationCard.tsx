@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { formatOrgLocationLabel, getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { formatOrgLocationLabel } from '@/lib/organizations/utils';
 import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { safeUrl } from '@/lib/url';
@@ -187,8 +187,7 @@ export default function OrganizationCard({
   const tSectors = useTranslations('taxonomy.sectors');
 
   const getGovernanceLabel = (entry: OrgIndexEntry) =>
-    getOrgGovernanceDisplayLabel(entry, tOrgs, (type) => getOrganizationTypeLabel(type, tOrgs)) ??
-    '';
+    getOrgGovernanceDisplayLabel(entry, tOrgs) ?? '';
   const getSectorLabel = (sectorId: string | null) =>
     sectorId ? tSectors(`${sectorId}.label`) : '';
 

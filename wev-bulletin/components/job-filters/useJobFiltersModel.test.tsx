@@ -14,8 +14,8 @@ const mockControls = {
   setSearchQuery: vi.fn(),
   selectedOrganizations: ['Org One'],
   setSelectedOrganizations: vi.fn(),
-  selectedOrgTypes: [] as string[],
-  setSelectedOrgTypes: vi.fn(),
+  selectedGovernanceCategories: [] as string[],
+  setSelectedGovernanceCategories: vi.fn(),
   selectedSectors: [] as string[],
   setSelectedSectors: vi.fn(),
   selectedProvinces: ['Ontario'],
@@ -184,8 +184,14 @@ describe('useJobFiltersModel', () => {
     expect(result.current.provinces).toContain('Ontario');
     expect(result.current.provinces).toContain('Nova Scotia');
 
-    // Org type / sector options are taxonomy-driven, not derived from page jobs.
-    expect(result.current.orgTypes).toContain('nonprofit');
+    // Governance / sector options are taxonomy-driven, not derived from page jobs.
+    expect(result.current.governanceCategories).toEqual([
+      'GOV_1',
+      'GOV_2',
+      'GOV_3',
+      'GOV_4',
+      'GOV_5',
+    ]);
     expect(result.current.sectors.length).toBeGreaterThan(0);
   });
 

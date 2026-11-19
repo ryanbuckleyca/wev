@@ -8,9 +8,7 @@ import {
   ORG_LANGUAGES,
   SLUG_PATTERN,
   type OrgLanguage,
-  type OrgType,
 } from './constants';
-import { normalizeOrgType } from './org-type';
 import { resolveGovernanceForSave } from './governance-labels';
 import { isGovernanceSubtype } from './governance-taxonomy';
 import { buildAdminSseFields } from './sse-admin-fields';
@@ -32,7 +30,6 @@ export interface OrgFormInput {
   lat?: number | null;
   lng?: number | null;
   geocode_accuracy_type?: string | null;
-  type?: string | null;
   governance_subtype?: string | null;
   sector_id?: string | null;
   is_sse?: boolean;
@@ -121,10 +118,6 @@ export function validateOrgInput(
     return { field: 'mission_statement_fr', error: 'mission_too_long' };
   }
 
-  if (data.type?.trim() && !normalizeOrgType(data.type)) {
-    return { field: 'type', error: 'invalid_type' };
-  }
-
   if (data.governance_subtype?.trim() && !isGovernanceSubtype(data.governance_subtype)) {
     return { field: 'governance_subtype', error: 'invalid_governance' };
   }
@@ -166,7 +159,6 @@ export interface NormalizedOrgPayload {
   lat: number | null;
   lng: number | null;
   geocode_accuracy_type: string | null;
-  type: OrgType | null;
   governance_subtype: GovernanceSubtype | null;
   governance_category: GovernanceCategory | null;
   governance_confidence: number | null;
@@ -221,9 +213,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
   const name = data.name.trim();
   const slug = data.slug?.trim() || generateSlug(name);
   const valuesList = normalizeOrgValuesList(data.values_list);
-  const type = normalizeOrgType(data.type);
-  // Government orgs are never SSE (type is allowed; SSE flag is not).
-  const isSse = type === 'government' ? false : (data.is_sse ?? false);
+  const isSse = data.is_sse ?? false;
   const sseFields = buildAdminSseFields(isSse);
   const governance = resolveGovernanceForSave({
     governance_subtype: data.governance_subtype,
@@ -246,7 +236,6 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     mission_statement: missionEn || missionFr,
     website: data.website?.trim() || null,
     ...applyLocationFields(data),
-    type,
     governance_subtype: governance.governance_subtype,
     governance_category: governance.governance_category,
     // Admin creates/edits don't carry model confidence/reasoning.
@@ -264,7 +253,6 @@ export function buildOrgUpdateFields(
   data: Partial<OrgFormInput>,
   options: {
     previousIsSse?: boolean | null;
-    previousType?: OrgType | null;
     previousGovernanceSubtype?: string | null;
   } = {},
 ): Partial<NormalizedOrgPayload> {
@@ -328,12 +316,6 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyLocationFields(data));
   }
 
-  const typeChanging = data.type !== undefined;
-  const nextType: OrgType | null = typeChanging
-    ? normalizeOrgType(data.type)
-    : (options.previousType ?? null);
-  if (typeChanging) updates.type = nextType;
-
   if (data.sector_id !== undefined)
     updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
   if (data.values_list !== undefined) {
@@ -342,19 +324,12 @@ export function buildOrgUpdateFields(
   }
   if (data.language !== undefined) updates.language = normalizeOrgLanguage(data.language);
 
-  const governmentBlocksSse = nextType === 'government';
   let nextIsSse: boolean | undefined;
-  if (data.is_sse !== undefined || (typeChanging && governmentBlocksSse)) {
-    const requested = data.is_sse ?? options.previousIsSse ?? false;
-    const isSse = governmentBlocksSse ? false : Boolean(requested);
+  if (data.is_sse !== undefined) {
+    const isSse = Boolean(data.is_sse);
     nextIsSse = isSse;
     updates.is_sse = isSse;
-    const requestOverridden = data.is_sse !== undefined && Boolean(data.is_sse) !== isSse;
-    if (
-      isSse !== options.previousIsSse ||
-      (typeChanging && governmentBlocksSse) ||
-      requestOverridden
-    ) {
+    if (isSse !== options.previousIsSse) {
       Object.assign(updates, buildAdminSseFields(isSse));
     }
   }

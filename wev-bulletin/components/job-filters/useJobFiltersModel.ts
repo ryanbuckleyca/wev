@@ -17,8 +17,8 @@ import {
   getJobLanguageLabel,
   getWorkTypeLabel,
 } from '@/lib/bulletin/filter-labels';
-import { ORG_TYPES } from '@/lib/organizations/constants';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
+import { SSE_GOVERNANCE_FILTER_CATEGORIES } from '@/lib/organizations/governance-taxonomy';
 import { SECTORS_LIST } from '@/lib/sectors';
 import { WORK_TYPES, normalizeWorkTypes, type WorkType } from '@/lib/work-types';
 import type { JobFiltersProps } from './types';
@@ -45,7 +45,7 @@ export interface JobFiltersModel {
   workTypeOptions: { value: string; label: string }[];
   languageOptions: { value: string; label: string }[];
   postedWithinOptions: { value: string; label: string }[];
-  orgTypes: string[];
+  governanceCategories: string[];
   sectors: string[];
   provinces: string[];
   employmentTypes: string[];
@@ -53,7 +53,7 @@ export interface JobFiltersModel {
   municipalitiesByProvince: Record<string, string[]>;
   allMunicipalities: string[];
   indeterminateProvinces: Set<string>;
-  handleOrgTypeToggle: (orgType: string) => void;
+  handleGovernanceCategoryToggle: (category: string) => void;
   handleSectorToggle: (sector: string) => void;
   handleProvinceToggle: (province: string) => void;
   handleMunicipalityToggle: (municipality: string) => void;
@@ -78,8 +78,8 @@ export function useJobFiltersModel({
     setSearchQuery: onSearchChange,
     selectedOrganizations,
     setSelectedOrganizations: onOrganizationsChange,
-    selectedOrgTypes,
-    setSelectedOrgTypes: onOrgTypesChange,
+    selectedGovernanceCategories,
+    setSelectedGovernanceCategories: onGovernanceCategoriesChange,
     selectedSectors,
     setSelectedSectors: onSectorsChange,
     selectedProvinces,
@@ -129,8 +129,8 @@ export function useJobFiltersModel({
     [profileLanguages, t],
   );
 
-  const orgTypeLabel = useCallback(
-    (type: string) => getOrganizationTypeLabel(type, tOrgs) ?? type,
+  const governanceCategoryLabel = useCallback(
+    (category: string) => getGovernanceCategoryLabel(category, tOrgs) ?? category,
     [tOrgs],
   );
 
@@ -143,7 +143,7 @@ export function useJobFiltersModel({
   const isSuggestedDefaults =
     !searchQuery &&
     selectedOrganizations.length === 0 &&
-    selectedOrgTypes.length === 0 &&
+    selectedGovernanceCategories.length === 0 &&
     selectedSectors.length === 0 &&
     selectedProvinces.length === 0 &&
     selectedMunicipalities.length === 0 &&
@@ -171,12 +171,12 @@ export function useJobFiltersModel({
           selectedProvinces,
           selectedMunicipalities,
           selectedOrganizations,
-          selectedOrgTypes,
+          selectedGovernanceCategories,
           selectedSectors,
           selectedEmploymentTypes,
           selectedSources,
           selectedLanguages,
-          orgTypeLabel,
+          governanceCategoryLabel,
           sectorLabel,
           onPostedWithinChange,
           onShowNonSseChange,
@@ -186,7 +186,7 @@ export function useJobFiltersModel({
           onProvincesChange,
           onMunicipalitiesChange,
           onOrganizationsChange,
-          onOrgTypesChange,
+          onGovernanceCategoriesChange,
           onSectorsChange,
           onEmploymentTypesChange,
           onSourcesChange,
@@ -200,7 +200,7 @@ export function useJobFiltersModel({
       onLanguagesChange,
       onMunicipalitiesChange,
       onOrganizationsChange,
-      onOrgTypesChange,
+      onGovernanceCategoriesChange,
       onPostedWithinChange,
       onProvincesChange,
       onSearchChange,
@@ -209,7 +209,7 @@ export function useJobFiltersModel({
       onShowNonSseChange,
       onSourcesChange,
       onWorkTypesChange,
-      orgTypeLabel,
+      governanceCategoryLabel,
       postedWithin,
       searchQuery,
       sectorLabel,
@@ -217,7 +217,7 @@ export function useJobFiltersModel({
       selectedLanguages,
       selectedMunicipalities,
       selectedOrganizations,
-      selectedOrgTypes,
+      selectedGovernanceCategories,
       selectedProvinces,
       selectedSectors,
       selectedSources,
@@ -233,7 +233,7 @@ export function useJobFiltersModel({
     [externalFilterOptions, jobs],
   );
 
-  const orgTypes = useMemo(() => [...ORG_TYPES], []);
+  const governanceCategories = useMemo(() => [...SSE_GOVERNANCE_FILTER_CATEGORIES], []);
   const sectors = useMemo(() => [...SECTORS_LIST], []);
 
   // When provinces are selected, only show municipalities from those provinces.
@@ -247,11 +247,11 @@ export function useJobFiltersModel({
     return scoped;
   }, [municipalitiesByProvince, selectedProvinces]);
 
-  const handleOrgTypeToggle = useCallback(
-    (orgType: string) => {
-      onOrgTypesChange(toggleSelection(selectedOrgTypes, orgType));
+  const handleGovernanceCategoryToggle = useCallback(
+    (category: string) => {
+      onGovernanceCategoriesChange(toggleSelection(selectedGovernanceCategories, category));
     },
-    [onOrgTypesChange, selectedOrgTypes],
+    [onGovernanceCategoriesChange, selectedGovernanceCategories],
   );
 
   const handleSectorToggle = useCallback(
@@ -364,7 +364,7 @@ export function useJobFiltersModel({
     workTypeOptions,
     languageOptions,
     postedWithinOptions,
-    orgTypes,
+    governanceCategories,
     sectors,
     provinces,
     employmentTypes,
@@ -372,7 +372,7 @@ export function useJobFiltersModel({
     municipalitiesByProvince: scopedMunicipalitiesByProvince,
     allMunicipalities,
     indeterminateProvinces,
-    handleOrgTypeToggle,
+    handleGovernanceCategoryToggle,
     handleSectorToggle,
     handleProvinceToggle,
     handleMunicipalityToggle,

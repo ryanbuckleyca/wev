@@ -12,7 +12,6 @@ import Button from './Button';
 import ValuesSelector from './profile/values/ValuesSelector';
 import LocationAutocomplete from './profile/LocationAutocomplete';
 import OrgSlugField from './OrgSlugField';
-import OrgTypeSelect from './OrgTypeSelect';
 import OrgGovernanceSelect from './OrgGovernanceSelect';
 import OrgSectorSelect from './OrgSectorSelect';
 import OrgLanguageSelect from './OrgLanguageSelect';
@@ -37,7 +36,6 @@ import {
   ORG_SKIP_REASON_IGNORED,
   findMissingOrgFields,
 } from '@/lib/organizations/assessment-review';
-import { getOrganizationTypeLabel } from '@/lib/organizations/org-type';
 import {
   getGovernanceCategoryLabel,
   getGovernanceSubtypeLabel,
@@ -88,10 +86,6 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
     return buildWorkValues(tEn, tEn);
   }, [tValues]);
 
-  const orgTypeLabel = useCallback(
-    (orgType: string) => getOrganizationTypeLabel(orgType, tOrgs) ?? orgType,
-    [tOrgs],
-  );
   const governanceCategoryLabel = useCallback(
     (category: string) => getGovernanceCategoryLabel(category, tOrgs) ?? category,
     [tOrgs],
@@ -373,16 +367,6 @@ export default function OrgAdminForm({ initialValues, locale }: OrgAdminFormProp
           error={errors.location}
         />
       </div>
-
-      <OrgTypeSelect
-        value={form.type}
-        onChange={form.setType}
-        label={t('fields.type')}
-        placeholder={t('placeholders.selectType')}
-        typeLabel={orgTypeLabel}
-        error={errors.type}
-        disabled={isSubmitting}
-      />
 
       <OrgGovernanceSelect
         value={form.governanceSubtype}

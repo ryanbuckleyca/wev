@@ -17,12 +17,12 @@ export type ActiveFilterChipInputs = {
   selectedProvinces: string[];
   selectedMunicipalities: string[];
   selectedOrganizations: string[];
-  selectedOrgTypes: string[];
+  selectedGovernanceCategories: string[];
   selectedSectors: string[];
   selectedEmploymentTypes: string[];
   selectedSources: string[];
   selectedLanguages: string[];
-  orgTypeLabel: (type: string) => string;
+  governanceCategoryLabel: (category: string) => string;
   sectorLabel: (sectorId: string) => string;
   onPostedWithinChange: (value: PostedWithinValue) => void;
   onShowNonSseChange: (value: boolean) => void;
@@ -32,7 +32,7 @@ export type ActiveFilterChipInputs = {
   onProvincesChange: (value: string[]) => void;
   onMunicipalitiesChange: (value: string[]) => void;
   onOrganizationsChange: (value: string[]) => void;
-  onOrgTypesChange: (value: string[]) => void;
+  onGovernanceCategoriesChange: (value: string[]) => void;
   onSectorsChange: (value: string[]) => void;
   onEmploymentTypesChange: (value: string[]) => void;
   onSourcesChange: (value: string[]) => void;
@@ -165,8 +165,14 @@ export function buildActiveFilterChips(
   );
 
   chips.push(
-    ...buildSelectionChips('org-type', input.selectedOrgTypes, input.orgTypeLabel, (type) =>
-      input.onOrgTypesChange(input.selectedOrgTypes.filter((item) => item !== type)),
+    ...buildSelectionChips(
+      'governance',
+      input.selectedGovernanceCategories,
+      input.governanceCategoryLabel,
+      (category) =>
+        input.onGovernanceCategoriesChange(
+          input.selectedGovernanceCategories.filter((item) => item !== category),
+        ),
     ),
   );
 

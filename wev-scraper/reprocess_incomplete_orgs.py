@@ -61,8 +61,8 @@ def main():
         missing_critical = []
         if not org.get('sector_id'):
             missing_critical.append('sector_id')
-        if not org.get('type'):
-            missing_critical.append('type')
+        if not org.get('governance_subtype'):
+            missing_critical.append('governance_subtype')
         if not org.get('description_en'):
             missing_critical.append('description_en')
         if not org.get('description_fr'):

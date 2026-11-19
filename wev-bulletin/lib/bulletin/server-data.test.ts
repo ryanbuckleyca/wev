@@ -97,7 +97,7 @@ describe('server-data', () => {
       sortBy: 'date-desc',
       postedWithin: 'all',
       orgs: [],
-      orgTypes: [],
+      governanceCategories: [],
       sectors: [],
       provs: [],
       munis: [],
@@ -149,17 +149,15 @@ describe('server-data', () => {
       ]);
     });
 
-    it('applies org type and sector filters on matched_jobs join columns', async () => {
+    it('applies governance category and sector filters on matched_jobs join columns', async () => {
       await fetchBulletinQueryPayload({
         ...defaultInput,
-        orgTypes: ['nonprofit'],
+        governanceCategories: ['GOV_4'],
         sectors: ['housing-collective-real-estate'],
       });
 
-      expect(mockQuery.in).toHaveBeenCalledWith(
-        'org_type',
-        expect.arrayContaining(['nonprofit', 'non-profit']),
-      );
+      expect(mockQuery.in).toHaveBeenCalledWith('org_governance_category', ['GOV_4']);
+      expect(mockQuery.in).not.toHaveBeenCalledWith('org_type', expect.anything());
       expect(mockQuery.in).toHaveBeenCalledWith('org_sector_id', [
         'housing-collective-real-estate',
       ]);

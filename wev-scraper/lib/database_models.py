@@ -250,7 +250,8 @@ class MatchedJobs(BaseModel):
     qualifications: Optional[Any] = None
     skill_phrase_embedding: Optional[str] = None
     source: Optional[str] = None
-    org_type: Optional[str] = None
+    org_governance_category: Optional[str] = None
+    org_governance_subtype: Optional[str] = None
     org_sector_id: Optional[str] = None
     match_score: Optional[float] = None
     value_score: Optional[float] = None
@@ -322,10 +323,6 @@ class Organizations(BaseModel):
     created_at: str
     name: str
     values: Optional[str] = None
-    type: Optional[str] = Field(
-        None,
-        description='Org governance form: nonprofit, cooperative, government, union, or other. SSE-eligible types are nonprofit, cooperative, and union — type alone is not sufficient for SSE Yes.',
-    )
     slug: str
     description: Optional[str] = None
     website: Optional[str] = None

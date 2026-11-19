@@ -90,7 +90,6 @@ function makeRpcOrg(id: number, name: string, active_job_count: number) {
     created_at: '2026-06-01T00:00:00.000Z',
     name,
     values: null,
-    type: null,
     slug: `${name.toLowerCase()}-${id}`,
     description: null,
     description_en: null,
@@ -143,9 +142,9 @@ describe('organizations/server-data', () => {
       p_sse_only: true,
       p_provinces: null,
       p_municipalities: null,
-      p_org_types: null,
       p_languages: null,
       p_sectors: null,
+      p_governance_categories: null,
       p_user_id: null,
       p_sort: 'org-asc',
     });
@@ -212,8 +211,8 @@ describe('organizations/server-data', () => {
         p_limit: 1,
         p_provinces: null,
         p_municipalities: null,
-        p_org_types: null,
         p_languages: null,
+        p_governance_categories: null,
       }),
     );
     expect(result.totalAvailable).toBe(10);
@@ -247,6 +246,35 @@ describe('organizations/server-data', () => {
       'get_active_organizations',
       expect.objectContaining({
         p_sectors: null,
+      }),
+    );
+  });
+
+  it('passes selected governance categories to the RPC and never sends org types', async () => {
+    mockRpc
+      .mockResolvedValueOnce({
+        data: [makeRpcOrg(2, 'Alpha Org', 1)],
+        error: null,
+      })
+      .mockResolvedValueOnce({
+        data: [{ ...makeRpcOrg(2, 'Alpha Org', 1), total_count: 10 }],
+        error: null,
+      });
+
+    await fetchOrganizationIndex({ page: 1, governanceCategories: ['GOV_1', 'GOV_4'] });
+
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      1,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_governance_categories: ['GOV_1', 'GOV_4'],
+      }),
+    );
+    expect(mockRpc).toHaveBeenNthCalledWith(
+      2,
+      'get_active_organizations',
+      expect.objectContaining({
+        p_governance_categories: null,
       }),
     );
   });
@@ -312,13 +340,13 @@ describe('organizations/server-data', () => {
       mockRpc.mockResolvedValueOnce({
         data: {
           global: {
-            types: ['nonprofit'],
+            governance_categories: ['GOV_4'],
             provinces: ['Quebec'],
             municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
             languages: ['fr'],
           },
           available: {
-            types: ['nonprofit'],
+            governance_categories: ['GOV_4'],
             provinces: ['Quebec'],
             municipalities: [{ province: 'Quebec', municipality: 'Montreal' }],
             languages: ['fr'],
@@ -333,7 +361,7 @@ describe('organizations/server-data', () => {
         p_activity_days: null,
       });
 
-      expect(options.types).toEqual(['nonprofit']);
+      expect(options.governanceCategories).toEqual(['GOV_4']);
       expect(options.provinces).toEqual(['Quebec']);
       expect(options.municipalitiesByProvince).toEqual({ Quebec: ['Montreal'] });
       expect(options.languages).toEqual(['fr']);
@@ -343,13 +371,13 @@ describe('organizations/server-data', () => {
       mockRpc.mockResolvedValueOnce({
         data: {
           global: {
-            types: ['cooperative', 'nonprofit'],
+            governance_categories: ['GOV_4', 'GOV_1'],
             provinces: ['Ontario'],
             municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
             languages: ['en'],
           },
           available: {
-            types: ['cooperative'],
+            governance_categories: ['GOV_1'],
             provinces: ['Ontario'],
             municipalities: [{ province: 'Ontario', municipality: 'Toronto' }],
             languages: ['en'],
@@ -364,8 +392,8 @@ describe('organizations/server-data', () => {
         p_activity_days: 28,
       });
 
-      expect(options.types).toEqual(['cooperative', 'nonprofit']);
-      expect(options.availableTypes).toEqual(['cooperative']);
+      expect(options.governanceCategories).toEqual(['GOV_1', 'GOV_4']);
+      expect(options.availableGovernanceCategories).toEqual(['GOV_1']);
     });
   });
 
@@ -375,12 +403,10 @@ describe('organizations/server-data', () => {
         data: [
           {
             name: 'Alpha Farm',
-            type: 'nonprofit',
             sector_id: 'agriculture-food-systems',
           },
           {
             name: 'Radio Co-op',
-            type: 'cooperative',
             sector_id: 'arts-culture-information',
           },
         ],

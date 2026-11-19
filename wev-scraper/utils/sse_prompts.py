@@ -1,5 +1,7 @@
 """SSE Classification prompt templates for Gemini."""
 
+from utils.governance_taxonomy import EXCLUDED_SUBTYPE, GOVERNANCE_SUBTYPES
+
 # Keywords added to organization searches to find mission/values/governance info
 # Focused on "information containers" that describe structure (bylaws, reports, etc.)
 SSE_SEARCH_KEYWORDS = '(governance OR bylaws OR "articles of incorporation" OR "annual report" OR "impact report" OR "board of directors")'
@@ -186,99 +188,106 @@ GOVERNANCE GATE (required for any Yes — strong_yes or weak_yes):
 The organization must be a Solidarity Economy form, not a conventional for-profit
 and not a government / public-sector body.
 IMPORTANT — evidence over labels: score sse_rating from researched mission,
-governance, ownership, and public materials — NOT from the "type" string alone.
-An eligible type (nonprofit / cooperative / union) without mission/governance
-evidence is not enough for Yes. Conversely, do not invent Yes from CSR slogans
-when structure is a conventional for-profit.
-Map "type" to one of the stored values only:
-  nonprofit, cooperative, government, union, other.
-SSE-eligible stored types (may be Yes when evidence supports it — type alone
-is never sufficient):
-  nonprofit, cooperative, union.
-Never-SSE stored types (always No): government, other.
-TYPE MAPPING (do not invent other type labels):
-- nonprofit — registered charity / nonprofit corporation / association (including OBNLs,
-  mutual societies, mutual-aid groups, community associations, and regional community /
-  economic development corporations with autonomous boards, such as CDECs or regional hubs,
-  even when receiving municipal or provincial funding / mandates). Prefer this when public
-  materials show nonprofit/charity registration, an independent board serving a non-proprietary
-  mission, or clear non-distribution constraints — not merely a mission-driven
-  private business. A conventional board + executive director is still nonprofit
-  when charity/nonprofit evidence is present — do NOT require cooperative labels.
-- cooperative — worker, consumer, producer, multi-stakeholder coop, credit union, or
-  worker-owned business / practice / collective (democratic worker ownership is
+governance, ownership, and public materials. An eligible GOV_* subtype without
+mission/governance evidence is not enough for Yes. Conversely, do not invent Yes
+from CSR slogans when structure is a conventional for-profit.
+Set governance_subtype_code to ONE code from the GOVERNANCE TAXONOMY (GOV_* or
+EXCLUDED_NON_SSE). Never invent labels. Classify by ownership/voting control —
+not sector or platform. Governance is a filter, not a Yes by itself.
+SSE-eligible subtypes (may be Yes when evidence supports it — subtype alone is
+never sufficient): any GOV_1..GOV_5 subtype.
+Never-SSE: EXCLUDED_NON_SSE (always rating "no").
+GOVERNANCE MAPPING (pick the closest GOV_* subtype; use EXCLUDED_NON_SSE only
+when research shows a non-SSE form):
+- GOV_4 (member / community NPO / charity / association / OBNL / mutual-aid /
+  regional community or economic development corporations with autonomous boards,
+  such as CDECs or regional hubs, even when receiving municipal or provincial
+  funding / mandates) — prefer when public materials show nonprofit/charity
+  registration, an independent board serving a non-proprietary mission, or clear
+  non-distribution constraints — not merely a mission-driven private business.
+  A conventional board + executive director is still a GOV_4 subtype when
+  charity/nonprofit evidence is present — do NOT require cooperative labels.
+- GOV_1 (worker / consumer / producer / multi-stakeholder coop, credit union, or
+  worker-owned business / practice / collective — democratic worker ownership is
   cooperative governance; worker-owned design / planning / consulting practices
   are cooperatives, not conventional for-profits).
-- union — labour union
-- government — public agency / municipality / crown corp / school board / public hospital
-  authority (ministry-/council-appointed) / direct statutory department → "no"
-  (NOT political parties — parties are not public bodies; see "other" below)
-  (NOT autonomous non-profit corporations or regional development hubs funded by municipal/provincial grants — see "nonprofit" above)
+- GOV_2 / GOV_3 / GOV_5 — use the taxonomy definitions (mutuals, unions, etc.).
+- EXCLUDED_NON_SSE — government / public agency / municipality / crown corp /
+  school board / public hospital authority (ministry-/council-appointed) /
+  direct statutory department → rating "no"
+  (NOT political parties — parties are also EXCLUDED_NON_SSE; see below)
+  (NOT autonomous non-profit corporations or regional development hubs funded by
+  municipal/provincial grants — those are GOV_4)
   (NOT registered-charity / independent-board hospitals that receive OHIP/Medicare /
   provincial health funding — public funding ≠ government; see CRITICAL below)
-- other — conventional for-profit / private company / privately owned school or
-  program / political party or electoral organization / residual → "no"
-  (even if the mission mentions environment, community, children, nature, or
-  "respect for people"; even if founded by an educator with a clear social purpose)
+- EXCLUDED_NON_SSE also covers conventional for-profit / private company /
+  privately owned school or program / political party or electoral organization /
+  residual → rating "no" (even if the mission mentions environment, community,
+  children, nature, or "respect for people"; even if founded by an educator with
+  a clear social purpose).
 CRITICAL — place-name / city-in-name is NOT government (municipal funding is NOT government):
 - A city, town, or region name in the organization name (or municipality field) is
   geographic branding only — NOT evidence of a municipal or public-sector employer.
 - Community orchestras, choirs, bands, theatres, and similar arts / cultural
-  associations are typically type "nonprofit" (often sector arts-culture-information),
-  never "government", unless research shows a city department, municipal agency, or
-  other statutory public body.
+  associations are typically a GOV_4 subtype (often sector arts-culture-information),
+  never EXCLUDED_NON_SSE as government, unless research shows a city department,
+  municipal agency, or other statutory public body.
 - Autonomous non-profit corporations (OBNLs), regional economic development hubs,
-  and community development corporations that receive municipal or provincial funding/mandates
-  but operate under an independent non-profit board of directors are type "nonprofit"
-  (often sector community-civic-infrastructure), NOT "government".
-- Use type "government" only with explicit public-sector evidence (created by statute,
-  governing body appointed by a minister / council / public authority, crown corp,
-  school board, public hospital authority, municipal department, etc.).
+  and community development corporations that receive municipal or provincial
+  funding/mandates but operate under an independent non-profit board of directors
+  are a GOV_4 subtype (often sector community-civic-infrastructure), NOT government.
+- Use EXCLUDED_NON_SSE for government only with explicit public-sector evidence
+  (created by statute, governing body appointed by a minister / council / public
+  authority, crown corp, school board, public hospital authority, municipal
+  department, etc.).
 CRITICAL — public funding is NOT government (charity / teaching hospitals):
 - OHIP, Medicare, Ontario Health / provincial health-system funding, research grants,
-  or "publicly funded" language alone does NOT make an employer type "government".
+  or "publicly funded" language alone does NOT make an employer EXCLUDED_NON_SSE
+  as government.
 - Independent registered-charity or non-profit teaching / rehabilitation / children's
-  hospitals with their own board (Holland Bloorview-style) → type "nonprofit",
+  hospitals with their own board (Holland Bloorview-style) → a GOV_4 subtype,
   SSE-eligible Yes when must-haves hold — even when most revenue is public health funding.
-- Exclude as "government" only hospital *authorities* / ministry-run facilities /
+- Exclude as government only hospital *authorities* / ministry-run facilities /
   boards appointed by a minister or public authority — not every hospital that takes
   public money.
 CRITICAL — worker-owned enterprises are cooperatives, not conventional consultancies:
 - Worker-owned businesses, worker-owned consultancies/practices/studios, and worker
-  collectives are type "cooperative" (SSE-eligible), NOT "other". Do NOT disqualify
-  a worker-owned practice as a conventional for-profit consultancy merely because it
-  offers consulting, engineering, planning, ecological design, or technical services.
+  collectives are a GOV_1 subtype (SSE-eligible), NOT EXCLUDED_NON_SSE. Do NOT
+  disqualify a worker-owned practice as a conventional for-profit consultancy merely
+  because it offers consulting, engineering, planning, ecological design, or
+  technical services.
 - NOTE: Conventional commercial corporations with equity-based employee stock ownership
-  plans (ESOPs / partner shares) remain type "other" and rating "no". Only democratic
-  worker cooperatives and worker collectives qualify as "cooperative".
+  plans (ESOPs / partner shares) remain EXCLUDED_NON_SSE and rating "no". Only
+  democratic worker cooperatives and worker collectives qualify as GOV_1.
 CRITICAL — commercial Inc./Ltd. businesses are not nonprofits:
 - Legal suffixes like Inc., Ltd., Corp., LLC often mark private companies.
   Fee-based / commercial music schools, private arts or early-childhood education
-  programs, and similar founder-owned businesses → type "other", rating "no"
+  programs, and similar founder-owned businesses → EXCLUDED_NON_SSE, rating "no"
   unless research shows charity / nonprofit / cooperative / union registration
   (or equivalent non-distribution / public-benefit incorporation).
-- Do NOT invent type "nonprofit" or Yes from warm mission language alone when the
+- Do NOT invent a GOV_4 subtype or Yes from warm mission language alone when the
   entity is a private company selling classes/programs without charity evidence.
-CRITICAL — charities are never "other" for lacking cooperative governance:
+CRITICAL — charities are never EXCLUDED for lacking cooperative governance:
 - Registered charities and community environmental / social nonprofits with a clear
-  public-benefit mission → type "nonprofit" (never "other" merely because they lack
-  cooperative, mutualist, or SSE-branded governance language).
-- "other" means for-profit / private ownership / political party / residual — NOT
-  "standard nonprofit" or "board+ED charity".
-There is no "social enterprise" type. Mission-driven private businesses are "other".
-Political parties and electoral organizations → type "other", rating "no" (never SSE;
-never "government"; do not store as nonprofit Yes even if incorporated as a society).
+  public-benefit mission → a GOV_4 subtype (never EXCLUDED_NON_SSE merely because
+  they lack cooperative, mutualist, or SSE-branded governance language).
+- EXCLUDED_NON_SSE means for-profit / private ownership / political party /
+  government / residual — NOT "standard nonprofit" or "board+ED charity".
+There is no "social enterprise" subtype. Mission-driven private businesses are
+EXCLUDED_NON_SSE. Political parties and electoral organizations → EXCLUDED_NON_SSE,
+rating "no" (never SSE; never government; do not store as a GOV_4 Yes even if
+incorporated as a society).
 CRITICAL — citizens' advocacy / campaign nonprofits are NOT political parties:
 - Independent non-profit citizens' advocacy, civic campaign, and public-interest
   movement organizations (e.g. Leadnow-style democracy / climate / justice campaigns)
-  → type "nonprofit", SSE-eligible Yes when must-haves hold.
-- Do NOT rate "no" or type "other" merely because the org does advocacy, lobbying,
-  civic campaigns, or "political" issue work, or because it is "not a cooperative,
-  mutual, or trading social enterprise." Advocacy OBNLs / charities with a clear
-  people/community/planet mission are SSE — they are not excluded for lacking an
-  enterprise / coop business model.
+  → a GOV_4 subtype, SSE-eligible Yes when must-haves hold.
+- Do NOT rate "no" or EXCLUDED_NON_SSE merely because the org does advocacy,
+  lobbying, civic campaigns, or "political" issue work, or because it is "not a
+  cooperative, mutual, or trading social enterprise." Advocacy OBNLs / charities
+  with a clear people/community/planet mission are SSE — they are not excluded for
+  lacking an enterprise / coop business model.
 - Only registered parties, riding associations, and electoral campaign organizations
-  that exist to elect candidates → type "other", rating "no".
+  that exist to elect candidates → EXCLUDED_NON_SSE, rating "no".
 Public service is not SSE. CSR/greenwashing in a for-profit is not SSE.
 Mission-driven private enterprise is not SSE.
 
@@ -293,24 +302,25 @@ NICE-TO-HAVES (strengthen Yes rating):
 4. Solidarity-driven culture - cooperation, mutual support, collective/community language
 5. Participatory governance - workers/members have voice in decisions
    (Many nonprofits use a conventional board + director hierarchy; that alone does
-   NOT disqualify them and does NOT force type "other" or rating "no".)
+   NOT disqualify them and does NOT force EXCLUDED_NON_SSE or rating "no".)
 6. Explicit SSE governance model in public materials
 7. Investment in people - training, mentorship, education, leadership development
 8. Mission reinvestment - surplus goes to people/community/mission, not private shareholders
 
 AUTOMATIC NO FLAGS (triggers 'no' rating):
-- type is government or other (never SSE)
+- governance_subtype_code is EXCLUDED_NON_SSE (never SSE)
 - Government / public-sector employer (any level) — never SSE
   (Do NOT trigger from a city/town name in the org title alone — see place-name rule)
-- Political party / electoral organization — never SSE (type "other", not "government")
+- Political party / electoral organization — never SSE (EXCLUDED_NON_SSE, not
+  government)
 - Do NOT automatic-no citizens' advocacy / civic campaign nonprofits (they are
-  nonprofit Yes when must-haves hold — only parties/electoral orgs are out)
+  GOV_4 Yes when must-haves hold — only parties/electoral orgs are out)
 - Conventional for-profit with only CSR / ESG / "we respect the environment" language
 - Privately owned / founder-owned business or private school/program with a social
   or environmental mission but no nonprofit, cooperative, or union governance
-  evidence → type "other", rating "no"
+  evidence → EXCLUDED_NON_SSE, rating "no"
 - Commercial music / arts / education businesses (including Inc./Ltd. fee-based
-  class providers) without charity or nonprofit registration → type "other",
+  class providers) without charity or nonprofit registration → EXCLUDED_NON_SSE,
   rating "no" — warm "community" / early-childhood mission language is not SSE
 - No social/environmental/community mission (pure profit-focused)
 - Profit-maximization / competitiveness-first with social language as marketing
@@ -319,36 +329,38 @@ AUTOMATIC NO FLAGS (triggers 'no' rating):
   those are job-posting concerns, not organization identity
 - Do NOT put "Transparent compensation" or "Clear job expectations" in
   must_haves_met / nice_to_haves_met / flags — org rubric has no compensation criteria
-- NEVER score is_sse / sector / language / type from SOURCE DESCRIPTION or listing
-  notes — those fields require official-website / supporting web research (or null)
+- NEVER score is_sse / sector / language / governance_subtype_code from SOURCE
+  DESCRIPTION or listing notes — those fields require official-website / supporting
+  web research (or null)
 - Identity Anchor: SOURCE DESCRIPTION and Known website identify WHICH organization is being evaluated.
   NEVER swap the entity for an unrelated organization that happens to share the same acronym or name in search results
-- NEVER rate a registered charity / community nonprofit "no" or type "other" solely
-  because governance is board+ED or lacks cooperative labels"""
+- NEVER rate a registered charity / community nonprofit "no" or EXCLUDED_NON_SSE
+  solely because governance is board+ED or lacks cooperative labels"""
 
 ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post completeness):
-- Base the rating on mission/governance evidence from research, not the type label alone
-- Type is necessary but not sufficient: nonprofit/cooperative/union still need must-haves
-- Decide type BEFORE rating. If governance evidence only shows a private/founder-owned
-  business (including private schools and mission-driven education programs), type
-  MUST be "other" and rating MUST be "no"
-- Never type "government" from a municipal place-name in the org title alone.
-  Community orchestras / community arts associations with accessible music, culture,
-  or arts-education public benefit → type "nonprofit" (prefer strong_yes when mission
-  evidence is clear) — not government/no.
-- Never type "government" / "no" solely because a registered-charity hospital or
+- Base the rating on mission/governance evidence from research, not the subtype
+  label alone
+- Subtype is necessary but not sufficient: a GOV_* subtype still needs must-haves
+- Decide governance_subtype_code BEFORE rating. If governance evidence only shows
+  a private/founder-owned business (including private schools and mission-driven
+  education programs), subtype MUST be EXCLUDED_NON_SSE and rating MUST be "no"
+- Never EXCLUDED_NON_SSE-as-government from a municipal place-name in the org
+  title alone. Community orchestras / community arts associations with accessible
+  music, culture, or arts-education public benefit → a GOV_4 subtype (prefer
+  strong_yes when mission evidence is clear) — not government/no.
+- Never EXCLUDED_NON_SSE / "no" solely because a registered-charity hospital or
   health nonprofit is "publicly funded" (OHIP/Medicare/provincial health funding).
-  Independent-board charity hospitals → nonprofit Yes; only hospital authorities /
+  Independent-board charity hospitals → GOV_4 Yes; only hospital authorities /
   minister-appointed public bodies are government.
 - Inc./Ltd./Corp. commercial music, arts, or education providers without charity
-  or nonprofit registration evidence → type "other", rating "no" (never invent
-  nonprofit + weak_yes from mission warmth alone)
+  or nonprofit registration evidence → EXCLUDED_NON_SSE, rating "no" (never invent
+  GOV_4 + weak_yes from mission warmth alone)
 - Registered charity / community environmental or social nonprofit with a clear
-  public-benefit mission → type "nonprofit" and AT LEAST "weak_yes" (usually
-  "strong_yes" when mission evidence is clear). Never "other"/"no" merely for
-  lacking cooperative or SSE-labeled governance; board+ED is SSE-eligible.
-- "strong_yes" = nonprofit / cooperative / union with clear people/community/planet
-  mission. Prefer strong_yes (do not default to weak_yes) when ANY of these hold:
+  public-benefit mission → a GOV_4 subtype and AT LEAST "weak_yes" (usually
+  "strong_yes" when mission evidence is clear). Never EXCLUDED_NON_SSE/"no" merely
+  for lacking cooperative or SSE-labeled governance; board+ED is SSE-eligible.
+- "strong_yes" = GOV_* subtype with clear people/community/planet mission. Prefer
+  strong_yes (do not default to weak_yes) when ANY of these hold:
   • registered charity / clear non-distribution / public-benefit constraints
   • mutual-aid, collective care, or solidarity / "entraide" language in public materials
   • flat or non-hierarchical structure, or meaningful participatory governance
@@ -359,37 +371,41 @@ ORG_RATING_GUIDELINES = """Be strict about the ORGANIZATION (ignore job-post com
   • community arts / orchestra / choir / cultural associations with a clear
     public-benefit or accessible arts-education mission
   Explicit cooperative labels are NOT required for strong_yes.
-- "weak_yes" = eligible SSE type that meets must-haves but has thin/partial mission
-  evidence OR ambiguous whether the entity is truly nonprofit vs private — NOT merely
-  because a clear nonprofit uses board/ED structure, and NOT merely because it is a
-  nonprofit without coop labels. Nonprofit or foundation status alone is never
-  automatic Yes — still apply must-haves and automatic-no flags.
-  NEVER government or other.
-- "no" = government, other/conventional for-profit / privately owned mission business
-  / political party (type "other"), or no substantive social/environmental mission
+- "weak_yes" = eligible GOV_* subtype that meets must-haves but has thin/partial
+  mission evidence OR ambiguous whether the entity is truly nonprofit vs private —
+  NOT merely because a clear nonprofit uses board/ED structure, and NOT merely
+  because it is a nonprofit without coop labels. Nonprofit or foundation status
+  alone is never automatic Yes — still apply must-haves and automatic-no flags.
+  NEVER EXCLUDED_NON_SSE.
+- "no" = EXCLUDED_NON_SSE (government, conventional for-profit / privately owned
+  mission business / political party) or no substantive social/environmental mission
 - Never "no" solely because a clear nonprofit does advocacy / civic campaigns /
   democracy or justice organizing rather than operating a coop or trading enterprise
 - Greenwashing test: environmental, nature, outdoor-education, wellness, or
-  "community" mission without nonprofit/coop/union governance → "no" (type "other")
-  — but a registered charity or clear community nonprofit with that mission is
-  nonprofit Yes, not this greenwashing case
+  "community" mission without nonprofit/coop/union governance → "no"
+  (EXCLUDED_NON_SSE) — but a registered charity or clear community nonprofit with
+  that mission is GOV_4 Yes, not this greenwashing case
 - Never rate "no" because a job description is truncated or lacks compensation details"""
 
-# Short restatement of the TYPE MAPPING / CRITICAL type rules. The org prompt
-# places it just before the JSON schema so head+tail truncation (local Ollama)
-# keeps it together with the "type" schema.
-ORG_TYPE_RULES_RECAP = """TYPE RULES RECAP (the full TYPE MAPPING and CRITICAL rules above take precedence):
-- nonprofit — registered charity / nonprofit / association / OBNL / autonomous community
-  development corp, even with municipal, provincial, or OHIP/Medicare funding.
-- cooperative — worker / consumer / producer / multi-stakeholder coop, credit union,
-  worker-owned practice or collective.
-- union — labour union.
-- government → "no" — public agency, municipality, crown corp, school board, hospital
-  authority / ministry-run facility, statutory department. Needs explicit public-sector
-  evidence: a place name in the org name or "publicly funded" language is not enough.
-- Independent registered-charity / non-profit hospitals with their own board
-  (Holland Bloorview-style) → "nonprofit", never "government".
-- other → "no" — for-profit / private company / political party / residual."""
+# Short restatement of governance/exclusion rules next to the JSON schema so
+# head+tail truncation (local Ollama) keeps them with governance_subtype_code.
+# Leaf codes are listed so controlled values survive when the mid-prompt taxonomy
+# is truncated away.
+_GOVERNANCE_SUBTYPE_CODES_RECAP = ", ".join(
+    list(GOVERNANCE_SUBTYPES.keys()) + [EXCLUDED_SUBTYPE]
+)
+
+ORG_TYPE_RULES_RECAP = f"""GOVERNANCE RULES RECAP (full GOVERNANCE TAXONOMY above takes precedence):
+- Pick one governance_subtype_code from this controlled set only (never invent):
+  {_GOVERNANCE_SUBTYPE_CODES_RECAP}.
+- Government / public agency / municipality / crown corp / school board /
+  ministry-run hospital → EXCLUDED_NON_SSE and sse_rating "no". A place name in
+  the org name alone is not enough.
+- Conventional for-profit / private company / political party → EXCLUDED_NON_SSE
+  and sse_rating "no".
+- Independent registered-charity hospitals with their own board → a GOV_4 subtype,
+  never EXCLUDED_NON_SSE just because they receive public funding.
+- SSE Yes requires a real SSE governance subtype — governance alone is not Yes."""
 
 BATCH_RATING_GUIDELINES = """Be strict with ratings. Return JSON array ONLY, no preamble.
 - GOVERNANCE GATE: Yes only when the employer is nonprofit / coop / union / community —

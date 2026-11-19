@@ -36,7 +36,6 @@ function buildFetchKey(
     filters.showNonSse,
     filters.selectedProvinces.join(','),
     filters.selectedMunicipalities.join(','),
-    filters.selectedTypes.join(','),
     filters.selectedLanguages.join(','),
     filters.selectedSectors.join(','),
     filters.selectedGovernanceCategories.join(','),
@@ -62,7 +61,6 @@ function buildSearchParams(
   // Param names must match useOrganizationFilters URL keys and the API route's getAll() keys
   filters.selectedProvinces.forEach((p) => params.append('province', p));
   filters.selectedMunicipalities.forEach((m) => params.append('municipality', m));
-  filters.selectedTypes.forEach((t) => params.append('type', t));
   filters.selectedLanguages.forEach((l) => params.append('language', l));
   filters.selectedSectors.forEach((s) => params.append('sector', s));
   filters.selectedGovernanceCategories.forEach((g) => params.append('governance', g));

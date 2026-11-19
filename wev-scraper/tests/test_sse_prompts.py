@@ -42,8 +42,8 @@ def test_classification_prompt_includes_governance_gate():
 
 
 def test_org_charity_not_other_for_lacking_cooperative_governance():
-    """Registered charities / community nonprofits stay nonprofit + Yes."""
-    assert "charities are never \"other\" for lacking cooperative governance" in ORG_EVALUATION_CRITERIA
+    """Registered charities / community nonprofits stay GOV_4 + Yes."""
+    assert "charities are never EXCLUDED for lacking cooperative governance" in ORG_EVALUATION_CRITERIA
     assert "board+ED is SSE-eligible" in ORG_RATING_GUIDELINES or (
         "board + ED" in ORG_RATING_GUIDELINES and "SSE-eligible" in ORG_RATING_GUIDELINES
     )
@@ -61,10 +61,10 @@ def test_org_mutual_aid_and_flat_structure_prefer_strong_yes():
 
 def test_org_political_parties_map_to_other_not_government():
     assert "Political parties and electoral organizations" in ORG_EVALUATION_CRITERIA
-    assert 'type "other", rating "no"' in ORG_EVALUATION_CRITERIA
+    assert "EXCLUDED_NON_SSE" in ORG_EVALUATION_CRITERIA
     assert "NOT political parties" in ORG_EVALUATION_CRITERIA
     assert "political party" in ORG_EVALUATION_CRITERIA.lower()
-    assert 'political party (type "other")' in ORG_RATING_GUIDELINES
+    assert "political party" in ORG_RATING_GUIDELINES
 
 
 def test_org_citizens_advocacy_nonprofits_remain_sse_eligible():
@@ -95,7 +95,7 @@ def test_org_place_name_not_government_for_community_arts():
     assert "place-name / city-in-name is NOT government" in ORG_EVALUATION_CRITERIA
     assert "geographic branding only" in ORG_EVALUATION_CRITERIA
     assert "Community orchestras, choirs, bands, theatres" in ORG_EVALUATION_CRITERIA
-    assert "Never type \"government\" from a municipal place-name" in ORG_RATING_GUIDELINES
+    assert "Never EXCLUDED_NON_SSE-as-government from a municipal place-name" in ORG_RATING_GUIDELINES
     assert "community arts / orchestra / choir" in ORG_RATING_GUIDELINES
 
 
@@ -107,7 +107,7 @@ def test_org_publicly_funded_charity_hospitals_remain_nonprofit():
     assert "Holland Bloorview-style" in ORG_EVALUATION_CRITERIA
     assert "public funding ≠ government" in ORG_EVALUATION_CRITERIA
     assert "hospital *authorities*" in ORG_EVALUATION_CRITERIA
-    assert "Never type \"government\" / \"no\" solely because a registered-charity hospital" in (
+    assert "Never EXCLUDED_NON_SSE / \"no\" solely because a registered-charity hospital" in (
         ORG_RATING_GUIDELINES
     )
 

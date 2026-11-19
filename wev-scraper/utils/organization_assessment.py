@@ -1,7 +1,7 @@
 """Single grounded LLM call for organization assessment.
 
 Replaces OrganizationIdentifier + OrganizationSSEClassifier with one call that:
-- Identifies the org (canonical name, slug, website, description, type)
+- Identifies the org (canonical name, slug, website, description, governance)
 - Extracts mission statement
 - Maps values to the Knowdell taxonomy
 - Produces SSE rating
@@ -24,6 +24,8 @@ from llm.factory import get_sse_provider
 from llm.tavily_grounding import entity_require_terms
 from utils.base_grounded_classifier import BaseGroundedClassifier, SSEClassificationError
 from utils.governance_taxonomy import (
+    EXCLUDED_CATEGORY,
+    EXCLUDED_SUBTYPE,
     GOVERNANCE_TAXONOMY_VERSION,
     format_governance_taxonomy_prompt,
     normalize_category,
@@ -55,40 +57,6 @@ from utils.sse_prompts import (
 )
 
 logger = logging.getLogger(__name__)
-
-ORG_TYPE_VALUES = (
-    "nonprofit",
-    "cooperative",
-    "government",
-    "union",
-    "other",
-)
-
-# Map normalized keys (spaces/hyphens stripped) → canonical stored type.
-# Mutual / community labels alias to nonprofit until a taxonomy branch
-# introduces dedicated terms. Former "social enterprise" → other.
-_ORG_TYPE_ALIASES: dict[str, str] = {
-    "nonprofit": "nonprofit",
-    "cooperative": "cooperative",
-    "socialenterprise": "other",
-    "mutual": "nonprofit",
-    "mutualaid": "nonprofit",
-    "mutualaidgroup": "nonprofit",
-    "mutualsociety": "nonprofit",
-    "community": "nonprofit",
-    "communityassociation": "nonprofit",
-    "communityproject": "nonprofit",
-    "creditunion": "cooperative",
-    "workercoop": "cooperative",
-    "workercooperative": "cooperative",
-    "workerowned": "cooperative",
-    "workerownedbusiness": "cooperative",
-    "workercollective": "cooperative",
-    "coop": "cooperative",
-    "union": "union",
-    "government": "government",
-    "other": "other",
-}
 
 _DISTRICT_INDICATORS = [
     # French directions (with/without hyphen)
@@ -202,8 +170,7 @@ _JSON_FIELDS = """{
   "description_fr": "Same description in French (strictly under 400 chars / ~45 words — translate accurately if not present in French on source), or null",
   "mission_statement_en": "Organization mission/purpose in English (strictly under 400 chars / ~45 words — ONLY extract if the organization explicitly states their mission/purpose on their own website or materials. Do NOT infer or compose a mission statement. If not found, use null. Record provenance in flags as 'mission via=extracted|absent'), or null",
   "mission_statement_fr": "Same mission/purpose in French (strictly under 400 chars / ~45 words — translate accurately if found in English, or extract if present in French on source. If not found, use null), or null",
-  "type": "One of: nonprofit, cooperative, government, union, other — or null. Classify by governance control/ownership per TYPE MAPPING and CRITICAL rules above (not mission alone). Type is a filter, not a Yes by itself.",
-  "governance_subtype_code": "One subtype code from the GOVERNANCE TAXONOMY above, or EXCLUDED_NON_SSE, or null. Classify by ownership/voting control, not sector or platform.",
+  "governance_subtype_code": "One subtype code from the GOVERNANCE TAXONOMY above, or EXCLUDED_NON_SSE, or null. Classify by ownership/voting control, not sector or platform. Governance is a filter, not a Yes by itself.",
   "governance_category_id": "Parent category of that subtype (GOV_1..GOV_5 or EXCLUDED).",
   "governance_confidence": "0.0 to 1.0",
   "governance_reasoning": "1–2 sentences (<300 chars) on the governance/ownership structure.",
@@ -333,8 +300,9 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
 
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
 - ENTITY IDENTITY ANCHOR: The organization name, Known website, and SOURCE DESCRIPTION define WHICH specific entity is being evaluated. If supporting search results describe a DIFFERENT organization that merely shares the same acronym or name (e.g., matching a doctors' union when the source describes a women's enterprise network), DO NOT hijack the organization. Reject mismatched search results and assess the actual named entity.
-- is_sse / sse_rating, sector_id, public_language, type, website, mission_statement_*,
-  and values MUST come from official-website / supporting web research of THAT specific organization.
+- is_sse / sse_rating, sector_id, public_language, governance_subtype_code, website,
+  mission_statement_*, and values MUST come from official-website / supporting web
+  research of THAT specific organization.
 - NEVER use SOURCE DESCRIPTION (stored org blurb or job-listing body) to decide those
   interpretive fields — listing copy is often wrong, stale, or about a related brand.
 - description_* only:
@@ -344,7 +312,8 @@ _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandat
     (via=inferred or via=extracted from web). This is the only case search may
     supply description text.
 - LISTING / IDENTITY HINTS (job title, listing notes) are for disambiguating which
-  employer is meant — not for interpretive fields (never for SSE rating, sector, language, type, or values)."""
+  employer is meant — not for interpretive fields (never for SSE rating, sector,
+  language, governance_subtype_code, or values)."""
 
 _combined_prompt = """You are evaluating an ORGANIZATION (employer), not a job posting.
 Identify the organization, extract its values and mission from research about the
@@ -429,7 +398,6 @@ class AssessedOrgResult(TypedDict):
     description_fr: str | None
     mission_statement_en: str | None
     mission_statement_fr: str | None
-    type: str | None
     sector_id: str | None
     values_raw: str | None
     values: List[str]
@@ -581,13 +549,6 @@ def _build_search_query(
     return " ".join(parts)
 
 
-def _normalize_type(raw: Any) -> str | None:
-    if not raw:
-        return None
-    key = re.sub(r"[\s_-]+", "", str(raw).strip().lower())
-    return _ORG_TYPE_ALIASES.get(key)
-
-
 def _normalize_values(raw_values: Any, valid_set: set[str]) -> list[str]:
     if not isinstance(raw_values, list):
         return []
@@ -689,16 +650,6 @@ def _validate_province_code(raw: Any) -> str | None:
     if len(s) > 64:
         return None
     return None
-
-
-# Known types that can never be SSE yes. Null/unknown type is NOT in this set.
-# Eligible stored types (must agree with ORG_EVALUATION_CRITERIA): nonprofit,
-# cooperative, union. Eligible type is necessary but not sufficient — must-haves
-# still apply; type alone is never a Yes.
-_SSE_INELIGIBLE_ORG_TYPES = frozenset({
-    "government",
-    "other",
-})
 
 
 _CONTENT_PROVENANCE_FIELDS = ("description", "mission", "values")
@@ -956,21 +907,15 @@ def _apply_website_known_guard(
 
 
 def _apply_org_sse_governance_guard(result: AssessedOrgResult) -> AssessedOrgResult:
-    """Force 'no' only when type is known and ineligible for SSE yes."""
+    """Force 'no' when the model says Yes but governance is EXCLUDED_NON_SSE."""
     if result["sse_rating"] == "no":
         return result
-    org_type = result.get("type")
-    if org_type is None:
-        # Unknown type — do not demote a model Yes.
-        return result
-    if org_type not in _SSE_INELIGIBLE_ORG_TYPES:
+    if result.get("governance_subtype") != EXCLUDED_SUBTYPE:
         return result
 
     flags = list(result.get("flags") or [])
     flags.append(
-        "governance_gate: non-SSE org type cannot be SSE yes "
-        f"(type={org_type!r}; government and other are never SSE; "
-        "eligible: nonprofit, cooperative, union)"
+        "governance_gate: EXCLUDED_NON_SSE cannot be SSE yes"
     )
     return AssessedOrgResult(
         **{
@@ -1052,17 +997,27 @@ def _org_assessment_evidence_blob(result: AssessedOrgResult) -> str:
     return re.sub(r"\s+", " ", blob)
 
 
-def _demote_org_to_other_no(
+def _demote_org_to_excluded_no(
     result: AssessedOrgResult,
     flag: str,
 ) -> AssessedOrgResult:
     flags = list(result.get("flags") or [])
     flags.append(flag)
+    # Subtype changed → drop model confidence/reasoning that described the
+    # previous classification (see _result_to_db_fields gate comparison).
+    subtype_changed = result.get("governance_subtype") != EXCLUDED_SUBTYPE
     return AssessedOrgResult(
         **{
             **result,
-            "type": "other",
             "sse_rating": "no",
+            "governance_subtype": EXCLUDED_SUBTYPE,
+            "governance_category": EXCLUDED_CATEGORY,
+            "governance_confidence": (
+                None if subtype_changed else result.get("governance_confidence")
+            ),
+            "governance_reasoning": (
+                None if subtype_changed else result.get("governance_reasoning")
+            ),
             "flags": flags,
         }
     )
@@ -1074,20 +1029,21 @@ def _apply_private_company_sse_guard(
 ) -> AssessedOrgResult:
     """Demote Yes when evidence is private/commercial without charity signals.
 
-    Catches models that invent type=nonprofit + weak_yes for commercial
-    Inc./Ltd. businesses (e.g. fee-based private music/education schools).
+    Catches models that invent GOV_4 / weak_yes for commercial Inc./Ltd.
+    businesses (e.g. fee-based private music/education schools).
 
     Order: registration keep → private/commercial demotion → strong soft
     keep for suffix-only cases → corp-suffix demotion. Soft cues must not
     override explicit private/commercial ownership language. Bare
-    nonprofit/charity fluff is not enough to keep an Inc. Yes.
+    nonprofit/charity fluff is not enough to keep an Inc. Yes. Coops,
+    mutuals, and democratic unions with corp suffixes are kept.
     """
     if result["sse_rating"] not in ("strong_yes", "weak_yes"):
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
     blob = _org_assessment_evidence_blob(result)
-    org_type = result.get("type")
+    subtype = result.get("governance_subtype")
 
     # Strongest keep: CRA / letters patent / charity registration.
     if _CHARITY_REGISTRATION_EVIDENCE_RE.search(blob):
@@ -1095,10 +1051,10 @@ def _apply_private_company_sse_guard(
 
     # Private/commercial ownership wins over soft mission/board language.
     if _PRIVATE_COMPANY_EVIDENCE_RE.search(blob):
-        return _demote_org_to_other_no(
+        return _demote_org_to_excluded_no(
             result,
             "private_company_gate: private/for-profit evidence without "
-            "charity/nonprofit registration → type=other, rating=no",
+            "charity/nonprofit registration → EXCLUDED_NON_SSE, rating=no",
         )
 
     # Strong soft cues (volunteer board, public-benefit, without shareholders,
@@ -1106,14 +1062,22 @@ def _apply_private_company_sse_guard(
     if _SOFT_NONPROFIT_EVIDENCE_RE.search(blob):
         return result
 
-    # Inc./Ltd./Corp. nonprofit/unknown Yes without registration or strong
-    # soft evidence — treat as conventional private company, not SSE.
-    if _CORP_LEGAL_SUFFIX_RE.search(name) and org_type in ("nonprofit", None):
-        return _demote_org_to_other_no(
+    # Inc./Ltd./Corp. without coop/mutual/union governance and without
+    # registration or strong soft evidence — treat as conventional private.
+    coop_or_mutual_or_union = (
+        isinstance(subtype, str)
+        and (
+            subtype.startswith("GOV_1_")
+            or subtype.startswith("GOV_2_")
+            or subtype == "GOV_5_3_DEMOCRATIC_UNION"
+        )
+    )
+    if _CORP_LEGAL_SUFFIX_RE.search(name) and not coop_or_mutual_or_union:
+        return _demote_org_to_excluded_no(
             result,
             "private_company_gate: corporate legal suffix (Inc./Ltd./Corp.) "
             "without charity/nonprofit registration or strong nonprofit "
-            "evidence → type=other, rating=no",
+            "evidence → EXCLUDED_NON_SSE, rating=no",
         )
 
     return result
@@ -1137,7 +1101,7 @@ _EXPLICIT_GOVERNMENT_EVIDENCE_RE = re.compile(
     r"provincial (?:agency|ministry)|federal (?:agency|department)",
     re.IGNORECASE,
 )
-# Overturn a government type only when the explanation shows the place name
+# Overturn EXCLUDED-as-government only when the explanation shows the place name
 # was the *basis* for that label. Merely mentioning a place name — or rejecting
 # it as evidence ("the city name is geographic branding") — does not match.
 _PLACE_NAME_BASIS_RE = re.compile(
@@ -1165,23 +1129,31 @@ _PUBLIC_HOSPITAL_OPERATOR_RE = re.compile(
     r"\bministry[- ]run hospitals?\b",
     re.IGNORECASE,
 )
-_PURPOSE_BEYOND_PROFIT_MUST_HAVE = "clear purpose beyond profit"
+# All three org must-haves (lowercased) — required before restoring Yes after a
+# false place-name government exclusion. Purpose alone is not enough.
+_ORG_MUST_HAVES_FOR_YES = frozenset(
+    {
+        "clear purpose beyond profit",
+        "impact described intentionally",
+        "organization's work contributes to social/community/environmental good",
+    }
+)
 
 
 def _apply_community_arts_place_name_guard(
     result: AssessedOrgResult,
     raw_name: str,
 ) -> AssessedOrgResult:
-    """Correct government typing from city-in-name for community arts orgs.
+    """Correct false EXCLUDED/government from city-in-name for community arts.
 
     Place names in orchestra/choir/theatre titles are geographic branding, not
-    municipal employment. Remap to nonprofit only when the explanation shows
-    the place name was the basis for the government label. Restore a Yes floor
-    only when that was the sole reason for No: the purpose-beyond-profit
-    must-have is still met. An employer that operates a public hospital stays
-    government/no.
+    municipal employment. When the explanation shows the place name was the
+    basis for exclusion, clear the false EXCLUDED subtype (leave unset — do not
+    invent GOV_4_1_MEMBER_NPO without membership-control evidence). Restore a
+    Yes floor only when every org must-have is met (place-name was the sole
+    automatic No). An employer that operates a public hospital stays excluded/no.
     """
-    if result.get("type") != "government":
+    if result.get("governance_subtype") not in (EXCLUDED_SUBTYPE, None):
         return result
 
     name = (raw_name or result.get("canonical_name") or "").strip()
@@ -1199,24 +1171,34 @@ def _apply_community_arts_place_name_guard(
     flags = list(result.get("flags") or [])
     flags.append(
         "place_name_guard: community arts org — city/place in name is not "
-        "municipal/government evidence → type=nonprofit"
+        "municipal/government evidence; cleared false EXCLUDED subtype"
     )
     must_haves = {str(m).strip().lower() for m in (result.get("must_haves_met") or [])}
     new_rating = result.get("sse_rating") or "no"
-    if new_rating == "no" and _PURPOSE_BEYOND_PROFIT_MUST_HAVE in must_haves:
+    if new_rating == "no" and _ORG_MUST_HAVES_FOR_YES.issubset(must_haves):
         new_rating = "weak_yes"
         flags.append(
-            "place_name_guard: restored weak_yes for community arts "
-            "nonprofit after false government typing"
+            "place_name_guard: restored weak_yes for community arts org after "
+            "false government exclusion (all org must-haves met)"
         )
     sector = result.get("sector_id")
     if sector in (None, "community-civic-infrastructure"):
         sector = "arts-culture-information"
 
+    previous_subtype = result.get("governance_subtype")
+    # Leave subtype unset: GOV_4_1_MEMBER_NPO requires voting-member evidence
+    # the place-name correction alone does not establish.
     return AssessedOrgResult(
         **{
             **result,
-            "type": "nonprofit",
+            "governance_subtype": None,
+            "governance_category": None,
+            "governance_confidence": (
+                None if previous_subtype is not None else result.get("governance_confidence")
+            ),
+            "governance_reasoning": (
+                None if previous_subtype is not None else result.get("governance_reasoning")
+            ),
             "sse_rating": new_rating,
             "sector_id": sector,
             "flags": flags,
@@ -1526,7 +1508,6 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         description_fr=description_fr,
         mission_statement_en=mission_en,
         mission_statement_fr=mission_fr,
-        type=_normalize_type(data.get("type")),
         sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
         values_raw=_parse_text_field(data, "values_raw"),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
@@ -1752,12 +1733,6 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     reasoning_fr = result["sse_reasoning_fr"]
     website = result.get("website")
     is_sse = result["sse_rating"] in ("strong_yes", "weak_yes")
-    # Governance is the new source of truth, but the legacy `type` column is
-    # still written during the transition: matched_jobs and the org-filter RPCs
-    # keep reading `type` until the follow-up migration swaps them to governance
-    # and drops the column. Dropping the write early would make freshly-assessed
-    # orgs disappear from the type facet, so `type` is retired atomically with
-    # its readers in that later migration — not here.
     # Reconcile the model's governance pick against the SSE gate so the two can
     # never disagree: EXCLUDED_NON_SSE <=> is_sse false; an SSE verdict keeps a
     # valid SSE subtype (category derived) or stays null for re-assessment.
@@ -1779,13 +1754,11 @@ def _result_to_db_fields(result: AssessedOrgResult) -> dict:
     fields = {
         "description_en": description_en,
         "description_fr": description_fr,
-        # Legacy columns: prefer English, else French, for search/compat readers.
+        # Prefer English, else French, for search/compat readers.
         "description": description_en or description_fr,
         "mission_statement_en": mission_en,
         "mission_statement_fr": mission_fr,
         "mission_statement": mission_en or mission_fr,
-        # Legacy governance axis, retired by the governance-reader migration.
-        "type": result["type"],
         "governance_subtype": governance_subtype,
         "governance_category": governance_category,
         "governance_confidence": governance_confidence,
@@ -1888,7 +1861,8 @@ _ASSESSOR_SYSTEM = (
     "The organization name, Known website, and SOURCE DESCRIPTION define the target entity. "
     "Do NOT replace the target organization with a different entity from search (e.g., matching a "
     "doctors' union when the target is a women's enterprise CED). "
-    "Interpretive fields (is_sse, sector, language, type, mission, values, website) "
+    "Interpretive fields (is_sse, sector, language, governance_subtype_code, mission, "
+    "values, website) "
     "must come from official-website / supporting web research of the actual target entity. "
     "SOURCE DESCRIPTION is for description_* when present. "
     "Org must_haves_met / nice_to_haves_met use only organization SSE criteria — "

@@ -89,13 +89,12 @@ select is(
       null,
       null,
       null,
-      null,
       'org-asc',
       array['en']
     )
   ),
   'English Filter Org',
-  'p_languages filters the organizations RPC using the repaired 11-argument signature'
+  'p_languages filters the organizations RPC after p_org_types was removed'
 );
 
 select is(
@@ -110,14 +109,13 @@ select is(
       null,
       null,
       null,
-      null,
       'org-asc',
       array['fr']
     )
     limit 1
   ),
   'Description francaise bilingue',
-  'the repaired RPC still returns bilingual organization content columns'
+  'the RPC still returns bilingual organization content columns'
 );
 
 select * from finish();

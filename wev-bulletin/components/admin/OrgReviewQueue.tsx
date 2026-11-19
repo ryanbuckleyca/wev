@@ -8,7 +8,7 @@ import {
   findMissingOrgFields,
   type OrgAssessmentSnapshot,
 } from '@/lib/organizations/assessment-review';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getOrgGovernanceDisplayLabel } from '@/lib/organizations/governance-labels';
 import { cn } from '@/lib/utils';
 
 export type OrgReviewQueueRow = OrgAssessmentSnapshot & {
@@ -40,7 +40,7 @@ export default async function OrgReviewQueue({ orgs, locale, reasonLabel }: OrgR
     <ul className="space-y-4">
       {orgs.map((org) => {
         const missing = new Set(findMissingOrgFields(org));
-        const typeLabel = getOrganizationTypeLabel(org.type, tOrgs);
+        const governanceLabel = getOrgGovernanceDisplayLabel(org, tOrgs);
 
         return (
           <li key={org.id} className="border border-border rounded-wev-card bg-card p-4 sm:p-5">
@@ -56,7 +56,7 @@ export default async function OrgReviewQueue({ orgs, locale, reasonLabel }: OrgR
                   {org.is_sse ? <SseBadge label={t('sseBadge')} /> : null}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {[typeLabel, org.location].filter(Boolean).join(' · ') || '—'}
+                  {[governanceLabel, org.location].filter(Boolean).join(' · ') || '—'}
                 </p>
                 <p className="text-sm text-foreground">
                   <span className="text-muted-foreground">{t('columns.reason')}: </span>

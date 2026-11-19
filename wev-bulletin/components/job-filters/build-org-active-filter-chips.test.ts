@@ -35,7 +35,6 @@ describe('buildOrgActiveFilterChips', () => {
     showNonSse: false,
     selectedProvinces: [],
     selectedMunicipalities: [],
-    selectedTypes: [],
     selectedLanguages: [],
     selectedSectors: [],
     selectedGovernanceCategories: [],
@@ -50,7 +49,6 @@ describe('buildOrgActiveFilterChips', () => {
     onRemoveSearch: vi.fn(),
     onRemoveProvince: vi.fn(),
     onRemoveMunicipality: vi.fn(),
-    onRemoveType: vi.fn(),
     onRemoveLanguage: vi.fn(),
     onRemoveSector: vi.fn(),
     onRemoveGovernance: vi.fn(),
@@ -149,24 +147,6 @@ describe('buildOrgActiveFilterChips', () => {
     expect(onRemove).toHaveBeenCalledWith('Toronto');
   });
 
-  it('creates chips for selected organization types with translated labels', () => {
-    const onRemove = vi.fn();
-    const chips = buildOrgActiveFilterChips({
-      filters: { ...baseFilters, selectedTypes: ['nonprofit', 'government'] },
-      ...baseChipHandlers,
-      onRemoveType: onRemove,
-    });
-
-    expect(chips).toHaveLength(2);
-    expect(chips[0].id).toBe('type-nonprofit');
-    expect(chips[0].label).toBe('Non-Profit');
-    expect(chips[1].id).toBe('type-government');
-    expect(chips[1].label).toBe('Government');
-
-    chips[0]!.onRemove!();
-    expect(onRemove).toHaveBeenCalledWith('nonprofit');
-  });
-
   it('creates chips for selected languages with translated labels', () => {
     const onRemove = vi.fn();
     const chips = buildOrgActiveFilterChips({
@@ -206,7 +186,6 @@ describe('buildOrgActiveFilterChips', () => {
         showNonSse: true,
         selectedProvinces: ['Ontario'],
         selectedMunicipalities: ['Toronto'],
-        selectedTypes: ['nonprofit'],
         selectedLanguages: ['bilingual'],
         selectedSectors: ['tech'],
         selectedGovernanceCategories: ['GOV_4'],
@@ -215,15 +194,16 @@ describe('buildOrgActiveFilterChips', () => {
       ...baseChipHandlers,
     });
 
-    expect(chips).toHaveLength(9);
+    expect(chips).toHaveLength(8);
     expect(chips[0].id).toBe('activity');
     expect(chips[1].id).toBe('nonSse');
     expect(chips[2].id).toBe('q');
     expect(chips[3].id).toBe('p-Ontario');
     expect(chips[4].id).toBe('m-Toronto');
-    expect(chips[5].id).toBe('type-nonprofit');
-    expect(chips[6].id).toBe('lang-bilingual');
-    expect(chips[7].id).toBe('sector-tech');
+    expect(chips[5].id).toBe('lang-bilingual');
+    expect(chips[6].id).toBe('sector-tech');
+    expect(chips[7].id).toBe('governance-GOV_4');
+    expect(chips[7].label).toBe('Participatory Non-Profits & Social Enterprises');
   });
 });
 

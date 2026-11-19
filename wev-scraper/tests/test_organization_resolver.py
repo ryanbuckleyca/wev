@@ -343,7 +343,6 @@ class TestDBMatchPath:
             "website": "https://facebook.com/abc-third",
             "description": None,
             "mission_statement": None,
-            "type": None,
             "values": None,
             "values_list": [],
             "values_rated": None,
@@ -461,7 +460,6 @@ class TestDBMatchPath:
             "website": None,
             "description": None,
             "mission_statement": None,
-            "type": None,
             "values": None,
             "values_list": [],
             "values_rated": None,
@@ -561,7 +559,7 @@ class TestLLMSuccessPath:
             "website": "https://depot.ca",
             "description": "A community food centre",
             "mission_statement": None,
-            "type": "nonprofit",
+            "governance_subtype": "GOV_4_1_MEMBER_NPO",
             "values": None,
             "values_list": [],
             "values_rated": None,
@@ -588,7 +586,6 @@ class TestLLMSuccessPath:
             "website": None,
             "description": None,
             "mission_statement": None,
-            "type": None,
             "values": None,
             "values_list": [],
             "values_rated": None,
@@ -882,7 +879,7 @@ class TestLLMResolvePath:
         "website": "https://test.ai",
         "description": "An AI org.",
         "mission_statement": None,
-        "type": "nonprofit",
+        "governance_subtype": "GOV_4_1_MEMBER_NPO",
         "values": "Values.",
         "values_list": ["Creativity"],
         "values_rated": [{"value": "Creativity", "rank": 1}],
@@ -918,7 +915,8 @@ class TestLLMResolvePath:
         assert call_kwargs["name"] == "Test Org AI"
         assert call_kwargs["slug"] == "test-org-ai"
         assert call_kwargs["website"] == "https://test.ai"
-        assert call_kwargs["type"] == "nonprofit"
+        assert call_kwargs["governance_subtype"] == "GOV_4_1_MEMBER_NPO"
+        assert "type" not in call_kwargs
         assert call_kwargs["values"] == "Values."
         assert call_kwargs["values_list"] == ["Creativity"]
         assert call_kwargs["values_rated"] == [{"value": "Creativity", "rank": 1}]

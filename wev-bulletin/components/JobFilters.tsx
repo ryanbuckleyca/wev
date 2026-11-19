@@ -5,7 +5,7 @@ import { Lineicons } from '@lineiconshq/react-lineicons';
 import { useTranslations } from 'next-intl';
 import type { PostedWithinSelection } from '@/lib/bulletin/job-query';
 import type { WorkType } from '@/lib/work-types';
-import { getOrganizationTypeLabel } from '@/lib/organizations/utils';
+import { getGovernanceCategoryLabel } from '@/lib/organizations/governance-labels';
 import Collapsible from './Collapsible';
 import FilterIcon from './FilterIcon';
 import JobSearch from './JobSearch';
@@ -28,7 +28,7 @@ export default function JobFilters(props: JobFiltersProps) {
   const {
     searchQuery,
     setSearchQuery: onSearchChange,
-    selectedOrgTypes,
+    selectedGovernanceCategories,
     selectedSectors,
     selectedProvinces,
     selectedMunicipalities,
@@ -231,18 +231,18 @@ export default function JobFilters(props: JobFiltersProps) {
 
             <div
               className="flex flex-col min-h-0"
-              data-testid={JOB_BOARD_TEST_IDS.organizationTypeSection}
+              data-testid={JOB_BOARD_TEST_IDS.governanceSection}
             >
               <CheckboxFilterSection
-                label={tOrgs('organizationType')}
-                selectedCount={selectedOrgTypes.length}
-                totalCount={model.orgTypes.length}
-                options={model.orgTypes}
-                selectedValues={selectedOrgTypes}
-                onToggle={model.handleOrgTypeToggle}
-                emptyMessage={tOrgs('noOrganizationTypes')}
+                label={tOrgs('governanceFilter')}
+                selectedCount={selectedGovernanceCategories.length}
+                totalCount={model.governanceCategories.length}
+                options={model.governanceCategories}
+                selectedValues={selectedGovernanceCategories}
+                onToggle={model.handleGovernanceCategoryToggle}
+                emptyMessage={tOrgs('noGovernanceCategories')}
                 listClassName={FILTER_LIST_BOX_CLASS}
-                renderLabel={(type) => getOrganizationTypeLabel(type, tOrgs) ?? type}
+                renderLabel={(category) => getGovernanceCategoryLabel(category, tOrgs) ?? category}
               />
             </div>
 

@@ -42,7 +42,6 @@ export interface OrgIndexParams {
   sseOnly: boolean;
   provinces: string[];
   municipalities: string[];
-  orgTypes: string[];
   languages: string[];
   sectors: string[];
   governanceCategories: string[];
@@ -69,7 +68,6 @@ export function parseOrgIndexSearchParams(
   const sortBy = resolveOrgSortBy(requestedSortBy, hasMatchScores);
   const provinces = searchParams.getAll('province');
   const municipalities = searchParams.getAll('municipality');
-  const orgTypes = searchParams.getAll('type');
   const languages = searchParams.getAll('language');
   const sectors = searchParams.getAll('sector');
   const governanceCategories = searchParams.getAll('governance');
@@ -82,7 +80,6 @@ export function parseOrgIndexSearchParams(
     sseOnly,
     provinces,
     municipalities,
-    orgTypes,
     languages,
     sectors,
     governanceCategories,

@@ -106,7 +106,8 @@ describe('OrgAdminForm', () => {
     expect(screen.getByLabelText(/fields\.slug/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.website/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.location/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/fields\.type/)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/fields\.type/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/fields\.governance/)).toBeInTheDocument();
     expect(screen.getByLabelText(/fields\.isSse/)).toBeInTheDocument();
     expect(screen.getByTestId('values-selector')).toBeInTheDocument();
   });
@@ -244,7 +245,7 @@ describe('OrgAdminForm', () => {
             ...parkedOrg,
             assessment_skip_reason: 'incomplete_backlog',
             sector_id: 'manufacturing-production',
-            type: 'other',
+            governance_subtype: 'EXCLUDED_NON_SSE',
             description_en: 'An aluminum producer.',
             description_fr: 'Un producteur d’aluminium.',
             language: 'bilingual',
