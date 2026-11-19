@@ -1,7 +1,31 @@
 {
+  "version": "1.0",
+  "description": "SSE sector taxonomy for wev organizations (and job filters via org sector). Derived from the SSE sector taxonomy crosswalk MASTER sheet (CMC, Chantier de l'économie sociale, CCEDNet Buy Social, RIPESS).",
+  "crosswalk_sources": {
+    "cmc": {
+      "label": "CMC (Canadian Worker Co-op Federation / Co-operatives and Mutuals Canada sector terms)",
+      "note": "Source directory sector vocabulary used in the MASTER crosswalk."
+    },
+    "chantier": {
+      "label": "Chantier de l'économie sociale",
+      "note": "Québec social-economy sector vocabulary from the MASTER crosswalk."
+    },
+    "ccednet_buy_social": {
+      "label": "CCEDNet Buy Social",
+      "note": "Buy Social Canada / CCEDNet sector vocabulary from the MASTER crosswalk."
+    },
+    "ripess": {
+      "label": "RIPESS",
+      "note": "Intercontinental social/solidarity economy network sector vocabulary from the MASTER crosswalk."
+    }
+  },
   "sectors": [
     {
       "id": "agriculture-food-systems",
+      "label_en": "Agriculture & Food Systems",
+      "label_fr": "Agriculture et systèmes alimentaires",
+      "definition_en": "Organizations engaged in growing, processing, distributing, or securing access to food through cooperative, nonprofit, or solidarity-based models.",
+      "definition_fr": "Organismes engagés dans la culture, la transformation, la distribution ou l'accès à l'alimentation selon des modèles coopératifs, sans but lucratif ou d'économie solidaire.",
       "signals_en": [
         "farm",
         "farming",
@@ -38,6 +62,10 @@
     },
     {
       "id": "arts-culture-information",
+      "label_en": "Arts, Culture & Information",
+      "label_fr": "Arts, culture et information",
+      "definition_en": "Organizations working in creative production, media, journalism, cultural preservation, or the stewardship of shared cultural and informational commons.",
+      "definition_fr": "Organismes œuvrant en production créative, médias, journalisme, préservation culturelle ou intendance des biens communs culturels et informationnels partagés.",
       "signals_en": [
         "arts",
         "culture",
@@ -75,6 +103,10 @@
     },
     {
       "id": "care-health-social-services",
+      "label_en": "Care, Health & Social Services",
+      "label_fr": "Soins, santé et services sociaux",
+      "definition_en": "Provision of physical and mental health care, child and elder care, disability support, and mutual-aid or peer-support services.",
+      "definition_fr": "Prestation de soins de santé physique et mentale, de garde d'enfants et de personnes âgées, de soutien aux personnes handicapées et de services d'entraide.",
       "signals_en": [
         "health",
         "care",
@@ -112,6 +144,10 @@
     },
     {
       "id": "education-knowledge",
+      "label_en": "Education & Knowledge",
+      "label_fr": "Éducation et savoir",
+      "definition_en": "Institutions and collectives dedicated to formal education, skills training, and knowledge sharing.",
+      "definition_fr": "Institutions et collectifs voués à l'éducation formelle, à la formation professionnelle et au partage des connaissances.",
       "signals_en": [
         "education",
         "training",
@@ -147,6 +183,10 @@
     },
     {
       "id": "environment-circular-economy",
+      "label_en": "Environment & Circular Economy",
+      "label_fr": "Environnement et économie circulaire",
+      "definition_en": "Entities focused on ecological conservation, renewable energy, waste reduction, repair and reuse, and sustainable resource management.",
+      "definition_fr": "Entités vouées à la conservation écologique, aux énergies renouvelables, à la réduction des déchets, à la réparation-réemploi et à la gestion durable des ressources.",
       "signals_en": [
         "environment",
         "conservation",
@@ -182,6 +222,10 @@
     },
     {
       "id": "financial-insurance-services",
+      "label_en": "Financial & Insurance Services",
+      "label_fr": "Services financiers et d'assurance",
+      "definition_en": "Co-operative banking, credit unions, mutual insurance, and alternative or solidarity financing networks.",
+      "definition_fr": "Services bancaires coopératifs, caisses populaires, assurances mutuelles et réseaux de financement alternatif ou solidaire.",
       "signals_en": [
         "credit union",
         "caisse populaire",
@@ -212,6 +256,10 @@
     },
     {
       "id": "housing-collective-real-estate",
+      "label_en": "Housing & Collective Real Estate",
+      "label_fr": "Logement et immobilier collectif",
+      "definition_en": "Provision of affordable housing, land trusts, and collective management of real estate assets.",
+      "definition_fr": "Offre de logement abordable, fiducies foncières et gestion collective d'actifs immobiliers.",
       "signals_en": [
         "housing co-op",
         "affordable housing",
@@ -241,6 +289,10 @@
     },
     {
       "id": "manufacturing-production",
+      "label_en": "Manufacturing & Production",
+      "label_fr": "Fabrication et production",
+      "definition_en": "Industrial production, fabrication, and the creation of tangible goods within a democratic or cooperative ownership framework.",
+      "definition_fr": "Production industrielle, fabrication et création de biens matériels dans un cadre de propriété démocratique ou coopérative.",
       "signals_en": [
         "manufacturing",
         "fabrication",
@@ -271,6 +323,10 @@
     },
     {
       "id": "retail-consumer-goods",
+      "label_en": "Retail & Consumer Goods",
+      "label_fr": "Commerce de détail et biens de consommation",
+      "definition_en": "Distribution and sale of goods through consumer co-operatives and solidarity storefronts.",
+      "definition_fr": "Distribution et vente de biens par l'entremise de coopératives de consommateurs et de commerces solidaires.",
       "signals_en": [
         "consumer co-op",
         "retail",
@@ -298,6 +354,10 @@
     },
     {
       "id": "technology-digital-infrastructure",
+      "label_en": "Technology & Digital Infrastructure",
+      "label_fr": "Technologie et infrastructure numérique",
+      "definition_en": "Development of digital commons, platform co-operatives, and IT infrastructure serving community or solidarity-economy needs.",
+      "definition_fr": "Développement de biens communs numériques, de coopératives de plateforme et d'infrastructures TI au service de l'économie communautaire ou solidaire.",
       "signals_en": [
         "platform co-op",
         "open source",
@@ -328,6 +388,10 @@
     },
     {
       "id": "community-civic-infrastructure",
+      "label_en": "Community & Civic Infrastructure",
+      "label_fr": "Infrastructure communautaire et civique",
+      "definition_en": "Public services, workforce integration, funeral services, and general community development that don't fit a more specific sector.",
+      "definition_fr": "Services publics, intégration en emploi, services funéraires et développement communautaire général qui ne correspondent pas à un secteur plus précis.",
       "signals_en": [
         "community development",
         "workforce integration",
