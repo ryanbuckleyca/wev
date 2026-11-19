@@ -95,8 +95,8 @@ describe('crosswalk resolution', () => {
     ).toBeNull();
     // CQCM facet cells must not collapse into CMC aliases via colon stripping.
     expect(
-      resolveCrosswalkMatches('CQCM Not a sector: role / function', 'cmc').map((m) => m.source),
-    ).not.toContain('cmc');
+      resolveCrosswalkMatches('CQCM Not a sector: role / function', 'cmc')
+    ).toEqual([]);
     expect(
       resolveCrosswalkMatches('Not a sector: role / function').some(
         (m) => m.entryId === 'facet-role-function',

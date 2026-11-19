@@ -204,13 +204,20 @@ def validate_source_keys(sources: list[dict[str, Any]]) -> None:
 
 def write_sectors_json(payload: dict[str, Any]) -> None:
     """Atomically replace sectors.json after a successful temp write."""
+    import os
+    import tempfile
+
     OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = OUT_JSON.with_name(f".{OUT_JSON.name}.tmp")
+    tmp_fd, tmp_path_str = tempfile.mkstemp(
+        suffix=".tmp",
+        prefix=f".{OUT_JSON.name}.",
+        dir=OUT_JSON.parent,
+        text=True,
+    )
+    tmp_path = Path(tmp_path_str)
     try:
-        tmp_path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
+        with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
+            f.write(json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n")
         tmp_path.replace(OUT_JSON)
     except Exception:
         if tmp_path.exists():
@@ -329,6 +336,9 @@ def main() -> int:
             sectors.append(entry)
 
     validate_category_ids(seen_category_codes)
+
+    # Sort sectors by category_id for stable output order
+    sectors.sort(key=lambda s: s["category_id"])
 
     rules_ws = workbook["Logic & Decision Rules"]
     decision_rules: list[dict[str, Any]] = []

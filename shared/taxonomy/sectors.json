@@ -326,7 +326,7 @@
       "subject_id": "sse_tax:SSE_SEC_08",
       "subject_label": "Environment & Circular Economy",
       "skos_prefLabel_fr": "Environnement, énergie et économie circulaire",
-      "predicate_id": "skos:exactMatch",
+      "predicate_id": "skos:broadMatch",
       "object_id": "isic4:E_38",
       "object_label": "E (38) Waste collection, treatment and recycling",
       "match_type": "HumanCurated",
@@ -579,7 +579,9 @@
         "social research centers",
         "community workshops"
       ],
-      "exclusions": ["Commercial private tutoring services"],
+      "exclusions": [
+        "Commercial private tutoring services"
+      ],
       "signals_en": [
         "Student co-ops",
         "CPEs",
@@ -752,7 +754,9 @@
         "intentional communities",
         "emergency shelters"
       ],
-      "exclusions": ["For-profit real estate development or speculation"],
+      "exclusions": [
+        "For-profit real estate development or speculation"
+      ],
       "signals_en": [
         "Housing co-ops",
         "social housing",
@@ -931,7 +935,9 @@
         "worker-owned cafes/bistros",
         "solidarity microbreweries"
       ],
-      "exclusions": ["Tourist lodging operated solely for private profit"],
+      "exclusions": [
+        "Tourist lodging operated solely for private profit"
+      ],
       "signals_en": [
         "Community recreation centers",
         "vacation camps",
@@ -1019,7 +1025,9 @@
         "forestry co-ops",
         "sustainable fisheries"
       ],
-      "exclusions": ["Industrial mono-crop agribusiness"],
+      "exclusions": [
+        "Industrial mono-crop agribusiness"
+      ],
       "signals_en": [
         "Agricultural co-ops",
         "food hubs",
@@ -1108,7 +1116,9 @@
         "wildlife conservation",
         "climate advocacy"
       ],
-      "exclusions": ["Fossil fuel extraction or non-renewable utilities"],
+      "exclusions": [
+        "Fossil fuel extraction or non-renewable utilities"
+      ],
       "signals_en": [
         "Renewable energy co-ops",
         "eco-centers",
@@ -1123,7 +1133,7 @@
       "boundary_note_en": "Exclusions: Fossil fuel extraction or non-renewable utilities.",
       "boundary_note_fr": "",
       "skos": {
-        "mapping_predicate": "skos:exactMatch",
+        "mapping_predicate": "skos:broadMatch",
         "sssom_match_type": "HumanCurated",
         "sssom_confidence": 0.95,
         "compound_mapping_rule": "skos:exactMatch CircularEconomy AND (skos:narrowMatch RenewableEnergyCoop OR skos:narrowMatch WasteRecycling)"
@@ -1195,7 +1205,9 @@
         "time banks",
         "community development financial institutions (CDFIs)"
       ],
-      "exclusions": ["Commercial investment banking or speculative finance"],
+      "exclusions": [
+        "Commercial investment banking or speculative finance"
+      ],
       "signals_en": [
         "Credit unions",
         "mutual insurance",
@@ -1281,7 +1293,9 @@
         "thrift stores/friperies",
         "buying clubs"
       ],
-      "exclusions": ["Traditional private retail stores"],
+      "exclusions": [
+        "Traditional private retail stores"
+      ],
       "signals_en": [
         "Consumer co-ops",
         "food co-op stores",
@@ -1366,7 +1380,9 @@
         "bike courier collectives",
         "community transit"
       ],
-      "exclusions": ["Non-democratic heavy industrial production"],
+      "exclusions": [
+        "Non-democratic heavy industrial production"
+      ],
       "signals_en": [
         "Worker-owned manufacturing",
         "ecological construction co-ops",
@@ -1450,7 +1466,9 @@
         "community ISP co-ops",
         "ethical web hosting"
       ],
-      "exclusions": ["Proprietary Big Tech platforms"],
+      "exclusions": [
+        "Proprietary Big Tech platforms"
+      ],
       "signals_en": [
         "Platform co-ops",
         "open-source software foundations",
@@ -1534,7 +1552,9 @@
         "janitorial co-ops",
         "legal aid collectives"
       ],
-      "exclusions": ["Corporate lobbying or management consultancies"],
+      "exclusions": [
+        "Corporate lobbying or management consultancies"
+      ],
       "signals_en": [
         "Co-op consulting firms",
         "shared back-office providers",
@@ -1619,7 +1639,9 @@
         "legal defense funds",
         "tenant rights associations"
       ],
-      "exclusions": ["Corporate lobbying groups"],
+      "exclusions": [
+        "Corporate lobbying groups"
+      ],
       "signals_en": [
         "Human rights organizations",
         "trade unions",
@@ -1705,7 +1727,9 @@
         "volunteer bureaus",
         "neighborhood centers"
       ],
-      "exclusions": ["Private family wealth trusts"],
+      "exclusions": [
+        "Private family wealth trusts"
+      ],
       "signals_en": [
         "Community futures corporations",
         "social economy poles",
@@ -1789,7 +1813,9 @@
         "cross-border fair trade networks",
         "global solidarity projects"
       ],
-      "exclusions": ["State diplomatic missions or bilateral military aid"],
+      "exclusions": [
+        "State diplomatic missions or bilateral military aid"
+      ],
       "signals_en": [
         "International NGO aid",
         "cross-border fair trade networks",
@@ -1872,7 +1898,9 @@
         "animal rescue shelters",
         "emergency first-responder co-ops"
       ],
-      "exclusions": ["Entities fitting any of the 16 primary sectors"],
+      "exclusions": [
+        "Entities fitting any of the 16 primary sectors"
+      ],
       "signals_en": [
         "Funeral co-ops",
         "faith-based social ministries",
@@ -2038,7 +2066,13 @@
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to UN SDGs and demographic target facets.",
       "inclusions": [],
       "exclusions": [],
-      "signals_en": ["Youth", "Women", "Indigenous", "Rural", "Climate Action"],
+      "signals_en": [
+        "Youth",
+        "Women",
+        "Indigenous",
+        "Rural",
+        "Climate Action"
+      ],
       "signals_fr": [],
       "example_en": "Example: Youth; Women; Indigenous.",
       "example_fr": "",
@@ -2118,7 +2152,12 @@
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to legal form registries.",
       "inclusions": [],
       "exclusions": [],
-      "signals_en": ["Non-Profit", "Co-operative", "Private Sector", "All"],
+      "signals_en": [
+        "Non-Profit",
+        "Co-operative",
+        "Private Sector",
+        "All"
+      ],
       "signals_fr": [],
       "example_en": "Example: Non-Profit; Co-operative; Private Sector.",
       "example_fr": "",

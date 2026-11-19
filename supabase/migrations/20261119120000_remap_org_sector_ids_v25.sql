@@ -34,13 +34,15 @@ COMMENT ON TABLE public.sector_remap_v25_community_civic IS
   'Orgs that stored sector_id=community-civic-infrastructure before the v2.5 remap; '
   'sector_id was cleared to NULL for LLM reassessment (tourist-lodging → recreation-tourism-hospitality, etc.).';
 
-INSERT INTO public.sector_remap_v25_community_civic (organization_id, prior_sector_id)
-SELECT id, sector_id
-FROM public.organizations
-WHERE sector_id = 'community-civic-infrastructure'
-ON CONFLICT (organization_id) DO NOTHING;
-
 -- Leave ambiguous residual rows eligible for NULL-only sector backfill.
-UPDATE public.organizations
-SET sector_id = NULL
-WHERE sector_id = 'community-civic-infrastructure';
+-- Use CTE to atomically record the exact set of orgs being cleared.
+WITH cleared AS (
+  UPDATE public.organizations
+  SET sector_id = NULL
+  WHERE sector_id = 'community-civic-infrastructure'
+  RETURNING id, 'community-civic-infrastructure' AS prior_sector_id
+)
+INSERT INTO public.sector_remap_v25_community_civic (organization_id, prior_sector_id)
+SELECT id, prior_sector_id
+FROM cleared
+ON CONFLICT (organization_id) DO NOTHING;

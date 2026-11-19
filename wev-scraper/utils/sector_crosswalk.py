@@ -211,7 +211,7 @@ def resolve_crosswalk_matches(
     include_facets: bool = True,
 ) -> list[CrosswalkMatch]:
     """Resolve a source category string to zero or more taxonomy matches."""
-    source_key = source.strip().lower() if source else None
+    source_key = source.strip().lower() if (source and source.strip()) else None
     keys = _candidate_keys(term, source_key)
     if not keys:
         return []
