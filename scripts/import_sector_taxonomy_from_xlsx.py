@@ -378,17 +378,45 @@ def main() -> int:
         print(f"Found headers: {sssom_headers}", file=sys.stderr)
         raise SystemExit(1)
 
+    # Check for duplicate headers (e.g., two subject_id columns)
+    seen_headers: dict[str, int] = {}
+    for i, header in enumerate(sssom_headers, start=1):
+        if header in seen_headers:
+            print(
+                f"ERROR: SSSOM sheet has duplicate header '{header}' at columns {seen_headers[header]} and {i}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+        seen_headers[header] = i
+
     sssom: list[dict[str, Any]] = []
-    for row in range(4, 24):
+    # Read SSSOM mappings until we hit a blank subject_id (dynamic boundary)
+    row = 4
+    while row <= 100:  # Safety limit to prevent infinite loop
         record = {
             sssom_headers[col - 1]: cell_value(sssom_ws, row, col) for col in range(1, 10)
         }
-        if not record.get("subject_id"):
-            continue
+        subject_id = record.get("subject_id")
+        if not subject_id:
+            # Blank row - stop reading
+            break
         confidence = record.get("confidence")
         if confidence is not None:
             record["confidence"] = float(confidence)
         sssom.append(record)
+        row += 1
+
+    # Verify all expected subjects were read (17 sectors + 3 facets = 20)
+    expected_subjects = set(CATEGORY_IDS.keys())
+    found_subjects = {str(r.get("subject_id", "")).split(":")[-1] for r in sssom}
+    missing_subjects = expected_subjects - found_subjects
+    if missing_subjects:
+        print(
+            f"ERROR: SSSOM sheet missing mappings for: {', '.join(sorted(missing_subjects))}",
+            file=sys.stderr,
+        )
+        print(f"Found {len(found_subjects)} mappings, expected {len(expected_subjects)}", file=sys.stderr)
+        raise SystemExit(1)
 
     out = {
         "version": "2.5",
