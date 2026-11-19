@@ -21,7 +21,9 @@ const LEGACY_ID_MAP: Record<string, string> = {
 
 export function canonicalizeSectorId(id: string | null | undefined): string | null {
   if (!id) return null;
-  const mapped = LEGACY_ID_MAP[id] ?? id;
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+  const mapped = LEGACY_ID_MAP[trimmed] ?? trimmed;
   return SECTORS_LIST.includes(mapped) ? mapped : null;
 }
 
@@ -84,15 +86,16 @@ function aliasesForEntry(
   entry: SectorTaxonomyEntry | SectorFacetEntry,
   kind: 'sector' | 'facet',
 ): CrosswalkAlias[] {
-  const terms = new Set<string>();
-  terms.add(entry.label_en);
-  terms.add(entry.label_fr);
-  for (const alias of entry.aliases ?? []) terms.add(alias);
-  for (const raw of Object.values(entry.term_crosswalk ?? {})) {
-    if (typeof raw === 'string' && raw.trim()) terms.add(stripSourceCell(raw));
-  }
+  // Unscoped (global) terms: preferred labels + curated aliases only.
+  // Workbook source cells stay source-scoped so CMC-only wording cannot match
+  // a GoodWork lookup via an unscoped alias.
+  const globalTerms = new Set<string>();
+  globalTerms.add(entry.label_en);
+  globalTerms.add(entry.label_fr);
+  for (const alias of entry.aliases ?? []) globalTerms.add(alias);
+
   const rows: CrosswalkAlias[] = [];
-  for (const term of terms) {
+  for (const term of globalTerms) {
     const normalized = normalizeCrosswalkTerm(term);
     if (!normalized) continue;
     rows.push({

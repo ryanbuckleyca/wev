@@ -63,18 +63,13 @@ def normalize_crosswalk_term(term: str | None) -> str:
     return text
 
 
-def _aliases_for_entry(entry: Sector) -> list[str]:
-    aliases = list(entry.aliases or [])
-    aliases.extend([entry.label_en, entry.label_fr])
-    # Prefer explicit aliases; also index bare labels from crosswalk cells.
-    for raw in (entry.term_crosswalk or {}).values():
-        if not raw:
-            continue
-        text = re.sub(r"^[^:]+:\s*", "", str(raw)).strip()
-        text = re.sub(r"\s+(jobs|tags)$", "", text, flags=re.I).strip()
-        if text:
-            aliases.append(text)
-    # Dedup preserving order
+def _global_aliases_for_entry(entry: Sector) -> list[str]:
+    """Preferred labels + curated aliases only (unscoped / global).
+
+    Workbook source cells are NOT promoted here — they are indexed with their
+    source key so CMC-only wording cannot match a GoodWork lookup.
+    """
+    aliases = [entry.label_en, entry.label_fr, *(entry.aliases or [])]
     seen: set[str] = set()
     out: list[str] = []
     for alias in aliases:
@@ -86,6 +81,11 @@ def _aliases_for_entry(entry: Sector) -> list[str]:
     return out
 
 
+def _strip_source_cell(raw: str) -> str:
+    text = re.sub(r"^[^:]+:\s*", "", str(raw)).strip()
+    return re.sub(r"\s+(jobs|tags)$", "", text, flags=re.I).strip()
+
+
 @lru_cache(maxsize=1)
 def get_crosswalk_aliases() -> tuple[CrosswalkAlias, ...]:
     rows: list[CrosswalkAlias] = []
@@ -93,7 +93,7 @@ def get_crosswalk_aliases() -> tuple[CrosswalkAlias, ...]:
         *((s, "sector") for s in get_sector_taxonomy()),
         *((f, "facet") for f in get_sector_facets()),
     ):
-        for term in _aliases_for_entry(entry):
+        for term in _global_aliases_for_entry(entry):
             rows.append(
                 CrosswalkAlias(
                     entry_id=entry.id,
@@ -106,8 +106,7 @@ def get_crosswalk_aliases() -> tuple[CrosswalkAlias, ...]:
         for source, raw in (entry.term_crosswalk or {}).items():
             if not raw:
                 continue
-            text = re.sub(r"^[^:]+:\s*", "", str(raw)).strip()
-            text = re.sub(r"\s+(jobs|tags)$", "", text, flags=re.I).strip()
+            text = _strip_source_cell(str(raw))
             if not text:
                 continue
             rows.append(

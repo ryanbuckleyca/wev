@@ -25,6 +25,10 @@ describe('sector taxonomy v2.5', () => {
     expect(entry?.definition_en).toMatch(/Sustainable farming/i);
     expect(canonicalizeSectorId('arts-culture-information')).toBe('arts-culture-media');
     expect(canonicalizeSectorId('care-health-social-services')).toBe('social-health-care-services');
+    expect(canonicalizeSectorId('  care-health-social-services  ')).toBe(
+      'social-health-care-services',
+    );
+    expect(canonicalizeSectorId('   ')).toBeNull();
   });
 });
 
@@ -39,6 +43,21 @@ describe('crosswalk resolution', () => {
     expect(resolveSectorFromCrosswalk('Advocacy, Rights & Representation')).toBe(
       'advocacy-rights-representation',
     );
+    expect(resolveSectorFromCrosswalk('Housing & Collective Real Estate')).toBe(
+      'housing-collective-real-estate',
+    );
+  });
+
+  it('keeps CMC source terms from matching GoodWork lookups', () => {
+    expect(
+      resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'cmc'),
+    ).toBe('housing-collective-real-estate');
+    expect(
+      resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'goodwork'),
+    ).toBeNull();
+    expect(
+      resolveSectorFromCrosswalk('Housing & Collective Real Estate', 'goodwork'),
+    ).toBe('housing-collective-real-estate');
   });
 
   it('normalizes accents', () => {

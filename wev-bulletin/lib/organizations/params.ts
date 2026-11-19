@@ -5,6 +5,7 @@
  * the API route (`app/api/organizations/route.ts`) so the two stay in sync.
  */
 
+import { canonicalizeSectorId } from '@/lib/sectors';
 import { resolveOrgSortBy } from './utils';
 
 /** Activity window values synced between URL, client hooks, and server. */
@@ -69,7 +70,17 @@ export function parseOrgIndexSearchParams(
   const provinces = searchParams.getAll('province');
   const municipalities = searchParams.getAll('municipality');
   const languages = searchParams.getAll('language');
-  const sectors = searchParams.getAll('sector');
+  // Remap legacy v1 sector URL values; keep unknown strings unchanged so they
+  // still match nothing against v2.5 IDs.
+  const sectors = [
+    ...new Set(
+      searchParams.getAll('sector').map((raw) => {
+        const trimmed = raw.trim();
+        if (!trimmed) return trimmed;
+        return canonicalizeSectorId(trimmed) ?? trimmed;
+      }),
+    ),
+  ].filter(Boolean);
   const governanceCategories = searchParams.getAll('governance');
   const activityWindow = parseActivityWindow(searchParams.get('activity'));
   const activityDays = activityWindowToDays(activityWindow);

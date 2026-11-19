@@ -2,6 +2,8 @@
 """Regenerate shared/taxonomy/sectors.json from the MASTER crosswalk workbook.
 
 Usage:
+  # openpyxl is in wev-scraper/requirements-dev.txt
+  pip install openpyxl
   python3 scripts/import_sector_taxonomy_from_xlsx.py \
     [path/to/SSE_sector_taxonomy_crosswalk_MASTER.xlsx]
 """
@@ -141,27 +143,6 @@ def parse_scope(scope: str) -> tuple[list[str], list[str], str | None]:
     return inclusions, exclusions, usage
 
 
-def extract_aliases(raw: str, label_en: str, label_fr: str) -> list[str]:
-    aliases = {label_en, label_fr}
-    if not raw:
-        return sorted(aliases)
-    text = str(raw).strip()
-    text2 = re.sub(r"^[^:]+:\s*", "", text)
-    text2 = re.sub(r"\s+(jobs|tags)$", "", text2, flags=re.I).strip()
-    text3 = re.sub(
-        r"^(CQCM|Chantier|CMC|CCEDNet|RIPESS|SolidarityNYC|UNTFSSE|ICA|SEUK|USFWC|NEC|"
-        r"CSMO-ESAC|StatsQc|BuySocial|SolidarityEconomy|ImagineCanada|EspaceOBNL|"
-        r"StatistiqueQc|ISIC Rev 4 Code for|TorontoBetter)\s+",
-        "",
-        text2,
-        flags=re.I,
-    ).strip()
-    for candidate in (text2, text3):
-        if candidate:
-            aliases.add(candidate)
-    return sorted(aliases, key=lambda s: (len(s), s.lower()))
-
-
 def main() -> int:
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     workbook = load_workbook(xlsx, data_only=True)
@@ -201,13 +182,14 @@ def main() -> int:
         kind = "facet" if cat_id.startswith("SSE_FAC_") else "sector"
         entry_id = CATEGORY_IDS[cat_id]
         term_crosswalk: dict[str, str] = {}
-        all_aliases: set[str] = set()
         for src in sources:
             raw = cell_str(worksheet, row, int(src["column"]))
             if not raw:
                 continue
             term_crosswalk[str(src["key"])] = raw
-            all_aliases.update(extract_aliases(raw, label_en, label_fr))
+        # Preferred labels only as global aliases. Source-board terms stay in
+        # term_crosswalk so reverse-lookup keeps source ownership (e.g. CMC).
+        all_aliases = {label_en, label_fr}
         signals_en: list[str] = []
         for inclusion in inclusions:
             piece = re.split(r"[/(]", inclusion)[0].strip()
@@ -229,7 +211,9 @@ def main() -> int:
             "example_en": (
                 f"Example: {'; '.join(inclusions[:3])}." if inclusions else ""
             ),
-            "example_fr": f"Exemple : {label_fr}.",
+            # Scope inclusions are English in the MASTER sheet; leave FR empty
+            # rather than repeating the sector heading as a faux blurb.
+            "example_fr": "",
             "boundary_note_en": (
                 f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
             ),

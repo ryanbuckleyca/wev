@@ -96,6 +96,27 @@ def test_resolve_scraped_board_style_alias():
     )
 
 
+def test_cmc_source_terms_do_not_match_goodwork_lookups():
+    assert (
+        resolve_sector_from_crosswalk(
+            "CMC Housing & Collective Real Estate", source="cmc"
+        )
+        == "housing-collective-real-estate"
+    )
+    assert (
+        resolve_sector_from_crosswalk(
+            "CMC Housing & Collective Real Estate", source="goodwork"
+        )
+        is None
+    )
+    assert (
+        resolve_sector_from_crosswalk(
+            "Housing & Collective Real Estate", source="goodwork"
+        )
+        == "housing-collective-real-estate"
+    )
+
+
 def test_normalize_is_accent_insensitive():
     assert normalize_crosswalk_term("Éducation, petite enfance et savoirs") == (
         normalize_crosswalk_term("Education, petite enfance et savoirs")
