@@ -1,6 +1,6 @@
 import sharedSectors from '@shared/taxonomy/sectors.json';
 import { isGovernanceCategory } from '@/lib/organizations/governance-taxonomy';
-import { SECTORS_LIST } from '@/lib/sectors';
+import { canonicalizeSectorId, SECTORS_LIST } from '@/lib/sectors';
 
 export type SectorIndexTypeCount = {
   type: string;
@@ -24,7 +24,9 @@ const EXAMPLE_PREFIX = /^(example|exemple)\s*:\s*/i;
 
 /** Public blurb for a sector card — taxonomy example with the "Example:" prefix stripped. */
 export function sectorBlurb(sectorId: string, locale: string): string | null {
-  const entry = sharedSectors.sectors.find((s) => s.id === sectorId);
+  const canonical = canonicalizeSectorId(sectorId);
+  if (!canonical) return null;
+  const entry = sharedSectors.sectors.find((s) => s.id === canonical);
   if (!entry) return null;
   const raw = locale.startsWith('fr') ? entry.example_fr : entry.example_en;
   if (!raw?.trim()) return null;
@@ -34,6 +36,8 @@ export function sectorBlurb(sectorId: string, locale: string): string | null {
 /**
  * Aggregate org rows into one card per taxonomy sector (taxonomy order).
  * Mix counts use governance_category (SSE categories only).
+ * Legacy v1 sector_ids are remapped via canonicalizeSectorId so cards stay
+ * populated if the UI deploys slightly ahead of the remap migration.
  */
 export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   const bySector = new Map<
@@ -42,8 +46,8 @@ export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   >();
 
   for (const row of rows) {
-    const sectorId = row.sector_id?.trim();
-    if (!sectorId || !SECTORS_LIST.includes(sectorId)) continue;
+    const sectorId = canonicalizeSectorId(row.sector_id);
+    if (!sectorId) continue;
 
     let bucket = bySector.get(sectorId);
     if (!bucket) {

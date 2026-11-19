@@ -14,6 +14,11 @@ import logging
 import sys
 from pathlib import Path
 
+# Ensure wev-scraper root is on sys.path when run as scripts/backfill_org_sectors.py
+_SCRAPER_DIR = Path(__file__).resolve().parent.parent
+if str(_SCRAPER_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRAPER_DIR))
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -35,9 +40,9 @@ from utils.base_grounded_classifier import BaseGroundedClassifier  # noqa: E402
 from utils.db import supabase  # noqa: E402
 from utils.sector_prompts import (  # noqa: E402
     SECTOR_BATCH_PROMPT_TEMPLATE,
+    canonicalize_sector_id,
     format_org_chunks,
     get_formatted_sector_taxonomy,
-    get_sector_ids_set,
 )
 
 
@@ -80,7 +85,6 @@ class SectorBatchAssessor(BaseGroundedClassifier):
             logger.warning("Expected 'results' to be a list, got %s", type(results).__name__)
             return {}
 
-        valid_sectors = get_sector_ids_set()
         mapping = {}
         for r in results:
             if not isinstance(r, dict):
@@ -95,9 +99,14 @@ class SectorBatchAssessor(BaseGroundedClassifier):
             except (TypeError, ValueError):
                 continue
 
-            sector_id = r.get("sector_id")
-            if sector_id and sector_id not in valid_sectors:
-                sector_id = None
+            raw_sector = r.get("sector_id")
+            sector_id = canonicalize_sector_id(raw_sector)
+            if raw_sector and sector_id is None:
+                logger.warning(
+                    "Rejected unrecognized sector_id %r for org %s",
+                    raw_sector,
+                    org_id,
+                )
 
             mapping[org_id] = sector_id
 

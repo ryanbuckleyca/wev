@@ -1,5 +1,8 @@
 -- Remap organizations.sector_id from the retired 11-sector v1 taxonomy to the
 -- MASTER v2.5 17-sector IDs (shared/taxonomy/sectors.json legacy_id_map).
+--
+-- Apply with the bulletin/UI deploy that introduces SECTORS_LIST v2.5 so filters
+-- and sector cards do not briefly diverge from legacy DB values.
 
 UPDATE public.organizations
 SET sector_id = 'social-health-care-services'

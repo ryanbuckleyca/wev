@@ -50,12 +50,18 @@ describe('buildSectorIndexCards', () => {
       },
       { name: 'No Sector', governance_category: 'GOV_4', sector_id: null },
       { name: 'Bad Sector', governance_category: 'GOV_4', sector_id: 'not-real' },
+      {
+        name: 'Legacy Arts Org',
+        governance_category: 'GOV_1',
+        sector_id: 'arts-culture-information',
+      },
     ]);
 
     // MASTER v2.5 order: arts (SSE_SEC_05) before agriculture (SSE_SEC_07).
+    // Legacy arts-culture-information remaps onto arts-culture-media.
     expect(cards.map((c) => c.id)).toEqual(['arts-culture-media', 'agriculture-food-systems']);
-    expect(cards[0].orgCount).toBe(1);
-    expect(cards[0].sampleNames).toEqual(['Radio Co-op']);
+    expect(cards[0].orgCount).toBe(2);
+    expect(cards[0].sampleNames).toEqual(['Legacy Arts Org', 'Radio Co-op']);
     expect(cards[1]).toEqual({
       id: 'agriculture-food-systems',
       orgCount: 4,

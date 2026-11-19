@@ -178,7 +178,7 @@ _JSON_FIELDS = """{
   "governance_confidence": "0.0 to 1.0",
   "governance_reasoning": "1–2 sentences (<300 chars) on the governance/ownership structure.",
   "operational_tags": ["Optional delivery-mode tags (platform_coop, ...); NOT governance. [] if none."],
-  "sector_id": "Sector ID from the ALLOWED SECTORS list below, or null if none fit well",
+  "sector_id": "Slug ID from the ALLOWED SECTORS list below (e.g. housing-collective-real-estate — not SSE_SEC_* codes, labels, or facet IDs), or null if none fit well",
   "values_raw": "Organization values and principles copied from their own site (strictly under 800 chars / ~100 words). Use only when via=extracted. If you only inferred Knowdell labels, this MUST be null. Record provenance in flags as 'values via=extracted|inferred|absent'.",
   "values": ["3 to 5 Knowdell work values from the taxonomy below. Extract from a published values/principles list when Tavily/web evidence has one; otherwise INFER from that same research (about text, programs, sector, description written from search). Empty array only if there is no usable research evidence at all."],
   "sse_rating": "strong_yes or weak_yes or no",
@@ -303,7 +303,8 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
 - Tourist lodging / ecotourism → recreation-tourism-hospitality;
   emergency shelters / HLMs → housing-collective-real-estate.
 - other-nec is residual/catch-all — prefer a more specific sector whenever one applies.
-- Never use facet IDs (role/function, population/cause, employer type) as sector_id."""
+- Never use facet IDs (role/function, population/cause, employer type) as sector_id.
+- Return the slug ID shown as ID `...` in ALLOWED SECTORS (not MASTER codes like SSE_SEC_01)."""
 
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
 - ENTITY IDENTITY ANCHOR: The organization name, Known website, and SOURCE DESCRIPTION define WHICH specific entity is being evaluated. If supporting search results describe a DIFFERENT organization that merely shares the same acronym or name (e.g., matching a doctors' union when the source describes a women's enterprise network), DO NOT hijack the organization. Reject mismatched search results and assess the actual named entity.

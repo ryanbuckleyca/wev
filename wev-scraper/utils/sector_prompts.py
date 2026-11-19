@@ -108,11 +108,26 @@ def get_legacy_sector_id_map() -> dict[str, str]:
     return {str(k): str(v) for k, v in raw.items()}
 
 
+@lru_cache(maxsize=1)
+def get_category_id_map() -> dict[str, str]:
+    """Map MASTER category IDs (SSE_SEC_01 …) → industry sector slug IDs."""
+    return {s.category_id: s.id for s in get_sector_taxonomy()}
+
+
 def canonicalize_sector_id(sector_id: str | None) -> str | None:
-    """Normalize a sector id, remapping legacy v1 IDs when present."""
+    """Normalize a sector id, remapping legacy v1 and MASTER category IDs.
+
+    Accepts slug IDs (`housing-collective-real-estate`), retired v1 slugs, and
+    MASTER codes (`SSE_SEC_04`). Facet codes (`SSE_FAC_*`) and unknown values
+    return None.
+    """
     if not sector_id:
         return None
-    mapped = get_legacy_sector_id_map().get(sector_id, sector_id)
+    raw = str(sector_id).strip()
+    if not raw:
+        return None
+    mapped = get_legacy_sector_id_map().get(raw, raw)
+    mapped = get_category_id_map().get(mapped, mapped)
     return mapped if mapped in get_sector_ids_set() else None
 
 
@@ -129,7 +144,8 @@ def get_formatted_sector_taxonomy() -> str:
     )
     lines.append("")
     for s in get_sector_taxonomy():
-        lines.append(f"[{s.id}] {s.label_en} ({s.category_id})")
+        # Lead with the slug ID the DB expects; category codes are reference only.
+        lines.append(f"ID `{s.id}` — {s.label_en} (MASTER {s.category_id})")
         if s.definition_en:
             lines.append(f"Definition: {s.definition_en}")
         if s.scope_note_en:
@@ -168,9 +184,9 @@ def get_formatted_sector_taxonomy() -> str:
 
 SECTOR_BATCH_PROMPT_TEMPLATE = """You are evaluating organizations to determine their correct sector.
 
-Use ONLY industry sector IDs from the allowed list below. Select the single best fit for each organization.
-If none of the sectors fit well, return null.
-Never return a facet ID (role/function, population/cause, employer type) as sector_id.
+Use ONLY the slug IDs shown as ID `...` in the allowed list (e.g. "housing-collective-real-estate").
+Do NOT return MASTER codes like SSE_SEC_01, labels, or facet IDs as sector_id.
+Select the single best fit for each organization. If none fit well, return null.
 
 When a SOURCE CATEGORY / directory label is provided and it matches a listed
 Source alias for a sector, prefer that sector unless the org evidence clearly
@@ -187,7 +203,7 @@ Return a JSON object matching this schema:
   "results": [
     {{
       "org_id": "original organization ID provided (integer)",
-      "sector_id": "sector ID from the ALLOWED SECTORS list, or null"
+      "sector_id": "slug ID from the ALLOWED SECTORS list (not SSE_SEC_*), or null"
     }}
   ]
 }}

@@ -56,6 +56,16 @@ def test_legacy_ids_canonicalize():
     assert canonicalize_sector_id("not-a-real-sector") is None
 
 
+def test_master_category_ids_canonicalize():
+    assert canonicalize_sector_id("SSE_SEC_01") == "social-health-care-services"
+    assert canonicalize_sector_id("SSE_SEC_04") == "housing-collective-real-estate"
+    assert canonicalize_sector_id("SSE_SEC_14") == "advocacy-rights-representation"
+    assert canonicalize_sector_id("SSE_FAC_18") is None
+    assert canonicalize_sector_id("housing-collective-real-estate") == (
+        "housing-collective-real-estate"
+    )
+
+
 def test_resolve_unified_labels_en_and_fr():
     assert (
         resolve_sector_from_crosswalk("Agriculture & Food Systems")
@@ -119,7 +129,10 @@ def test_merge_source_categories_into_extra_preserves_source_dump():
 
 def test_formatted_taxonomy_includes_definitions_rules_and_facets():
     text = get_formatted_sector_taxonomy()
-    assert "[agriculture-food-systems] Agriculture & Food Systems (SSE_SEC_07)" in text
+    assert (
+        "ID `agriculture-food-systems` — Agriculture & Food Systems (MASTER SSE_SEC_07)"
+        in text
+    )
     assert "Definition:" in text
     assert "DECISION RULES" in text
     assert "RULE_02" in text
