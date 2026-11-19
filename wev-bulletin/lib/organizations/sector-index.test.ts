@@ -46,17 +46,20 @@ describe('buildSectorIndexCards', () => {
       {
         name: 'Radio Co-op',
         governance_category: 'GOV_1',
-        sector_id: 'arts-culture-information',
+        sector_id: 'arts-culture-media',
       },
       { name: 'No Sector', governance_category: 'GOV_4', sector_id: null },
       { name: 'Bad Sector', governance_category: 'GOV_4', sector_id: 'not-real' },
     ]);
 
+    // MASTER v2.5 order: arts (SSE_SEC_05) before agriculture (SSE_SEC_07).
     expect(cards.map((c) => c.id)).toEqual([
+      'arts-culture-media',
       'agriculture-food-systems',
-      'arts-culture-information',
     ]);
-    expect(cards[0]).toEqual({
+    expect(cards[0].orgCount).toBe(1);
+    expect(cards[0].sampleNames).toEqual(['Radio Co-op']);
+    expect(cards[1]).toEqual({
       id: 'agriculture-food-systems',
       orgCount: 4,
       typeCounts: [
@@ -65,7 +68,5 @@ describe('buildSectorIndexCards', () => {
       ],
       sampleNames: ['Alpha Farm', 'Beta Bank', 'Extra Farm'],
     });
-    expect(cards[1].orgCount).toBe(1);
-    expect(cards[1].sampleNames).toEqual(['Radio Co-op']);
   });
 });

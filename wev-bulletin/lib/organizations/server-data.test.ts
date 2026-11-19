@@ -231,14 +231,14 @@ describe('organizations/server-data', () => {
 
     await fetchOrganizationIndex({
       page: 1,
-      sectors: ['arts-culture-information', 'community-civic-infrastructure'],
+      sectors: ['arts-culture-media', 'community-development-philanthropy-volunteering'],
     });
 
     expect(mockRpc).toHaveBeenNthCalledWith(
       1,
       'get_active_organizations',
       expect.objectContaining({
-        p_sectors: ['arts-culture-information', 'community-civic-infrastructure'],
+        p_sectors: ['arts-culture-media', 'community-development-philanthropy-volunteering'],
       }),
     );
     expect(mockRpc).toHaveBeenNthCalledWith(
@@ -407,7 +407,7 @@ describe('organizations/server-data', () => {
           },
           {
             name: 'Radio Co-op',
-            sector_id: 'arts-culture-information',
+            sector_id: 'arts-culture-media',
           },
         ],
         error: null,
@@ -420,8 +420,8 @@ describe('organizations/server-data', () => {
       expect(organizationsQuery.order).toHaveBeenCalledWith('id', { ascending: true });
       expect(organizationsQuery.range).toHaveBeenCalledWith(0, 999);
       expect(cards.map((c) => c.id)).toEqual([
+        'arts-culture-media',
         'agriculture-food-systems',
-        'arts-culture-information',
       ]);
       expect(cards[0].orgCount).toBe(1);
     });

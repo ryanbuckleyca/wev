@@ -229,13 +229,13 @@ CRITICAL — place-name / city-in-name is NOT government (municipal funding is N
 - A city, town, or region name in the organization name (or municipality field) is
   geographic branding only — NOT evidence of a municipal or public-sector employer.
 - Community orchestras, choirs, bands, theatres, and similar arts / cultural
-  associations are typically a GOV_4 subtype (often sector arts-culture-information),
+  associations are typically a GOV_4 subtype (often sector arts-culture-media),
   never EXCLUDED_NON_SSE as government, unless research shows a city department,
   municipal agency, or other statutory public body.
 - Autonomous non-profit corporations (OBNLs), regional economic development hubs,
   and community development corporations that receive municipal or provincial
   funding/mandates but operate under an independent non-profit board of directors
-  are a GOV_4 subtype (often sector community-civic-infrastructure), NOT government.
+  are a GOV_4 subtype (often sector community-development-philanthropy-volunteering), NOT government.
 - Use EXCLUDED_NON_SSE for government only with explicit public-sector evidence
   (created by statute, governing body appointed by a minister / council / public
   authority, crown corp, school board, public hospital authority, municipal

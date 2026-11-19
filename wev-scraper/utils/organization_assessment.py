@@ -45,7 +45,10 @@ from utils.organization_language import (
     _detect_text_language,
     classify_org_language,
 )
-from utils.sector_prompts import get_formatted_sector_taxonomy, get_sector_ids_set
+from utils.sector_prompts import (
+    canonicalize_sector_id,
+    get_formatted_sector_taxonomy,
+)
 from utils.slug import generate_slug, nfkd_to_ascii
 from utils.sse_prompts import (
     JSON_INSTRUCTIONS,
@@ -288,15 +291,19 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
 - Private environmental / water / geoscience / engineering consultancies
   (including multi-discipline firms whose core line is environmental science,
   water resources, remediation, or environmental engineering) →
-  environment-circular-economy (not community-civic-infrastructure).
+  environment-circular-economy (not community-development-philanthropy-volunteering).
 - Foundations whose core program is education / fellowships → education-knowledge.
 - Arts marketing, audience development, cultural fundraising, ticketing /
   subscription services for arts organizations, or arts-information services →
-  arts-culture-information (not care-health-social-services; not
-  community-civic-infrastructure merely because clients are nonprofits or
-  "community" appears in marketing copy).
-- community-civic-infrastructure is residual/catch-all — prefer a more specific
-  sector whenever one applies."""
+  arts-culture-media (not social-health-care-services; not
+  community-development-philanthropy-volunteering merely because clients are
+  nonprofits or "community" appears in marketing copy).
+- WISEs / entreprises d'insertion / adapted enterprises →
+  employment-workforce-integration (not business-professional-services).
+- Tourist lodging / ecotourism → recreation-tourism-hospitality;
+  emergency shelters / HLMs → housing-collective-real-estate.
+- other-nec is residual/catch-all — prefer a more specific sector whenever one applies.
+- Never use facet IDs (role/function, population/cause, employer type) as sector_id."""
 
 _SOURCE_DESCRIPTION_RULES = """SOURCE DESCRIPTION vs INTERPRETIVE FIELDS (mandatory):
 - ENTITY IDENTITY ANCHOR: The organization name, Known website, and SOURCE DESCRIPTION define WHICH specific entity is being evaluated. If supporting search results describe a DIFFERENT organization that merely shares the same acronym or name (e.g., matching a doctors' union when the source describes a women's enterprise network), DO NOT hijack the organization. Reject mismatched search results and assess the actual named entity.
@@ -1182,8 +1189,8 @@ def _apply_community_arts_place_name_guard(
             "false government exclusion (all org must-haves met)"
         )
     sector = result.get("sector_id")
-    if sector in (None, "community-civic-infrastructure"):
-        sector = "arts-culture-information"
+    if sector in (None, "community-development-philanthropy-volunteering", "community-civic-infrastructure"):
+        sector = "arts-culture-media"
 
     previous_subtype = result.get("governance_subtype")
     # Leave subtype unset: GOV_4_1_MEMBER_NPO requires voting-member evidence
@@ -1508,7 +1515,7 @@ def _parse_response(response_text: str, raw_name: str) -> AssessedOrgResult | No
         description_fr=description_fr,
         mission_statement_en=mission_en,
         mission_statement_fr=mission_fr,
-        sector_id=data.get("sector_id") if data.get("sector_id") in get_sector_ids_set() else None,
+        sector_id=canonicalize_sector_id(data.get("sector_id")),
         values_raw=_parse_text_field(data, "values_raw"),
         values=_normalize_values(data.get("values", []), get_work_values_set()),
         sse_rating=_validate_sse_rating(data.get("sse_rating")),

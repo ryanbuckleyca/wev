@@ -1,5 +1,5 @@
 import { generateSlug } from '@/lib/slug';
-import { isValidSector } from '@/lib/sectors';
+import { canonicalizeSectorId, isValidSector } from '@/lib/sectors';
 import { VALUES_LIST } from '@/lib/values';
 import {
   MAX_ORG_DESCRIPTION_LENGTH,
@@ -241,7 +241,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     // Admin creates/edits don't carry model confidence/reasoning.
     governance_confidence: null,
     governance_reasoning: null,
-    sector_id: isValidSector(data.sector_id) ? (data.sector_id as string) : null,
+    sector_id: canonicalizeSectorId(data.sector_id),
     is_sse: isSse,
     language: normalizeOrgLanguage(data.language),
     ...applyValuesFields(valuesList),
@@ -317,7 +317,7 @@ export function buildOrgUpdateFields(
   }
 
   if (data.sector_id !== undefined)
-    updates.sector_id = isValidSector(data.sector_id) ? (data.sector_id as string) : null;
+    updates.sector_id = canonicalizeSectorId(data.sector_id);
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));
