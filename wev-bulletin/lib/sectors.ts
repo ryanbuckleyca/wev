@@ -19,9 +19,12 @@ const LEGACY_ID_MAP: Record<string, string> = {
   ...(sharedSectors.legacy_id_map ?? {}),
 };
 
+/** Ambiguous v1 residual — migration clears to NULL for LLM reassessment. */
+const AMBIGUOUS_LEGACY_SECTOR_IDS = new Set(['community-civic-infrastructure']);
+
 /** Canonical v2.5 id → retired v1 ids that still may be stored pre-remap. */
 const LEGACY_IDS_BY_CANONICAL: Record<string, string[]> = (() => {
-  const reverse: Record<string, string[]> = {};
+  const reverse = Object.create(null) as Record<string, string[]>;
   for (const [legacy, canonical] of Object.entries(LEGACY_ID_MAP)) {
     if (!legacy || !canonical || legacy === canonical) continue;
     (reverse[canonical] ??= []).push(legacy);
@@ -38,6 +41,19 @@ export function canonicalizeSectorId(id: string | null | undefined): string | nu
 }
 
 /**
+ * Sector id safe to persist on create/update. Ambiguous legacy
+ * `community-civic-infrastructure` stays unclassified (null) so ordinary saves
+ * do not undo the migration’s NULL-only reassessment eligibility.
+ */
+export function persistableSectorId(id: string | null | undefined): string | null {
+  if (!id) return null;
+  const trimmed = id.trim();
+  if (!trimmed) return null;
+  if (AMBIGUOUS_LEGACY_SECTOR_IDS.has(trimmed)) return null;
+  return canonicalizeSectorId(trimmed);
+}
+
+/**
  * Expand canonical sector filter IDs with matching legacy DB values so
  * get_active_organizations stays consistent with buildSectorIndexCards during
  * the remap-migration rollout window.
@@ -49,7 +65,10 @@ export function expandSectorFilterIds(sectorIds: string[]): string[] {
     if (!trimmed) continue;
     const canonical = canonicalizeSectorId(trimmed) ?? trimmed;
     out.add(canonical);
-    for (const legacy of LEGACY_IDS_BY_CANONICAL[canonical] ?? []) {
+    const legacies = Object.prototype.hasOwnProperty.call(LEGACY_IDS_BY_CANONICAL, canonical)
+      ? LEGACY_IDS_BY_CANONICAL[canonical]
+      : undefined;
+    for (const legacy of legacies ?? []) {
       out.add(legacy);
     }
     // Keep the raw value too when it was already a legacy id.
@@ -75,17 +94,57 @@ export function normalizeCrosswalkTerm(term: string | null | undefined): string 
     .normalize('NFKD')
     .replace(/\p{M}/gu, '')
     .replace(/&/g, ' and ')
+    .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+/** Board prefixes used in MASTER term_crosswalk cells (longest first). */
+const SOURCE_WRAPPERS: Array<{ token: string; sourceKey: string }> = (() => {
+  const rows: Array<{ token: string; sourceKey: string }> = [];
+  const seen = new Set<string>();
+  const add = (token: string, sourceKey: string) => {
+    const trimmed = token.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({ token: trimmed, sourceKey });
+  };
+  for (const [sourceKey, meta] of Object.entries(sharedSectors.crosswalk_sources ?? {})) {
+    add(sourceKey, sourceKey);
+    const label = typeof meta?.label === 'string' ? meta.label : '';
+    if (!label) continue;
+    const short = label.split('/')[0]?.trim() ?? '';
+    add(short, sourceKey);
+    add(short.replace(/\s+/g, ''), sourceKey);
+  }
+  rows.sort((a, b) => b.token.length - a.token.length);
+  return rows;
+})();
+
+/**
+ * Split a recognized board wrapper from a MASTER cell.
+ * Preserves colons inside facet labels (e.g. "Not a sector: role / function").
+ */
+function splitSourceWrapper(raw: string): { sourceKey: string | null; text: string } {
+  let text = raw.trim().replace(/\s+(jobs|tags)$/i, '').trim();
+  for (const { token, sourceKey } of SOURCE_WRAPPERS) {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const withColon = new RegExp(`^${escaped}\\s*:\\s*(.+)$`, 'i');
+    const withSpace = new RegExp(`^${escaped}\\s+(.+)$`, 'i');
+    const colonMatch = text.match(withColon);
+    if (colonMatch?.[1]) return { sourceKey, text: colonMatch[1].trim() };
+    const spaceMatch = text.match(withSpace);
+    if (spaceMatch?.[1]) return { sourceKey, text: spaceMatch[1].trim() };
+  }
+  return { sourceKey: null, text };
+}
+
 function stripSourceCell(raw: string): string {
-  return raw
-    .replace(/^[^:]+:\s*/, '')
-    .replace(/\s+(jobs|tags)$/i, '')
-    .trim();
+  return splitSourceWrapper(raw).text;
 }
 
 export function parseCrosswalkCell(raw: string | null | undefined): string[] {
@@ -178,12 +237,24 @@ function getCrosswalkIndex(): Map<string, CrosswalkAlias[]> {
   return index;
 }
 
-function candidateKeys(term: string | null | undefined): string[] {
+function candidateKeys(
+  term: string | null | undefined,
+  source?: CrosswalkSourceId | null,
+): string[] {
   if (!term?.trim()) return [];
   const raw = term.trim();
   const variants = [raw];
-  const stripped = stripSourceCell(raw);
-  if (stripped && stripped !== raw) variants.push(stripped);
+  const { sourceKey: wrapperKey, text: stripped } = splitSourceWrapper(raw);
+  const sourceNorm = source?.trim().toLowerCase() || null;
+  // Only add the unprefixed label when the wrapper matches the lookup source
+  // (or no source was given) so CQCM cells do not collapse into CMC aliases.
+  if (
+    stripped &&
+    stripped !== raw &&
+    (sourceNorm === null || wrapperKey === null || wrapperKey === sourceNorm)
+  ) {
+    variants.push(stripped);
+  }
   const keys: string[] = [];
   const seen = new Set<string>();
   for (const variant of variants) {
@@ -201,7 +272,8 @@ export function resolveCrosswalkMatches(
   source?: CrosswalkSourceId | null,
   includeFacets = true,
 ): CrosswalkMatch[] {
-  const keys = candidateKeys(term);
+  const sourceNorm = source?.trim().toLowerCase() || null;
+  const keys = candidateKeys(term, sourceNorm);
   if (!keys.length) return [];
 
   const index = getCrosswalkIndex();
@@ -215,8 +287,8 @@ export function resolveCrosswalkMatches(
       aliases.push(alias);
     }
   }
-  if (source) {
-    aliases = aliases.filter((a) => a.source === null || a.source === source);
+  if (sourceNorm) {
+    aliases = aliases.filter((a) => a.source === null || a.source === sourceNorm);
   }
   if (!includeFacets) aliases = aliases.filter((a) => a.kind === 'sector');
 

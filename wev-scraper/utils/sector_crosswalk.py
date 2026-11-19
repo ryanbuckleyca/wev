@@ -57,6 +57,8 @@ def normalize_crosswalk_term(term: str | None) -> str:
     text = unicodedata.normalize("NFKD", str(term))
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.replace("&", " and ")
+    # Treat underscores as separators so Non_Profit ≡ Non-Profit ≡ Non Profit.
+    text = text.replace("_", " ")
     text = text.lower()
     text = re.sub(r"[^\w\s]+", " ", text, flags=re.UNICODE)
     text = re.sub(r"\s+", " ", text).strip()
@@ -81,9 +83,56 @@ def _global_aliases_for_entry(entry: Sector) -> list[str]:
     return out
 
 
+@lru_cache(maxsize=1)
+def _source_wrapper_tokens() -> tuple[tuple[str, str], ...]:
+    """(token, source_key) pairs for recognized MASTER board wrappers."""
+    from utils.sector_prompts import get_sector_taxonomy_document
+
+    doc = get_sector_taxonomy_document()
+    sources = doc.get("crosswalk_sources") or {}
+    rows: list[tuple[str, str]] = []
+    seen: set[str] = set()
+
+    def add(token: str, source_key: str) -> None:
+        cleaned = str(token).strip()
+        if not cleaned:
+            return
+        key = cleaned.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        rows.append((cleaned, source_key))
+
+    for source_key, meta in sources.items():
+        add(str(source_key), str(source_key))
+        label = ""
+        if isinstance(meta, dict):
+            label = str(meta.get("label") or "")
+        if not label:
+            continue
+        short = label.split("/")[0].strip()
+        add(short, str(source_key))
+        add(re.sub(r"\s+", "", short), str(source_key))
+    rows.sort(key=lambda pair: len(pair[0]), reverse=True)
+    return tuple(rows)
+
+
+def _split_source_wrapper(raw: str) -> tuple[str | None, str]:
+    """Split a recognized board wrapper; preserve colons inside facet labels."""
+    text = re.sub(r"\s+(jobs|tags)$", "", str(raw).strip(), flags=re.I).strip()
+    for token, source_key in _source_wrapper_tokens():
+        escaped = re.escape(token)
+        match = re.match(rf"^{escaped}\s*:\s*(.+)$", text, flags=re.I)
+        if match:
+            return source_key, match.group(1).strip()
+        match = re.match(rf"^{escaped}\s+(.+)$", text, flags=re.I)
+        if match:
+            return source_key, match.group(1).strip()
+    return None, text
+
+
 def _strip_source_cell(raw: str) -> str:
-    text = re.sub(r"^[^:]+:\s*", "", str(raw)).strip()
-    return re.sub(r"\s+(jobs|tags)$", "", text, flags=re.I).strip()
+    return _split_source_wrapper(raw)[1]
 
 
 @lru_cache(maxsize=1)
@@ -129,15 +178,21 @@ def get_crosswalk_index() -> dict[str, tuple[CrosswalkAlias, ...]]:
     return {key: tuple(vals) for key, vals in index.items()}
 
 
-def _candidate_keys(term: str | None) -> list[str]:
+def _candidate_keys(term: str | None, source: str | None = None) -> list[str]:
     """Normalize raw + stripped board-prefixed variants for lookup."""
     if not term:
         return []
     raw = str(term).strip()
     variants = [raw]
-    stripped = re.sub(r"^[^:]+:\s*", "", raw).strip()
-    stripped = re.sub(r"\s+(jobs|tags)$", "", stripped, flags=re.I).strip()
-    if stripped and stripped not in variants:
+    wrapper_key, stripped = _split_source_wrapper(raw)
+    source_norm = source.strip().lower() if source else None
+    # Only expose the unprefixed label when the wrapper matches the lookup
+    # source (or no source filter) so CQCM cells do not collapse into CMC hits.
+    if (
+        stripped
+        and stripped not in variants
+        and (source_norm is None or wrapper_key is None or wrapper_key == source_norm)
+    ):
         variants.append(stripped)
     keys: list[str] = []
     seen: set[str] = set()
@@ -156,7 +211,8 @@ def resolve_crosswalk_matches(
     include_facets: bool = True,
 ) -> list[CrosswalkMatch]:
     """Resolve a source category string to zero or more taxonomy matches."""
-    keys = _candidate_keys(term)
+    source_key = source.strip().lower() if source else None
+    keys = _candidate_keys(term, source_key)
     if not keys:
         return []
 
@@ -170,8 +226,7 @@ def resolve_crosswalk_matches(
                 continue
             seen_alias_ids.add(ident)
             aliases.append(alias)
-    if source:
-        source_key = source.strip().lower()
+    if source_key:
         aliases = [
             a for a in aliases if a.source is None or a.source == source_key
         ]

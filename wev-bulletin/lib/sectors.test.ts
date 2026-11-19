@@ -6,6 +6,7 @@ import {
   getSectorEntry,
   isValidSector,
   normalizeCrosswalkTerm,
+  persistableSectorId,
   resolveCrosswalkMatches,
   resolveSectorFromCrosswalk,
   SECTORS_LIST,
@@ -42,6 +43,18 @@ describe('sector taxonomy v2.5', () => {
     );
   });
 
+  it('treats constructor as an unknown expand value without throwing', () => {
+    expect(() => expandSectorFilterIds(['constructor'])).not.toThrow();
+    expect(expandSectorFilterIds(['constructor'])).toEqual(['constructor']);
+  });
+
+  it('keeps ambiguous community-civic unclassified on persist', () => {
+    expect(canonicalizeSectorId('community-civic-infrastructure')).toBe(
+      'community-development-philanthropy-volunteering',
+    );
+    expect(persistableSectorId('community-civic-infrastructure')).toBeNull();
+  });
+
   it('resolves documented facet example values', () => {
     expect(resolveCrosswalkMatches('Accounting').map((m) => m.entryId)).toContain(
       'facet-role-function',
@@ -52,6 +65,8 @@ describe('sector taxonomy v2.5', () => {
     expect(resolveCrosswalkMatches('Non-Profit').map((m) => m.entryId)).toContain(
       'facet-employer-type',
     );
+    expect(normalizeCrosswalkTerm('Non_Profit')).toBe(normalizeCrosswalkTerm('Non-Profit'));
+    expect(normalizeCrosswalkTerm('Non Profit')).toBe(normalizeCrosswalkTerm('Non-Profit'));
   });
 });
 
@@ -78,6 +93,15 @@ describe('crosswalk resolution', () => {
     expect(
       resolveSectorFromCrosswalk('CMC Housing & Collective Real Estate', 'goodwork'),
     ).toBeNull();
+    // CQCM facet cells must not collapse into CMC aliases via colon stripping.
+    expect(
+      resolveCrosswalkMatches('CQCM Not a sector: role / function', 'cmc').map((m) => m.source),
+    ).not.toContain('cmc');
+    expect(
+      resolveCrosswalkMatches('Not a sector: role / function').some(
+        (m) => m.entryId === 'facet-role-function',
+      ),
+    ).toBe(true);
     expect(resolveSectorFromCrosswalk('Housing & Collective Real Estate', 'goodwork')).toBe(
       'housing-collective-real-estate',
     );

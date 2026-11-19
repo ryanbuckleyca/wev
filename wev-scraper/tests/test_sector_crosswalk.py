@@ -6,6 +6,7 @@ from utils.sector_crosswalk import (
     build_source_categories_payload,
     merge_source_categories_into_extra,
     normalize_crosswalk_term,
+    resolve_crosswalk_matches,
     resolve_sector_from_crosswalk,
 )
 from utils.sector_prompts import (
@@ -121,6 +122,24 @@ def test_normalize_is_accent_insensitive():
     assert normalize_crosswalk_term("Éducation, petite enfance et savoirs") == (
         normalize_crosswalk_term("Education, petite enfance et savoirs")
     )
+
+
+def test_normalize_treats_underscores_like_hyphens_for_non_profit():
+    assert normalize_crosswalk_term("Non_Profit") == normalize_crosswalk_term("Non-Profit")
+    assert normalize_crosswalk_term("Non Profit") == normalize_crosswalk_term("Non-Profit")
+    assert any(
+        m.entry_id == "facet-employer-type"
+        for m in resolve_crosswalk_matches("Non_Profit")
+    )
+
+
+def test_cqcm_facet_cell_does_not_match_cmc_lookup():
+    matches = resolve_crosswalk_matches(
+        "CQCM Not a sector: role / function", source="cmc"
+    )
+    assert not any(m.source == "cmc" for m in matches)
+    bare = resolve_crosswalk_matches("Not a sector: role / function")
+    assert any(m.entry_id == "facet-role-function" for m in bare)
 
 
 def test_build_source_categories_payload_partitions():

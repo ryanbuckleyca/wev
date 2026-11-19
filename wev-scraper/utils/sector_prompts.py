@@ -212,28 +212,78 @@ You output only valid JSON. Do not include any text, explanation, or markdown be
 """
 
 
-def _source_categories_text(org: dict) -> str | None:
-    """Expose saved category evidence as prompt text (string / list / payload)."""
-    source_cat = org.get("source_category")
-    if source_cat is None:
-        source_cat = org.get("source_categories")
-    if source_cat is None:
-        extra = org.get("extra")
-        if isinstance(extra, dict):
-            source_cat = extra.get("source_categories")
-    if source_cat is None:
+def _nonblank_text(value: Any) -> str | None:
+    if value is None:
         return None
-    if isinstance(source_cat, dict):
-        raw = source_cat.get("raw")
-        if isinstance(raw, list):
-            text = ", ".join(str(item).strip() for item in raw if str(item).strip())
-            return text or None
-        return None
-    if isinstance(source_cat, (list, tuple)):
-        text = ", ".join(str(item).strip() for item in source_cat if str(item).strip())
+    if isinstance(value, str):
+        text = value.strip()
         return text or None
-    text = str(source_cat).strip()
-    return text or None
+    if isinstance(value, (list, tuple)):
+        text = ", ".join(str(item).strip() for item in value if str(item).strip())
+        return text or None
+    return None
+
+
+def _source_categories_candidates(org: dict) -> list[Any]:
+    """Prefer source_category, then org.source_categories, then extra payload."""
+    extra = org.get("extra")
+    extra_payload = (
+        extra.get("source_categories") if isinstance(extra, dict) else None
+    )
+    return [
+        org.get("source_category"),
+        org.get("source_categories"),
+        extra_payload,
+    ]
+
+
+def _source_category_prompt_lines(org: dict) -> list[str]:
+    """Preference hint from verified matches; unresolved raw labels as context only."""
+    for candidate in _source_categories_candidates(org):
+        if isinstance(candidate, dict):
+            verified: list[str] = []
+            for key in ("resolved_sector_ids", "facet_ids"):
+                values = candidate.get(key)
+                if isinstance(values, list):
+                    verified.extend(str(v).strip() for v in values if str(v).strip())
+            raw_values = candidate.get("raw")
+            unresolved = candidate.get("unresolved_terms")
+            context_parts: list[str] = []
+            if isinstance(unresolved, list):
+                context_parts.extend(
+                    str(item).strip() for item in unresolved if str(item).strip()
+                )
+            elif isinstance(raw_values, list) and not verified:
+                # Unstructured raw list with no verified ids — context only.
+                context_parts.extend(
+                    str(item).strip() for item in raw_values if str(item).strip()
+                )
+            elif isinstance(raw_values, list):
+                verified_set = {v.lower() for v in verified}
+                context_parts.extend(
+                    str(item).strip()
+                    for item in raw_values
+                    if str(item).strip() and str(item).strip().lower() not in verified_set
+                )
+
+            lines: list[str] = []
+            if verified:
+                lines.append(
+                    "Source category preference (verified): " + ", ".join(verified)
+                )
+            if context_parts:
+                lines.append(
+                    "Source category context (unresolved): " + ", ".join(context_parts)
+                )
+            if lines:
+                return lines
+            continue
+
+        text = _nonblank_text(candidate)
+        if text:
+            # Plain string/list evidence — treat as context, not a verified preference.
+            return [f"Source category context: {text}"]
+    return []
 
 
 def format_org_chunks(orgs: list[dict], max_desc_chars: int = 1500) -> str:
@@ -249,8 +299,7 @@ def format_org_chunks(orgs: list[dict], max_desc_chars: int = 1500) -> str:
             f"Mission: {mission}",
             f"Description:\n{desc}",
         ]
-        source_cat = _source_categories_text(org)
-        if source_cat:
-            parts.insert(-1, f"Source category: {source_cat}")
+        for line in _source_category_prompt_lines(org):
+            parts.insert(-1, line)
         chunks.append("\n".join(parts))
     return "\n\n".join(chunks)

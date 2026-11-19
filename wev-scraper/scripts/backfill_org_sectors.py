@@ -150,17 +150,24 @@ def main():
     # residual rows stay identifiable after sector_id was cleared.
     cohort_ids: list[int] = []
     try:
-        cohort_resp = (
-            supabase.table("sector_remap_v25_community_civic")
-            .select("organization_id")
-            .order("organization_id")
-            .execute()
-        )
-        cohort_ids = [
-            int(row["organization_id"])
-            for row in (cohort_resp.data or [])
-            if row.get("organization_id") is not None
-        ]
+        page_size = 1000
+        offset = 0
+        while True:
+            cohort_resp = (
+                supabase.table("sector_remap_v25_community_civic")
+                .select("organization_id")
+                .order("organization_id")
+                .range(offset, offset + page_size - 1)
+                .execute()
+            )
+            rows = cohort_resp.data or []
+            for row in rows:
+                oid = row.get("organization_id")
+                if oid is not None:
+                    cohort_ids.append(int(oid))
+            if len(rows) < page_size:
+                break
+            offset += page_size
         if cohort_ids:
             logger.info(
                 "Loaded %d orgs from sector_remap_v25_community_civic for reassessment",

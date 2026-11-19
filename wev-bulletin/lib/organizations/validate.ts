@@ -1,5 +1,5 @@
 import { generateSlug } from '@/lib/slug';
-import { canonicalizeSectorId, isValidSector } from '@/lib/sectors';
+import { isValidSector, persistableSectorId } from '@/lib/sectors';
 import { VALUES_LIST } from '@/lib/values';
 import {
   MAX_ORG_DESCRIPTION_LENGTH,
@@ -122,8 +122,13 @@ export function validateOrgInput(
     return { field: 'governance_subtype', error: 'invalid_governance' };
   }
 
-  if (data.sector_id?.trim() && !isValidSector(data.sector_id)) {
-    return { field: 'sector_id', error: 'invalid_sector' };
+  if (data.sector_id?.trim()) {
+    const trimmed = data.sector_id.trim();
+    // Ambiguous legacy residual is allowed through validation so builders can
+    // persist null (NULL-only reassessment eligibility); other unknowns error.
+    if (trimmed !== 'community-civic-infrastructure' && !isValidSector(trimmed)) {
+      return { field: 'sector_id', error: 'invalid_sector' };
+    }
   }
 
   if (data.language?.trim() && !VALID_ORG_LANGUAGES.has(data.language.trim())) {
@@ -241,7 +246,7 @@ export function buildOrgPayload(data: OrgFormInput): NormalizedOrgPayload {
     // Admin creates/edits don't carry model confidence/reasoning.
     governance_confidence: null,
     governance_reasoning: null,
-    sector_id: canonicalizeSectorId(data.sector_id),
+    sector_id: persistableSectorId(data.sector_id),
     is_sse: isSse,
     language: normalizeOrgLanguage(data.language),
     ...applyValuesFields(valuesList),
@@ -316,7 +321,7 @@ export function buildOrgUpdateFields(
     Object.assign(updates, applyLocationFields(data));
   }
 
-  if (data.sector_id !== undefined) updates.sector_id = canonicalizeSectorId(data.sector_id);
+  if (data.sector_id !== undefined) updates.sector_id = persistableSectorId(data.sector_id);
   if (data.values_list !== undefined) {
     const valuesList = normalizeOrgValuesList(data.values_list);
     Object.assign(updates, applyValuesFields(valuesList));

@@ -182,6 +182,42 @@ def validate_category_ids(seen_codes: list[str]) -> None:
         )
 
 
+def validate_source_keys(sources: list[dict[str, Any]]) -> None:
+    """Reject empty or duplicate source_key values before importing category rows."""
+    seen: dict[str, int] = {}
+    for src in sources:
+        key = str(src.get("key") or "").strip()
+        col = int(src["column"])
+        if not key:
+            raise SystemExit(
+                f"source_key validation failed — empty key at column {col}; "
+                "refusing to write sectors.json"
+            )
+        if key in seen:
+            raise SystemExit(
+                f"source_key validation failed — duplicate key {key!r} at columns "
+                f"{seen[key]} and {col}; refusing to write sectors.json"
+            )
+        seen[key] = col
+        src["key"] = key
+
+
+def write_sectors_json(payload: dict[str, Any]) -> None:
+    """Atomically replace sectors.json after a successful temp write."""
+    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = OUT_JSON.with_name(f".{OUT_JSON.name}.tmp")
+    try:
+        tmp_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        tmp_path.replace(OUT_JSON)
+    except Exception:
+        if tmp_path.exists():
+            tmp_path.unlink()
+        raise
+
+
 def main() -> int:
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     workbook = load_workbook(xlsx, data_only=True)
@@ -208,6 +244,8 @@ def main() -> int:
                 "column": col,
             }
         )
+
+    validate_source_keys(sources)
 
     seen_category_codes: list[str] = []
     sectors: list[dict[str, Any]] = []
@@ -352,7 +390,7 @@ def main() -> int:
         "sectors": sectors,
         "facets": facets,
     }
-    OUT_JSON.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_sectors_json(out)
     print(f"Wrote {OUT_JSON} ({len(sectors)} sectors, {len(facets)} facets)")
     return 0
 
