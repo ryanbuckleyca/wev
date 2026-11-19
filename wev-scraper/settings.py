@@ -19,14 +19,15 @@ _ENV_LOADED = False
 
 
 def ensure_env_loaded() -> None:
-    """Load the base .env exactly once per process via dotenv discovery.
+    """Load base .env file(s) exactly once per process via dotenv discovery.
 
     Subsequent calls are no-ops. Use load_env_file() to explicitly load
     an override file (e.g. .env.staging) on top of the base env.
 
-    When find_dotenv finds nothing from cwd, also try wev-scraper/.env,
-    the repo root, and the repo's parent directory (common when secrets
-    live beside the monorepo checkout).
+    When both the discovered/root .env and wev-scraper/.env exist (common for
+    root-launched scrapes), load both. Duplicate keys keep established
+    precedence: earlier loads win (``load_dotenv`` default ``override=False``),
+    so package-only keys in wev-scraper/.env still fill in after a root .env.
     """
     global _ENV_LOADED
     if _ENV_LOADED:
@@ -36,17 +37,29 @@ def ensure_env_loaded() -> None:
     except TypeError:
         # Tests may stub find_dotenv without kwargs.
         discovered = find_dotenv()
-    if discovered:
-        load_dotenv(discovered)
-    else:
-        for path in (
-            SCRAPER_ROOT / ".env",
-            SCRAPER_ROOT.parent / ".env",
-            SCRAPER_ROOT.parent.parent / ".env",
-        ):
-            if path.is_file():
-                load_dotenv(path)
-                break
+
+    candidates: list[Path] = []
+    seen: set[Path] = set()
+
+    def _add(path: Path | str | None) -> None:
+        if not path:
+            return
+        resolved = Path(path).expanduser().resolve()
+        if resolved in seen or not resolved.is_file():
+            return
+        seen.add(resolved)
+        candidates.append(resolved)
+
+    _add(discovered)
+    # Always consider package + monorepo root so a root .env does not block
+    # scraper-only keys, and a scraper cwd still picks up shared root secrets.
+    _add(SCRAPER_ROOT / ".env")
+    _add(SCRAPER_ROOT.parent / ".env")
+    if not candidates:
+        _add(SCRAPER_ROOT.parent.parent / ".env")
+
+    for path in candidates:
+        load_dotenv(path)
     _ENV_LOADED = True
 
 

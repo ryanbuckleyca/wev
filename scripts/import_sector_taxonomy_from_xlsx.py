@@ -143,6 +143,45 @@ def parse_scope(scope: str) -> tuple[list[str], list[str], str | None]:
     return inclusions, exclusions, usage
 
 
+def parse_definition_examples(definition: str) -> list[str]:
+    """Pull documented e.g. facet values (Accounting, Youth, Non-Profit, …)."""
+    match = re.search(r"\be\.g\.,?\s*(.+?)\)", definition, re.I | re.S)
+    if not match:
+        return []
+    return [
+        part.strip(" .")
+        for part in re.split(r",|;", match.group(1))
+        if part.strip(" .") and len(part.strip(" .")) < 80
+    ]
+
+
+def validate_category_ids(seen_codes: list[str]) -> None:
+    """Require every MASTER CATEGORY_IDS code exactly once before writing JSON."""
+    counts: dict[str, int] = {}
+    for code in seen_codes:
+        counts[code] = counts.get(code, 0) + 1
+
+    expected = set(CATEGORY_IDS)
+    observed = set(counts)
+    missing = sorted(expected - observed)
+    unexpected = sorted(observed - expected)
+    duplicates = sorted(code for code, n in counts.items() if n > 1)
+
+    problems: list[str] = []
+    if missing:
+        problems.append(f"missing: {', '.join(missing)}")
+    if unexpected:
+        problems.append(f"unexpected: {', '.join(unexpected)}")
+    if duplicates:
+        problems.append(f"duplicate: {', '.join(duplicates)}")
+    if problems:
+        raise SystemExit(
+            "CATEGORY_IDS validation failed — refusing to write sectors.json ("
+            + "; ".join(problems)
+            + ")"
+        )
+
+
 def main() -> int:
     xlsx = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_XLSX
     workbook = load_workbook(xlsx, data_only=True)
@@ -170,16 +209,23 @@ def main() -> int:
             }
         )
 
+    seen_category_codes: list[str] = []
     sectors: list[dict[str, Any]] = []
     facets: list[dict[str, Any]] = []
     for row in range(5, 25):
         cat_id = cell_str(worksheet, row, 1)
+        if not cat_id:
+            continue
+        seen_category_codes.append(cat_id)
         label_en = cell_str(worksheet, row, 2)
         label_fr = cell_str(worksheet, row, 3)
         definition = cell_str(worksheet, row, 4)
         scope = cell_str(worksheet, row, 5)
         inclusions, exclusions, usage = parse_scope(scope)
         kind = "facet" if cat_id.startswith("SSE_FAC_") else "sector"
+        if cat_id not in CATEGORY_IDS:
+            # Collected for validate_category_ids; skip building an entry.
+            continue
         entry_id = CATEGORY_IDS[cat_id]
         term_crosswalk: dict[str, str] = {}
         for src in sources:
@@ -189,12 +235,22 @@ def main() -> int:
             term_crosswalk[str(src["key"])] = raw
         # Preferred labels only as global aliases. Source-board terms stay in
         # term_crosswalk so reverse-lookup keeps source ownership (e.g. CMC).
-        all_aliases = {label_en, label_fr}
+        # Facet definitions document searchable example values (Accounting,
+        # Youth, Non-Profit); keep those as global aliases beside umbrella labels.
+        example_terms = parse_definition_examples(definition) if kind == "facet" else []
+        all_aliases = {label_en, label_fr, *example_terms}
         signals_en: list[str] = []
         for inclusion in inclusions:
             piece = re.split(r"[/(]", inclusion)[0].strip()
             if piece and len(piece) < 80:
                 signals_en.append(piece)
+        if kind == "facet" and example_terms:
+            signals_en = list(dict.fromkeys([*example_terms, *signals_en]))
+        # MASTER sheet supplies English unified definition/scope only; leave FR
+        # definition/boundary/example empty rather than copying English text.
+        boundary_en = (
+            f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
+        )
         entry: dict[str, Any] = {
             "id": entry_id,
             "category_id": cat_id,
@@ -202,31 +258,30 @@ def main() -> int:
             "label_en": label_en,
             "label_fr": label_fr,
             "definition_en": definition,
-            "definition_fr": definition,
+            "definition_fr": "",
             "scope_note_en": scope,
             "inclusions": inclusions,
             "exclusions": exclusions,
             "signals_en": signals_en[:12],
             "signals_fr": [],
             "example_en": (
-                f"Example: {'; '.join(inclusions[:3])}." if inclusions else ""
+                f"Example: {'; '.join(inclusions[:3])}."
+                if inclusions
+                else (f"Example: {'; '.join(example_terms[:3])}." if example_terms else "")
             ),
-            # Scope inclusions are English in the MASTER sheet; leave FR empty
-            # rather than repeating the sector heading as a faux blurb.
             "example_fr": "",
-            "boundary_note_en": (
-                f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
-            ),
-            "boundary_note_fr": (
-                f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
-            ),
+            "boundary_note_en": boundary_en,
+            "boundary_note_fr": "",
             "skos": {
                 "mapping_predicate": cell_str(worksheet, row, 6) or None,
                 "sssom_match_type": cell_str(worksheet, row, 7) or None,
                 "sssom_confidence": cell_float(worksheet, row, 8),
                 "compound_mapping_rule": cell_str(worksheet, row, 9) or None,
             },
-            "aliases": sorted(all_aliases, key=lambda s: (len(s), s.lower())),
+            "aliases": sorted(
+                (a for a in all_aliases if a),
+                key=lambda s: (len(s), s.lower()),
+            ),
             "term_crosswalk": term_crosswalk,
         }
         if kind == "facet":
@@ -234,6 +289,8 @@ def main() -> int:
             facets.append(entry)
         else:
             sectors.append(entry)
+
+    validate_category_ids(seen_category_codes)
 
     rules_ws = workbook["Logic & Decision Rules"]
     decision_rules: list[dict[str, Any]] = []

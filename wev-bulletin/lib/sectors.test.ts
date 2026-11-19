@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSourceCategoriesPayload,
   canonicalizeSectorId,
+  expandSectorFilterIds,
   getSectorEntry,
   isValidSector,
   normalizeCrosswalkTerm,
+  resolveCrosswalkMatches,
   resolveSectorFromCrosswalk,
   SECTORS_LIST,
   SECTOR_TAXONOMY_VERSION,
@@ -29,6 +31,27 @@ describe('sector taxonomy v2.5', () => {
       'social-health-care-services',
     );
     expect(canonicalizeSectorId('   ')).toBeNull();
+  });
+
+  it('expands canonical filter ids with legacy stored ids for rollout', () => {
+    expect(expandSectorFilterIds(['arts-culture-media']).sort()).toEqual(
+      ['arts-culture-information', 'arts-culture-media'].sort(),
+    );
+    expect(expandSectorFilterIds(['social-health-care-services']).sort()).toEqual(
+      ['care-health-social-services', 'social-health-care-services'].sort(),
+    );
+  });
+
+  it('resolves documented facet example values', () => {
+    expect(resolveCrosswalkMatches('Accounting').map((m) => m.entryId)).toContain(
+      'facet-role-function',
+    );
+    expect(resolveCrosswalkMatches('Youth').map((m) => m.entryId)).toContain(
+      'facet-population-cause-geography',
+    );
+    expect(resolveCrosswalkMatches('Non-Profit').map((m) => m.entryId)).toContain(
+      'facet-employer-type',
+    );
   });
 });
 

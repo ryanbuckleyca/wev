@@ -1190,7 +1190,12 @@ def _apply_community_arts_place_name_guard(
             "false government exclusion (all org must-haves met)"
         )
     sector = result.get("sector_id")
-    if sector in (None, "community-development-philanthropy-volunteering", "community-civic-infrastructure"):
+    if sector in (
+        None,
+        "community-development-philanthropy-volunteering",
+        "community-civic-infrastructure",
+        "other-nec",
+    ):
         sector = "arts-culture-media"
 
     previous_subtype = result.get("governance_subtype")

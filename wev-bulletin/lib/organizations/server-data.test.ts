@@ -238,7 +238,12 @@ describe('organizations/server-data', () => {
       1,
       'get_active_organizations',
       expect.objectContaining({
-        p_sectors: ['arts-culture-media', 'community-development-philanthropy-volunteering'],
+        p_sectors: expect.arrayContaining([
+          'arts-culture-media',
+          'arts-culture-information',
+          'community-development-philanthropy-volunteering',
+          'community-civic-infrastructure',
+        ]),
       }),
     );
     expect(mockRpc).toHaveBeenNthCalledWith(

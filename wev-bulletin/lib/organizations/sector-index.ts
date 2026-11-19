@@ -36,8 +36,15 @@ export function sectorBlurb(sectorId: string, locale: string): string | null {
 /**
  * Aggregate org rows into one card per taxonomy sector (taxonomy order).
  * Mix counts use governance_category (SSE categories only).
- * Legacy v1 sector_ids are remapped via canonicalizeSectorId so cards stay
- * populated if the UI deploys slightly ahead of the remap migration.
+ *
+ * Rollout window: deploy the remap migration
+ * (`20261119120000_remap_org_sector_ids_v25`) with this UI. Cards canonicalize
+ * legacy v1 `sector_id` values so counts stay populated if the UI briefly leads
+ * the migration; list filters expand canonical IDs with matching legacy stored
+ * IDs via `expandSectorFilterIds` so `get_active_organizations` stays consistent
+ * with these card counts during that window. Ambiguous
+ * `community-civic-infrastructure` rows are cleared to NULL for LLM reassessment
+ * rather than force-mapped — they do not inflate the community-development card.
  */
 export function buildSectorIndexCards(rows: OrgSectorRow[]): SectorIndexCard[] {
   const bySector = new Map<

@@ -212,6 +212,30 @@ You output only valid JSON. Do not include any text, explanation, or markdown be
 """
 
 
+def _source_categories_text(org: dict) -> str | None:
+    """Expose saved category evidence as prompt text (string / list / payload)."""
+    source_cat = org.get("source_category")
+    if source_cat is None:
+        source_cat = org.get("source_categories")
+    if source_cat is None:
+        extra = org.get("extra")
+        if isinstance(extra, dict):
+            source_cat = extra.get("source_categories")
+    if source_cat is None:
+        return None
+    if isinstance(source_cat, dict):
+        raw = source_cat.get("raw")
+        if isinstance(raw, list):
+            text = ", ".join(str(item).strip() for item in raw if str(item).strip())
+            return text or None
+        return None
+    if isinstance(source_cat, (list, tuple)):
+        text = ", ".join(str(item).strip() for item in source_cat if str(item).strip())
+        return text or None
+    text = str(source_cat).strip()
+    return text or None
+
+
 def format_org_chunks(orgs: list[dict], max_desc_chars: int = 1500) -> str:
     """Format a list of orgs into numbered text blocks for LLM batch prompts."""
     chunks: list[str] = []
@@ -225,7 +249,7 @@ def format_org_chunks(orgs: list[dict], max_desc_chars: int = 1500) -> str:
             f"Mission: {mission}",
             f"Description:\n{desc}",
         ]
-        source_cat = org.get("source_category") or org.get("source_categories")
+        source_cat = _source_categories_text(org)
         if source_cat:
             parts.insert(-1, f"Source category: {source_cat}")
         chunks.append("\n".join(parts))

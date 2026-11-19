@@ -19,12 +19,43 @@ const LEGACY_ID_MAP: Record<string, string> = {
   ...(sharedSectors.legacy_id_map ?? {}),
 };
 
+/** Canonical v2.5 id → retired v1 ids that still may be stored pre-remap. */
+const LEGACY_IDS_BY_CANONICAL: Record<string, string[]> = (() => {
+  const reverse: Record<string, string[]> = {};
+  for (const [legacy, canonical] of Object.entries(LEGACY_ID_MAP)) {
+    if (!legacy || !canonical || legacy === canonical) continue;
+    (reverse[canonical] ??= []).push(legacy);
+  }
+  return reverse;
+})();
+
 export function canonicalizeSectorId(id: string | null | undefined): string | null {
   if (!id) return null;
   const trimmed = id.trim();
   if (!trimmed) return null;
   const mapped = LEGACY_ID_MAP[trimmed] ?? trimmed;
   return SECTORS_LIST.includes(mapped) ? mapped : null;
+}
+
+/**
+ * Expand canonical sector filter IDs with matching legacy DB values so
+ * get_active_organizations stays consistent with buildSectorIndexCards during
+ * the remap-migration rollout window.
+ */
+export function expandSectorFilterIds(sectorIds: string[]): string[] {
+  const out = new Set<string>();
+  for (const raw of sectorIds) {
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const canonical = canonicalizeSectorId(trimmed) ?? trimmed;
+    out.add(canonical);
+    for (const legacy of LEGACY_IDS_BY_CANONICAL[canonical] ?? []) {
+      out.add(legacy);
+    }
+    // Keep the raw value too when it was already a legacy id.
+    out.add(trimmed);
+  }
+  return [...out];
 }
 
 export function isValidSector(id: string | null | undefined): boolean {

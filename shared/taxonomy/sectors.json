@@ -474,7 +474,7 @@
       "label_en": "Social, Health & Care Services",
       "label_fr": "Services sociaux, de santé et de soins",
       "definition_en": "Provision of physical and mental health care, early childhood and elder care, home support, mutual aid, poverty relief, and newcomer settlement services operated under democratic, non-capitalist, or community-governed models.",
-      "definition_fr": "Provision of physical and mental health care, early childhood and elder care, home support, mutual aid, poverty relief, and newcomer settlement services operated under democratic, non-capitalist, or community-governed models.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Health clinics, home care (EÉSAD), mental health, disability support, eldercare, addiction recovery, newcomer/refugee settlement, drop-in centers. Exclusions: Purely commercial healthcare facilities; early childhood education is mapped here as a secondary facet when integrated with care.",
       "inclusions": [
         "Health clinics",
@@ -504,7 +504,7 @@
       "example_en": "Example: Health clinics; home care (EÉSAD); mental health.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Purely commercial healthcare facilities; early childhood education is mapped here as a secondary facet when integrated with care.",
-      "boundary_note_fr": "Exclusions: Purely commercial healthcare facilities; early childhood education is mapped here as a secondary facet when integrated with care.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -569,7 +569,7 @@
       "label_en": "Education & Knowledge",
       "label_fr": "Éducation, petite enfance et savoirs",
       "definition_en": "Formal educational institutions, early childhood education centers, popular education initiatives, vocational training, skill-sharing collectives, research institutes, and knowledge stewardship organizations.",
-      "definition_fr": "Formal educational institutions, early childhood education centers, popular education initiatives, vocational training, skill-sharing collectives, research institutes, and knowledge stewardship organizations.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Student co-ops, CPEs (Centre de la petite enfance), adult literacy, popular education, social research centers, community workshops. Exclusions: Commercial private tutoring services.",
       "inclusions": [
         "Student co-ops",
@@ -579,7 +579,9 @@
         "social research centers",
         "community workshops"
       ],
-      "exclusions": ["Commercial private tutoring services"],
+      "exclusions": [
+        "Commercial private tutoring services"
+      ],
       "signals_en": [
         "Student co-ops",
         "CPEs",
@@ -592,7 +594,7 @@
       "example_en": "Example: Student co-ops; CPEs (Centre de la petite enfance); adult literacy.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Commercial private tutoring services.",
-      "boundary_note_fr": "Exclusions: Commercial private tutoring services.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -657,7 +659,7 @@
       "label_en": "Employment & Workforce Integration",
       "label_fr": "Emploi et insertion socioprofessionnelle",
       "definition_en": "Work-Integration Social Enterprises (WISEs), adapted work centers, job-readiness training programs, career services, and labor market integration initiatives supporting disadvantaged or marginalized workers.",
-      "definition_fr": "Work-Integration Social Enterprises (WISEs), adapted work centers, job-readiness training programs, career services, and labor market integration initiatives supporting disadvantaged or marginalized workers.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: WISEs, adapted enterprises (entreprises adaptées), employability programs, career transition co-ops. Exclusions: General employment agencies (mapped under Business & Professional Services).",
       "inclusions": [
         "WISEs",
@@ -678,7 +680,7 @@
       "example_en": "Example: WISEs; adapted enterprises (entreprises adaptées); employability programs.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: General employment agencies (mapped under Business & Professional Services).",
-      "boundary_note_fr": "Exclusions: General employment agencies (mapped under Business & Professional Services).",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -743,7 +745,7 @@
       "label_en": "Housing & Collective Real Estate",
       "label_fr": "Logement et immobilier collectif",
       "definition_en": "Non-profit housing co-operatives, social housing providers, community land trusts (CLTs), and collective management of real estate assets to ensure long-term affordability and tenant democracy.",
-      "definition_fr": "Non-profit housing co-operatives, social housing providers, community land trusts (CLTs), and collective management of real estate assets to ensure long-term affordability and tenant democracy.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Housing co-ops, social housing, CLTs, intentional communities, emergency shelters. Exclusions: For-profit real estate development or speculation.",
       "inclusions": [
         "Housing co-ops",
@@ -752,7 +754,9 @@
         "intentional communities",
         "emergency shelters"
       ],
-      "exclusions": ["For-profit real estate development or speculation"],
+      "exclusions": [
+        "For-profit real estate development or speculation"
+      ],
       "signals_en": [
         "Housing co-ops",
         "social housing",
@@ -764,7 +768,7 @@
       "example_en": "Example: Housing co-ops; social housing; CLTs.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: For-profit real estate development or speculation.",
-      "boundary_note_fr": "Exclusions: For-profit real estate development or speculation.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -829,7 +833,7 @@
       "label_en": "Arts, Culture & Media",
       "label_fr": "Arts, culture et médias communautaires",
       "definition_en": "Organizations engaged in creative production, performing arts, cultural preservation, independent journalism, community media, publishing, libraries, and digital commons.",
-      "definition_fr": "Organizations engaged in creative production, performing arts, cultural preservation, independent journalism, community media, publishing, libraries, and digital commons.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Artist co-ops, community radio/TV, independent publishing, theater groups, heritage sites, public libraries, media production collectives. Exclusions: Commercial entertainment conglomerates; general sports/leisure (mapped to Recreation).",
       "inclusions": [
         "Artist co-ops",
@@ -857,7 +861,7 @@
       "example_en": "Example: Artist co-ops; community radio/TV; independent publishing.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Commercial entertainment conglomerates; general sports/leisure (mapped to Recreation).",
-      "boundary_note_fr": "Exclusions: Commercial entertainment conglomerates; general sports/leisure (mapped to Recreation).",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -922,7 +926,7 @@
       "label_en": "Recreation, Tourism & Hospitality",
       "label_fr": "Loisir, tourisme et restauration collective",
       "definition_en": "Community sport and leisure associations, youth camps, ecotourism collectives, non-profit lodging, and solidarity food services (restaurants, cafes, microbreweries, catering).",
-      "definition_fr": "Community sport and leisure associations, youth camps, ecotourism collectives, non-profit lodging, and solidarity food services (restaurants, cafes, microbreweries, catering).",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Community recreation centers, vacation camps, ecotourism co-ops, worker-owned cafes/bistros, solidarity microbreweries. Exclusions: Tourist lodging operated solely for private profit.",
       "inclusions": [
         "Community recreation centers",
@@ -931,7 +935,9 @@
         "worker-owned cafes/bistros",
         "solidarity microbreweries"
       ],
-      "exclusions": ["Tourist lodging operated solely for private profit"],
+      "exclusions": [
+        "Tourist lodging operated solely for private profit"
+      ],
       "signals_en": [
         "Community recreation centers",
         "vacation camps",
@@ -943,7 +949,7 @@
       "example_en": "Example: Community recreation centers; vacation camps; ecotourism co-ops.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Tourist lodging operated solely for private profit.",
-      "boundary_note_fr": "Exclusions: Tourist lodging operated solely for private profit.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1008,7 +1014,7 @@
       "label_en": "Agriculture & Food Systems",
       "label_fr": "Agriculture durable et systèmes alimentaires",
       "definition_en": "Sustainable farming collectives, community-supported agriculture (CSA), sustainable forestry and fisheries co-operatives, food processing, distribution, and community food security organizations.",
-      "definition_fr": "Sustainable farming collectives, community-supported agriculture (CSA), sustainable forestry and fisheries co-operatives, food processing, distribution, and community food security organizations.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Agricultural co-ops, food hubs, community gardens, collective kitchens, food banks, forestry co-ops, sustainable fisheries. Exclusions: Industrial mono-crop agribusiness.",
       "inclusions": [
         "Agricultural co-ops",
@@ -1019,7 +1025,9 @@
         "forestry co-ops",
         "sustainable fisheries"
       ],
-      "exclusions": ["Industrial mono-crop agribusiness"],
+      "exclusions": [
+        "Industrial mono-crop agribusiness"
+      ],
       "signals_en": [
         "Agricultural co-ops",
         "food hubs",
@@ -1033,7 +1041,7 @@
       "example_en": "Example: Agricultural co-ops; food hubs; community gardens.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Industrial mono-crop agribusiness.",
-      "boundary_note_fr": "Exclusions: Industrial mono-crop agribusiness.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1098,7 +1106,7 @@
       "label_en": "Environment & Circular Economy",
       "label_fr": "Environnement, énergie et économie circulaire",
       "definition_en": "Entities dedicated to ecological conservation, climate action, renewable energy generation, water stewardship, waste reduction, recycling, repair co-operatives, and circular economy practices.",
-      "definition_fr": "Entities dedicated to ecological conservation, climate action, renewable energy generation, water stewardship, waste reduction, recycling, repair co-operatives, and circular economy practices.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Renewable energy co-ops, eco-centers, waste diversion/recycling, tool libraries, wildlife conservation, climate advocacy. Exclusions: Fossil fuel extraction or non-renewable utilities.",
       "inclusions": [
         "Renewable energy co-ops",
@@ -1108,7 +1116,9 @@
         "wildlife conservation",
         "climate advocacy"
       ],
-      "exclusions": ["Fossil fuel extraction or non-renewable utilities"],
+      "exclusions": [
+        "Fossil fuel extraction or non-renewable utilities"
+      ],
       "signals_en": [
         "Renewable energy co-ops",
         "eco-centers",
@@ -1121,7 +1131,7 @@
       "example_en": "Example: Renewable energy co-ops; eco-centers; waste diversion/recycling.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Fossil fuel extraction or non-renewable utilities.",
-      "boundary_note_fr": "Exclusions: Fossil fuel extraction or non-renewable utilities.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1186,7 +1196,7 @@
       "label_en": "Financial & Insurance Services",
       "label_fr": "Services financiers et assurance solidaire",
       "definition_en": "Co-operative financial institutions, credit unions, mutual insurance societies, solidarity finance funds, microfinance providers, and non-extractive community investment vehicles.",
-      "definition_fr": "Co-operative financial institutions, credit unions, mutual insurance societies, solidarity finance funds, microfinance providers, and non-extractive community investment vehicles.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Credit unions (caisses populaires), mutual insurance, solidarity investment funds, time banks, community development financial institutions (CDFIs). Exclusions: Commercial investment banking or speculative finance.",
       "inclusions": [
         "Credit unions (caisses populaires)",
@@ -1195,7 +1205,9 @@
         "time banks",
         "community development financial institutions (CDFIs)"
       ],
-      "exclusions": ["Commercial investment banking or speculative finance"],
+      "exclusions": [
+        "Commercial investment banking or speculative finance"
+      ],
       "signals_en": [
         "Credit unions",
         "mutual insurance",
@@ -1207,7 +1219,7 @@
       "example_en": "Example: Credit unions (caisses populaires); mutual insurance; solidarity investment funds.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Commercial investment banking or speculative finance.",
-      "boundary_note_fr": "Exclusions: Commercial investment banking or speculative finance.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1272,7 +1284,7 @@
       "label_en": "Retail & Consumer Goods",
       "label_fr": "Commerce de détail et consommation responsable",
       "definition_en": "Consumer co-operatives, solidarity storefronts, fair trade distributors, thrift stores, and ethical retail outlets distributing consumer goods under democratic governance.",
-      "definition_fr": "Consumer co-operatives, solidarity storefronts, fair trade distributors, thrift stores, and ethical retail outlets distributing consumer goods under democratic governance.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Consumer co-ops, food co-op stores, fair trade shops, thrift stores/friperies, buying clubs. Exclusions: Traditional private retail stores.",
       "inclusions": [
         "Consumer co-ops",
@@ -1281,7 +1293,9 @@
         "thrift stores/friperies",
         "buying clubs"
       ],
-      "exclusions": ["Traditional private retail stores"],
+      "exclusions": [
+        "Traditional private retail stores"
+      ],
       "signals_en": [
         "Consumer co-ops",
         "food co-op stores",
@@ -1293,7 +1307,7 @@
       "example_en": "Example: Consumer co-ops; food co-op stores; fair trade shops.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Traditional private retail stores.",
-      "boundary_note_fr": "Exclusions: Traditional private retail stores.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1358,7 +1372,7 @@
       "label_en": "Production, Construction & Transportation",
       "label_fr": "Production, écoconstruction et transports",
       "definition_en": "Industrial worker co-operatives, green building and ecological construction collectives, sustainable manufacturing, democratic logistics, and active/community transportation services.",
-      "definition_fr": "Industrial worker co-operatives, green building and ecological construction collectives, sustainable manufacturing, democratic logistics, and active/community transportation services.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Worker-owned manufacturing, ecological construction co-ops, bike courier collectives, community transit. Exclusions: Non-democratic heavy industrial production.",
       "inclusions": [
         "Worker-owned manufacturing",
@@ -1366,7 +1380,9 @@
         "bike courier collectives",
         "community transit"
       ],
-      "exclusions": ["Non-democratic heavy industrial production"],
+      "exclusions": [
+        "Non-democratic heavy industrial production"
+      ],
       "signals_en": [
         "Worker-owned manufacturing",
         "ecological construction co-ops",
@@ -1377,7 +1393,7 @@
       "example_en": "Example: Worker-owned manufacturing; ecological construction co-ops; bike courier collectives.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Non-democratic heavy industrial production.",
-      "boundary_note_fr": "Exclusions: Non-democratic heavy industrial production.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1442,7 +1458,7 @@
       "label_en": "Technology & Digital Infrastructure",
       "label_fr": "Technologies, numérique et communs digitaux",
       "definition_en": "Digital commons, open-source software collectives, platform co-operatives, community telecom networks, and ethical tech infrastructure organizations.",
-      "definition_fr": "Digital commons, open-source software collectives, platform co-operatives, community telecom networks, and ethical tech infrastructure organizations.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Platform co-ops, open-source software foundations, community ISP co-ops, ethical web hosting. Exclusions: Proprietary Big Tech platforms.",
       "inclusions": [
         "Platform co-ops",
@@ -1450,7 +1466,9 @@
         "community ISP co-ops",
         "ethical web hosting"
       ],
-      "exclusions": ["Proprietary Big Tech platforms"],
+      "exclusions": [
+        "Proprietary Big Tech platforms"
+      ],
       "signals_en": [
         "Platform co-ops",
         "open-source software foundations",
@@ -1461,7 +1479,7 @@
       "example_en": "Example: Platform co-ops; open-source software foundations; community ISP co-ops.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Proprietary Big Tech platforms.",
-      "boundary_note_fr": "Exclusions: Proprietary Big Tech platforms.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1526,7 +1544,7 @@
       "label_en": "Business & Professional Services",
       "label_fr": "Services aux entreprises et professionnels",
       "definition_en": "Co-operative and social enterprise providers of business-to-business support, management consulting, accounting, legal services, translation, cleaning, and facility management.",
-      "definition_fr": "Co-operative and social enterprise providers of business-to-business support, management consulting, accounting, legal services, translation, cleaning, and facility management.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Co-op consulting firms, shared back-office providers, janitorial co-ops, legal aid collectives. Exclusions: Corporate lobbying or management consultancies.",
       "inclusions": [
         "Co-op consulting firms",
@@ -1534,7 +1552,9 @@
         "janitorial co-ops",
         "legal aid collectives"
       ],
-      "exclusions": ["Corporate lobbying or management consultancies"],
+      "exclusions": [
+        "Corporate lobbying or management consultancies"
+      ],
       "signals_en": [
         "Co-op consulting firms",
         "shared back-office providers",
@@ -1545,7 +1565,7 @@
       "example_en": "Example: Co-op consulting firms; shared back-office providers; janitorial co-ops.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Corporate lobbying or management consultancies.",
-      "boundary_note_fr": "Exclusions: Corporate lobbying or management consultancies.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1610,7 +1630,7 @@
       "label_en": "Advocacy, Rights & Representation",
       "label_fr": "Défense des droits, plaidoyer et concertation",
       "definition_en": "Non-profit organizations and social movements dedicated to social justice, human rights, labor representation, legal defense, policy advocacy, and sectoral concertation tables.",
-      "definition_fr": "Non-profit organizations and social movements dedicated to social justice, human rights, labor representation, legal defense, policy advocacy, and sectoral concertation tables.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Human rights organizations, trade unions, social movement coalitions, legal defense funds, tenant rights associations. Exclusions: Corporate lobbying groups.",
       "inclusions": [
         "Human rights organizations",
@@ -1619,7 +1639,9 @@
         "legal defense funds",
         "tenant rights associations"
       ],
-      "exclusions": ["Corporate lobbying groups"],
+      "exclusions": [
+        "Corporate lobbying groups"
+      ],
       "signals_en": [
         "Human rights organizations",
         "trade unions",
@@ -1631,7 +1653,7 @@
       "example_en": "Example: Human rights organizations; trade unions; social movement coalitions.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Corporate lobbying groups.",
-      "boundary_note_fr": "Exclusions: Corporate lobbying groups.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1696,7 +1718,7 @@
       "label_en": "Community Development, Philanthropy & Volunteering",
       "label_fr": "Développement local, philanthropie et bénévolat",
       "definition_en": "Local community economic development (CED) corporations, neighborhood councils, social economy incubators, philanthropic foundations, and volunteer mobilization centers.",
-      "definition_fr": "Local community economic development (CED) corporations, neighborhood councils, social economy incubators, philanthropic foundations, and volunteer mobilization centers.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Community futures corporations, social economy poles, community foundations, volunteer bureaus, neighborhood centers. Exclusions: Private family wealth trusts.",
       "inclusions": [
         "Community futures corporations",
@@ -1705,7 +1727,9 @@
         "volunteer bureaus",
         "neighborhood centers"
       ],
-      "exclusions": ["Private family wealth trusts"],
+      "exclusions": [
+        "Private family wealth trusts"
+      ],
       "signals_en": [
         "Community futures corporations",
         "social economy poles",
@@ -1717,7 +1741,7 @@
       "example_en": "Example: Community futures corporations; social economy poles; community foundations.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Private family wealth trusts.",
-      "boundary_note_fr": "Exclusions: Private family wealth trusts.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1782,14 +1806,16 @@
       "label_en": "International Cooperation & Development",
       "label_fr": "Coopération internationale et développement",
       "definition_en": "International solidarity organizations, non-governmental humanitarian aid providers, fair trade advocacy, and cross-border community development partnerships.",
-      "definition_fr": "International solidarity organizations, non-governmental humanitarian aid providers, fair trade advocacy, and cross-border community development partnerships.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: International NGO aid, cross-border fair trade networks, global solidarity projects. Exclusions: State diplomatic missions or bilateral military aid.",
       "inclusions": [
         "International NGO aid",
         "cross-border fair trade networks",
         "global solidarity projects"
       ],
-      "exclusions": ["State diplomatic missions or bilateral military aid"],
+      "exclusions": [
+        "State diplomatic missions or bilateral military aid"
+      ],
       "signals_en": [
         "International NGO aid",
         "cross-border fair trade networks",
@@ -1799,7 +1825,7 @@
       "example_en": "Example: International NGO aid; cross-border fair trade networks; global solidarity projects.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: State diplomatic missions or bilateral military aid.",
-      "boundary_note_fr": "Exclusions: State diplomatic missions or bilateral military aid.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:exactMatch",
         "sssom_match_type": "HumanCurated",
@@ -1864,7 +1890,7 @@
       "label_en": "Other / not elsewhere classified",
       "label_fr": "Autre / non classé ailleurs",
       "definition_en": "Residual category covering social economy activities not elsewhere classified, including religious organizations, public safety/first-responder co-ops, funeral co-operatives, and pet care collectives.",
-      "definition_fr": "Residual category covering social economy activities not elsewhere classified, including religious organizations, public safety/first-responder co-ops, funeral co-operatives, and pet care collectives.",
+      "definition_fr": "",
       "scope_note_en": "Inclusions: Funeral co-ops, faith-based social ministries, animal rescue shelters, emergency first-responder co-ops. Exclusions: Entities fitting any of the 16 primary sectors.",
       "inclusions": [
         "Funeral co-ops",
@@ -1872,7 +1898,9 @@
         "animal rescue shelters",
         "emergency first-responder co-ops"
       ],
-      "exclusions": ["Entities fitting any of the 16 primary sectors"],
+      "exclusions": [
+        "Entities fitting any of the 16 primary sectors"
+      ],
       "signals_en": [
         "Funeral co-ops",
         "faith-based social ministries",
@@ -1883,7 +1911,7 @@
       "example_en": "Example: Funeral co-ops; faith-based social ministries; animal rescue shelters.",
       "example_fr": "",
       "boundary_note_en": "Exclusions: Entities fitting any of the 16 primary sectors.",
-      "boundary_note_fr": "Exclusions: Entities fitting any of the 16 primary sectors.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:relatedMatch",
         "sssom_match_type": "HumanCurated",
@@ -1950,16 +1978,21 @@
       "label_en": "Not a sector: role / function",
       "label_fr": "Hors secteur : rôle / fonction",
       "definition_en": "Functional occupational role labels (e.g., Accounting, HR, Executive Director, Communications) describing job duties rather than institutional economic sectors.",
-      "definition_fr": "Functional occupational role labels (e.g., Accounting, HR, Executive Director, Communications) describing job duties rather than institutional economic sectors.",
+      "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to standard occupational classifications (NOC / ISCO-08).",
       "inclusions": [],
       "exclusions": [],
-      "signals_en": [],
+      "signals_en": [
+        "Accounting",
+        "HR",
+        "Executive Director",
+        "Communications"
+      ],
       "signals_fr": [],
-      "example_en": "",
+      "example_en": "Example: Accounting; HR; Executive Director.",
       "example_fr": "",
       "boundary_note_en": "Decoupled from industry taxonomy; mapped to standard occupational classifications (NOC / ISCO-08).",
-      "boundary_note_fr": "Decoupled from industry taxonomy; mapped to standard occupational classifications (NOC / ISCO-08).",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:relatedMatch",
         "sssom_match_type": "HumanCurated",
@@ -1967,6 +2000,10 @@
         "compound_mapping_rule": "Decoupled Occupational Role Facet -> NOC 2021 / ISCO-08"
       },
       "aliases": [
+        "HR",
+        "Accounting",
+        "Communications",
+        "Executive Director",
         "Not a sector: role / function",
         "Hors secteur : rôle / fonction"
       ],
@@ -2025,16 +2062,22 @@
       "label_en": "Not a sector: population, cause or geography",
       "label_fr": "Hors secteur : population cible / cause / géographie",
       "definition_en": "Demographic, geographic, or cause-based focus tags (e.g., Youth, Women, Indigenous, Rural, Climate Action) identifying target populations or mission objectives.",
-      "definition_fr": "Demographic, geographic, or cause-based focus tags (e.g., Youth, Women, Indigenous, Rural, Climate Action) identifying target populations or mission objectives.",
+      "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to UN SDGs and demographic target facets.",
       "inclusions": [],
       "exclusions": [],
-      "signals_en": [],
+      "signals_en": [
+        "Youth",
+        "Women",
+        "Indigenous",
+        "Rural",
+        "Climate Action"
+      ],
       "signals_fr": [],
-      "example_en": "",
+      "example_en": "Example: Youth; Women; Indigenous.",
       "example_fr": "",
       "boundary_note_en": "Decoupled from industry taxonomy; mapped to UN SDGs and demographic target facets.",
-      "boundary_note_fr": "Decoupled from industry taxonomy; mapped to UN SDGs and demographic target facets.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:relatedMatch",
         "sssom_match_type": "HumanCurated",
@@ -2042,6 +2085,11 @@
         "compound_mapping_rule": "Decoupled Target Population / Cause Facet -> UN SDGs"
       },
       "aliases": [
+        "Rural",
+        "Women",
+        "Youth",
+        "Indigenous",
+        "Climate Action",
         "Not a sector: population, cause or geography",
         "Hors secteur : population cible / cause / géographie"
       ],
@@ -2100,16 +2148,21 @@
       "label_en": "Not a sector: employer type or filter value",
       "label_fr": "Hors secteur : forme juridique / type d'employeur",
       "definition_en": "Structural organizational legal forms or UI filter values (e.g., Non-Profit, Co-operative, Private Sector, All) designating legal status rather than industry sector.",
-      "definition_fr": "Structural organizational legal forms or UI filter values (e.g., Non-Profit, Co-operative, Private Sector, All) designating legal status rather than industry sector.",
+      "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to legal form registries.",
       "inclusions": [],
       "exclusions": [],
-      "signals_en": [],
+      "signals_en": [
+        "Non-Profit",
+        "Co-operative",
+        "Private Sector",
+        "All"
+      ],
       "signals_fr": [],
-      "example_en": "",
+      "example_en": "Example: Non-Profit; Co-operative; Private Sector.",
       "example_fr": "",
       "boundary_note_en": "Decoupled from industry taxonomy; mapped to legal form registries.",
-      "boundary_note_fr": "Decoupled from industry taxonomy; mapped to legal form registries.",
+      "boundary_note_fr": "",
       "skos": {
         "mapping_predicate": "skos:relatedMatch",
         "sssom_match_type": "HumanCurated",
@@ -2117,6 +2170,10 @@
         "compound_mapping_rule": "Decoupled Legal Employer Form Facet -> Legal Registries"
       },
       "aliases": [
+        "All",
+        "Non-Profit",
+        "Co-operative",
+        "Private Sector",
         "Not a sector: employer type or filter value",
         "Hors secteur : forme juridique / type d'employeur"
       ],
