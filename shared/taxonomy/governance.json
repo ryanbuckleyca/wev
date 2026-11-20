@@ -93,8 +93,8 @@
     "GOV_3_2_INDIGENOUS_LAND_TRUST": {
       "code": "GOV_3_2_INDIGENOUS_LAND_TRUST",
       "category": "GOV_3",
-      "label_en": "Indigenous Nation Land & Resource Stewardship",
-      "label_fr": "Gestion foncière et ressources des nations autochtones",
+      "label_en": "Indigenous & Sovereign Land Trust",
+      "label_fr": "Fiducie foncière autochtone et souveraine",
       "scope_note_en": "Autonomous Indigenous-led trusts, stewardship societies, and Indigenous Nation enterprises exercising Indigenous sovereignty and self-determination over ancestral lands and resources.",
       "scope_note_fr": "Fiducies, sociétés de gestion et entreprises de nations autochtones autonomes exerçant leur souveraineté et autodétermination sur leurs terres et ressources ancestrales."
     },
