@@ -49,7 +49,7 @@ from utils.sector_prompts import (  # noqa: E402
 class SectorBatchAssessor(BaseGroundedClassifier):
     def __init__(self):
         super().__init__()
-        self._provider = get_provider("gemini", model="gemini-2.5-flash-lite")
+        self._provider = get_provider("gemini", model="gemini-3.5-flash-lite")
         if not self._provider:
             raise RuntimeError("LLM provider unavailable for SectorBatchAssessor")
 
@@ -90,7 +90,15 @@ class SectorBatchAssessor(BaseGroundedClassifier):
             logger.warning("Failed to parse JSON for batch: %s — response: %r", exc, response_text[:200])
             return {}
 
-        results = data.get("results", [])
+        # Handle both {"results": [...]} and [...] formats
+        if isinstance(data, list):
+            results = data
+        elif isinstance(data, dict):
+            results = data.get("results", [])
+        else:
+            logger.warning("Expected JSON to be a dict or list, got %s", type(data).__name__)
+            return {}
+
         if not isinstance(results, list):
             logger.warning("Expected 'results' to be a list, got %s", type(results).__name__)
             return {}
@@ -128,16 +136,24 @@ def main():
     parser.add_argument("--limit", type=int, default=None, metavar="N", help="Process at most N orgs")
     parser.add_argument("--batch-size", type=int, default=10, metavar="B", help="Number of orgs per LLM call")
     parser.add_argument("--dry-run", action="store_true", help="Log output but do not update database")
-    parser.add_argument("--sse-only", action="store_true", help="Only process organizations where is_sse is true")
+    parser.add_argument("--include-non-sse", action="store_true", help="Include organizations where is_sse is false/null (default: SSE-only)")
     parser.add_argument("--staging", action="store_true", help="Use staging environment")
     parser.add_argument("--prod", action="store_true", help="Use production environment")
     args = parser.parse_args()
+
+    # By default, only process SSE organizations unless explicitly opted out
+    sse_only = not args.include_non_sse
 
     try:
         assessor = SectorBatchAssessor()
     except Exception as exc:
         logger.error("Failed to initialize assessor: %s", exc)
         sys.exit(1)
+
+    if sse_only:
+        logger.info("SSE-only mode: filtering to is_sse=true organizations")
+    else:
+        logger.warning("Processing ALL organizations (including non-SSE) - use default behavior to filter to SSE only")
 
     logger.info(
         "Fetching organizations for sector backfill "
@@ -180,7 +196,17 @@ def main():
             exc,
         )
 
-    select_cols = "id, name, website, description, mission_statement, extra"
+    # Note: extra column may not exist in all environments (e.g., older staging schemas)
+    # The code handles missing extra gracefully - it just won't have source_categories hints
+    # For staging without extra column, we can still run assessments based on core org fields
+    try:
+        # Test if extra column exists by trying a tiny query
+        supabase.table("organizations").select("extra").limit(1).execute()
+        select_cols = "id, name, website, description, mission_statement, extra"
+        logger.info("Using extra column for source category hints")
+    except Exception:
+        select_cols = "id, name, website, description, mission_statement"
+        logger.warning("organizations.extra column not found - running without source category hints")
     cohort_id_set = set(cohort_ids)
     processed = 0
     updated = 0
@@ -229,7 +255,7 @@ def main():
             .in_("id", page_ids)
             .is_("sector_id", "null")
         )
-        if args.sse_only:
+        if sse_only:
             query = query.eq("is_sse", True)
         response = query.order("id").execute()
         _process_orgs(response.data or [])
@@ -248,7 +274,7 @@ def main():
             .select(select_cols)
             .is_("sector_id", "null")
         )
-        if args.sse_only:
+        if sse_only:
             query = query.eq("is_sse", True)
         response = query.order("id").gt("id", last_id).limit(fetch_limit).execute()
         rows = response.data or []
