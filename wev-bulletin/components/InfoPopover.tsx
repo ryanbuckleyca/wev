@@ -31,7 +31,8 @@ export default function InfoPopover({
   hoverable = false,
 }: InfoPopoverProps) {
   const [open, setOpen] = React.useState(false);
-  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const [openedByHover, setOpenedByHover] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -63,6 +64,7 @@ export default function InfoPopover({
     if (open) return;
     timerRef.current = setTimeout(() => {
       setOpen(true);
+      setOpenedByHover(true);
       timerRef.current = null;
     }, 350);
   };
@@ -87,23 +89,35 @@ export default function InfoPopover({
       timerRef.current = null;
     }
     setOpen(nextOpen);
+    if (!nextOpen) {
+      setOpenedByHover(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpenedByHover(false);
+      setOpen(!open);
+    }
   };
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <div
+        <button
           ref={triggerRef}
-          className={`inline-flex cursor-help ${className}`}
+          type="button"
+          className={`inline-flex cursor-help bg-transparent border-0 p-0 m-0 font-inherit ${className}`}
           style={{ touchAction: 'manipulation' }}
-          role="button"
           aria-label={ariaLabel}
           tabIndex={triggerTabIndex ?? 0}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          onKeyDown={handleKeyDown}
         >
           {children}
-        </div>
+        </button>
       </PopoverTrigger>
       <PopoverContent
         side="top"
@@ -112,6 +126,7 @@ export default function InfoPopover({
         className="w-[260px] p-5 text-xs border-0"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onOpenAutoFocus={openedByHover ? (e) => e.preventDefault() : undefined}
       >
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />

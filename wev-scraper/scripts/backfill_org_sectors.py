@@ -5,7 +5,7 @@ Fetches organizations with sector_id IS NULL, batches them, and calls a
 targeted LLM prompt to map them to the shared sector taxonomy.
 
 Usage:
-    python scripts/backfill_org_sectors.py [--limit N] [--batch-size B] [--dry-run] [--sse-only]
+    python scripts/backfill_org_sectors.py [--limit N] [--batch-size B] [--dry-run] [--include-non-sse]
 """
 
 import argparse

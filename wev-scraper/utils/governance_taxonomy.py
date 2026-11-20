@@ -178,7 +178,7 @@ def format_governance_taxonomy_prompt() -> str:
         "violate SSE decent-work or ecological criteria. INDIGENOUS GOVERNMENTS: "
         "Indigenous Nation enterprises exercising community self-determination "
         "(e.g., Band Council-owned resource stewardship, iwi trusts, autonomous "
-        "municipality cooperatives) are NOT excluded — classify as GOV_3_2. The "
+        "municipality cooperatives) are NOT excluded — classify as GOV_3_2_INDIGENOUS_LAND_TRUST. The "
         "distinction is community self-governance (subsidiarity, Indigenous "
         "sovereignty) vs. colonial state administration. Only exclude Indigenous "
         "entities that function as delegated colonial state administrators. Do NOT "
