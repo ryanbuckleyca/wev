@@ -98,7 +98,7 @@ export default function InfoPopover({
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       setOpenedByHover(false);
-      setOpen(!open);
+      handleOpenChange(!open);
     }
   };
 
