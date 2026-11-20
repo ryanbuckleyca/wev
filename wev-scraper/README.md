@@ -87,3 +87,13 @@ FORCE_GROUNDING=0
 - Gemini 2.5 Flash: 4 RPM / 24 RPD
 - Gemini 2.5 Flash Lite: 8 RPM / 22 RPD
 - SSE classification uses 1 request per job
+
+## Docker Build
+
+To build the scraper Docker image, run from the **repository root** (not from wev-scraper/):
+
+```bash
+docker build -f wev-scraper/Dockerfile -t wev-scraper .
+```
+
+The Dockerfile expects the build context to be the repo root to access the shared taxonomy files.

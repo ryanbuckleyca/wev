@@ -1,0 +1,11 @@
+.git
+wev-scraper/venv
+wev-scraper/__pycache__
+wev-scraper/*.pyc
+wev-scraper/.git
+wev-scraper/.github
+wev-scraper/.env
+wev-scraper/.python-version
+wev-scraper/*.md
+wev-scraper/Dockerfile
+wev-scraper/.dockerignore

@@ -46,6 +46,131 @@ CATEGORY_IDS = {
     "SSE_FAC_20": "facet-employer-type",
 }
 
+# 1:1 French counterparts for the canonical English inclusions from Column 5 of the MASTER sheet
+INCLUSIONS_FR: dict[str, list[str]] = {
+    "SSE_SEC_01": [
+        "Cliniques de santé",
+        "soutien à domicile (EÉSAD)",
+        "santé mentale",
+        "soutien aux personnes handicapées",
+        "soins aux aînés",
+        "rétablissement des dépendances",
+        "accueil des personnes réfugiées et immigrantes",
+        "centres de jour",
+    ],
+    "SSE_SEC_02": [
+        "Coopératives étudiantes",
+        "CPE (Centres de la petite enfance)",
+        "alphabétisation des adultes",
+        "éducation populaire",
+        "centres de recherche sociale",
+        "ateliers communautaires",
+    ],
+    "SSE_SEC_03": [
+        "Entreprises d'insertion (WISEs)",
+        "entreprises adaptées",
+        "programmes d'employabilité",
+        "coopératives de transition professionnelle",
+    ],
+    "SSE_SEC_04": [
+        "Coopératives d'habitation",
+        "logements sociaux",
+        "fiducies foncières communautaires (CLT)",
+        "communautés intentionnelles",
+        "refuges d'urgence",
+    ],
+    "SSE_SEC_05": [
+        "Coopératives d'artistes",
+        "radios et télévisions communautaires",
+        "édition indépendante",
+        "troupes de théâtre",
+        "sites patrimoniaux",
+        "bibliothèques publiques",
+        "collectifs de production médiatique",
+    ],
+    "SSE_SEC_06": [
+        "Centres récréatifs communautaires",
+        "camps de vacances",
+        "coopératives d'écotourisme",
+        "cafés et bistrots autogérés",
+        "microbrasseries solidaires",
+    ],
+    "SSE_SEC_07": [
+        "Coopératives agricoles",
+        "pôles alimentaires",
+        "jardins communautaires",
+        "cuisines collectives",
+        "banques alimentaires",
+        "coopératives forestières",
+        "pêcheries durables",
+    ],
+    "SSE_SEC_08": [
+        "Coopératives d'énergie renouvelable",
+        "écocentres",
+        "réemploi et recyclage",
+        "outilthèques",
+        "conservation de la faune",
+        "action climatique",
+    ],
+    "SSE_SEC_09": [
+        "Caisses populaires et coopératives financières",
+        "mutuelles d'assurance",
+        "fonds d'investissement solidaire",
+        "banques de temps",
+        "institutions financières de développement communautaire",
+    ],
+    "SSE_SEC_10": [
+        "Coopératives de consommateurs",
+        "épiceries coopératives",
+        "boutiques équitables",
+        "friperies",
+        "clubs d'achat",
+    ],
+    "SSE_SEC_11": [
+        "Manufactures ouvrières",
+        "coopératives d'écoconstruction",
+        "collectifs de coursiers à vélo",
+        "transport communautaire",
+    ],
+    "SSE_SEC_12": [
+        "Coopératives de plateformes",
+        "fondations de logiciels libres",
+        "fournisseurs d'accès Internet communautaires",
+        "hébergement web éthique",
+    ],
+    "SSE_SEC_13": [
+        "Cabinets de conseil coopératif",
+        "services administratifs partagés",
+        "coopératives d'entretien ménager",
+        "collectifs d'aide juridique",
+    ],
+    "SSE_SEC_14": [
+        "Organisations de défense des droits",
+        "syndicats",
+        "coalitions de mouvements sociaux",
+        "fonds de défense juridique",
+        "associations de locataires",
+    ],
+    "SSE_SEC_15": [
+        "Sociétés d'aide au développement des collectivités",
+        "pôles d'économie sociale",
+        "fondations communautaires",
+        "centres d'action bénévole",
+        "centres de quartier",
+    ],
+    "SSE_SEC_16": [
+        "Aide non gouvernementale internationale",
+        "réseaux de commerce équitable transfrontaliers",
+        "projets de solidarité internationale",
+    ],
+    "SSE_SEC_17": [
+        "Coopératives funéraires",
+        "ministères sociaux confessionnels",
+        "refuges pour animaux",
+        "coopératives de premiers répondants d'urgence",
+    ],
+}
+
 
 def cell_value(ws: Any, row: int, col: int) -> Any:
     return ws.cell(row, col).value
@@ -296,6 +421,7 @@ def main() -> int:
         boundary_en = (
             f"Exclusions: {'; '.join(exclusions)}." if exclusions else (usage or "")
         )
+        inclusions_fr = INCLUSIONS_FR.get(cat_id, [])
         entry: dict[str, Any] = {
             "id": entry_id,
             "category_id": cat_id,
@@ -306,15 +432,20 @@ def main() -> int:
             "definition_fr": "",
             "scope_note_en": scope,
             "inclusions": inclusions,
+            "inclusions_fr": inclusions_fr,
             "exclusions": exclusions,
             "signals_en": signals_en[:12],
-            "signals_fr": [],
+            "signals_fr": inclusions_fr[:12],
             "example_en": (
                 f"Example: {'; '.join(inclusions[:3])}."
                 if inclusions
                 else (f"Example: {'; '.join(example_terms[:3])}." if example_terms else "")
             ),
-            "example_fr": "",
+            "example_fr": (
+                f"Exemple : {'; '.join(inclusions_fr[:3])}."
+                if inclusions_fr
+                else ""
+            ),
             "boundary_note_en": boundary_en,
             "boundary_note_fr": "",
             "skos": {
@@ -342,7 +473,7 @@ def main() -> int:
 
     rules_ws = workbook["Logic & Decision Rules"]
     decision_rules: list[dict[str, Any]] = []
-    for row in range(4, 11):
+    for row in range(4, rules_ws.max_row + 1):
         rule_id = cell_str(rules_ws, row, 1)
         if not rule_id:
             continue

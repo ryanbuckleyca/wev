@@ -11,12 +11,15 @@ interface InfoPopoverProps {
   ariaLabel?: string;
   /** Applied to the trigger wrapper (e.g. -1 to skip in tab order). */
   triggerTabIndex?: number;
+  /** Whether mouseover on desktop opens the popover (click/tap still works on touch). */
+  hoverable?: boolean;
 }
 
 /**
  * InfoPopover Component
  *
- * Uses shadcn/ui Popover (Radix UI) for click/tap interactions.
+ * Uses shadcn/ui Popover (Radix UI) for click/tap interactions,
+ * with optional hoverable support for desktop mouseovers.
  * Matches the exact structure from Radix UI documentation.
  */
 export default function InfoPopover({
@@ -25,13 +28,22 @@ export default function InfoPopover({
   className = '',
   ariaLabel,
   triggerTabIndex,
+  hoverable = false,
 }: InfoPopoverProps) {
   const [open, setOpen] = React.useState(false);
+  const [openedByHover, setOpenedByHover] = React.useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   // Close popover if trigger is not visible
   React.useEffect(() => {
-    if (!open || !triggerRef.current) return;
+    if (!open || !triggerRef.current || typeof window.IntersectionObserver !== 'function') return;
 
     const observer = new window.IntersectionObserver(
       ([entry]) => {
@@ -43,8 +55,55 @@ export default function InfoPopover({
     return () => observer.disconnect();
   }, [open]);
 
+  const handleMouseEnter = () => {
+    if (!hoverable) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (open) return;
+    timerRef.current = setTimeout(() => {
+      setOpen(true);
+      setOpenedByHover(true);
+      timerRef.current = null;
+    }, 350);
+  };
+
+  const handleMouseLeave = () => {
+    if (!hoverable) return;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (open) {
+      timerRef.current = setTimeout(() => {
+        setOpen(false);
+        timerRef.current = null;
+      }, 150);
+    }
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    // Keep the opening method until the content finishes closing.
+    if (nextOpen) {
+      setOpenedByHover(false);
+    }
+    setOpen(nextOpen);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleOpenChange(!open);
+    }
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <div
           ref={triggerRef}
@@ -53,6 +112,9 @@ export default function InfoPopover({
           role="button"
           aria-label={ariaLabel}
           tabIndex={triggerTabIndex ?? 0}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          onKeyDown={handleKeyDown}
         >
           {children}
         </div>
@@ -62,6 +124,10 @@ export default function InfoPopover({
         sideOffset={5}
         collisionPadding={16}
         className="w-[260px] p-5 text-xs border-0"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onOpenAutoFocus={openedByHover ? (e) => e.preventDefault() : undefined}
+        onCloseAutoFocus={openedByHover ? (e) => e.preventDefault() : undefined}
       >
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />
