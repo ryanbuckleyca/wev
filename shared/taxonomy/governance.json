@@ -1,0 +1,158 @@
+{
+  "version": "1.2",
+  "description": "Pan-Canadian Controlled Governance Taxonomy for the Social Solidarity Economy & Community Economic Development (single-axis, 2-level). 5 parent categories and 14 bilingual subtypes.",
+  "categories": {
+    "GOV_1": {
+      "code": "GOV_1",
+      "label_en": "Democratic Member-Owned Cooperatives",
+      "label_fr": "Coopératives démocratiques à propriété collective"
+    },
+    "GOV_2": {
+      "code": "GOV_2",
+      "label_en": "Mutual Benefit & Financial Institutions",
+      "label_fr": "Mutuelles et institutions financières"
+    },
+    "GOV_3": {
+      "code": "GOV_3",
+      "label_en": "Collective Asset Stewardship & Territorial Sovereignty",
+      "label_fr": "Gestion d'actifs collectifs et souveraineté territoriale"
+    },
+    "GOV_4": {
+      "code": "GOV_4",
+      "label_en": "Participatory Non-Profits & Social Enterprises",
+      "label_fr": "OBNL participatifs et entreprises sociales"
+    },
+    "GOV_5": {
+      "code": "GOV_5",
+      "label_en": "Grassroots & Popular Economy Collectives",
+      "label_fr": "Collectifs de l'économie populaire et de terrain"
+    },
+    "EXCLUDED": {
+      "code": "EXCLUDED",
+      "label_en": "Excluded (non-SSE)",
+      "label_fr": "Exclu (hors ÉSS)"
+    }
+  },
+  "subtypes": {
+    "GOV_1_1_WORKER_COOP": {
+      "code": "GOV_1_1_WORKER_COOP",
+      "category": "GOV_1",
+      "label_en": "Worker Cooperative",
+      "label_fr": "Coopérative de travail",
+      "scope_note_en": "Enterprise owned and managed entirely by its workers, where labor contribution determines governance rights and surplus distribution.",
+      "scope_note_fr": "Entreprise détenue et gérée démocratiquement par ses travailleur·euse·s, où la contribution par le travail détermine les droits de gouvernance et le partage des excédents."
+    },
+    "GOV_1_2_CONSUMER_COOP": {
+      "code": "GOV_1_2_CONSUMER_COOP",
+      "category": "GOV_1",
+      "label_en": "Consumer / Customer Cooperative",
+      "label_fr": "Coopérative de consommateurs",
+      "scope_note_en": "Enterprise owned by the households or users purchasing its goods or services (food co-ops, housing co-ops, utility co-ops).",
+      "scope_note_fr": "Entreprise détenue par les ménages ou les usager·ère·s achetant ses biens ou services (coopératives d'alimentation, d'habitation ou d'utilité publique)."
+    },
+    "GOV_1_3_PRODUCER_COOP": {
+      "code": "GOV_1_3_PRODUCER_COOP",
+      "category": "GOV_1",
+      "label_en": "Producer / Supplier Cooperative",
+      "label_fr": "Coopérative de producteurs",
+      "scope_note_en": "Enterprise formed by independent farmers, artisans, or small producers to pool equipment and collectively market goods.",
+      "scope_note_fr": "Entreprise formée par des producteur·trice·s indépendant·e·s, artisan·e·s ou agriculteur·rice·s pour mettre en commun les équipements et commercialiser collectivement leurs produits."
+    },
+    "GOV_1_4_SOLIDARITY_COOP": {
+      "code": "GOV_1_4_SOLIDARITY_COOP",
+      "category": "GOV_1",
+      "label_en": "Multi-Stakeholder / Solidarity Cooperative",
+      "label_fr": "Coopérative de solidarité",
+      "scope_note_en": "Governance distributes voting power across worker, user/consumer, and community-supporter membership colleges on a single board.",
+      "scope_note_fr": "Gouvernance répartissant le pouvoir de vote entre collèges de travailleur·euse·s, d'usager·ère·s et de membres de soutien au sein d'un même conseil d'administration."
+    },
+    "GOV_2_1_CREDIT_UNION": {
+      "code": "GOV_2_1_CREDIT_UNION",
+      "category": "GOV_2",
+      "label_en": "Credit Union / Caisse Populaire",
+      "label_fr": "Caisse populaire / Credit union",
+      "scope_note_en": "Member-owned financial institution providing non-extractive savings, lending, and community finance.",
+      "scope_note_fr": "Institution financière détenue par ses membres offrant des services d'épargne, de crédit et de finance communautaire non extractifs."
+    },
+    "GOV_2_2_MUTUAL_INSURANCE": {
+      "code": "GOV_2_2_MUTUAL_INSURANCE",
+      "category": "GOV_2",
+      "label_en": "Mutual Insurance Society",
+      "label_fr": "Société mutuelle d'assurance",
+      "scope_note_en": "Policyholder-owned risk-pooling enterprise where surpluses are retained or returned to members.",
+      "scope_note_fr": "Entreprise de mutualisation des risques détenue par ses assuré·e·s, dont les surplus sont conservés en réserves collectives ou redistribués aux membres."
+    },
+    "GOV_3_1_COMMUNITY_LAND_TRUST": {
+      "code": "GOV_3_1_COMMUNITY_LAND_TRUST",
+      "category": "GOV_3",
+      "label_en": "Community Land Trust (CLT)",
+      "label_fr": "Fiducie foncière communautaire",
+      "scope_note_en": "Non-profit trust holding underlying residential, commercial, or ecological land permanently off the speculative market.",
+      "scope_note_fr": "Fiducie sans but lucratif détenant des terrains résidentiels, commerciaux ou écologiques de manière permanente hors du marché spéculatif."
+    },
+    "GOV_3_2_INDIGENOUS_LAND_TRUST": {
+      "code": "GOV_3_2_INDIGENOUS_LAND_TRUST",
+      "category": "GOV_3",
+      "label_en": "Indigenous Nation Land & Resource Stewardship",
+      "label_fr": "Gestion foncière et ressources des nations autochtones",
+      "scope_note_en": "Autonomous Indigenous-led trusts, stewardship societies, and Indigenous Nation enterprises exercising Indigenous sovereignty and self-determination over ancestral lands and resources.",
+      "scope_note_fr": "Fiducies, sociétés de gestion et entreprises de nations autochtones autonomes exerçant leur souveraineté et autodétermination sur leurs terres et ressources ancestrales."
+    },
+    "GOV_4_1_MEMBER_NPO": {
+      "code": "GOV_4_1_MEMBER_NPO",
+      "category": "GOV_4",
+      "label_en": "Member-Governed Non-Profit",
+      "label_fr": "Organisme sans but lucratif (OBNL)",
+      "scope_note_en": "Non-profit corporation whose ultimate authority rests in an active, voting community membership base (not a self-perpetuating board).",
+      "scope_note_fr": "Personne morale sans but lucratif dont l'autorité ultime repose sur une base active et votante de membres de la communauté (plutôt qu'un conseil autoperpétué)."
+    },
+    "GOV_4_2_WISE": {
+      "code": "GOV_4_2_WISE",
+      "category": "GOV_4",
+      "label_en": "Work Integration Social Enterprise",
+      "label_fr": "Entreprise d'insertion (WISE)",
+      "scope_note_en": "Mission-driven trading entity structured to train and reintegrate marginalized job seekers into sustainable labor.",
+      "scope_note_fr": "Entreprise à vocation sociale structurée pour former et réinsérer durablement des personnes en situation d'exclusion sur le marché du travail."
+    },
+    "GOV_4_3_COMMUNITY_DEV_CORP": {
+      "code": "GOV_4_3_COMMUNITY_DEV_CORP",
+      "category": "GOV_4",
+      "label_en": "Community Development Corporation",
+      "label_fr": "Corporation de développement (CDEC)",
+      "scope_note_en": "Resident-directed non-profit revitalizing neighborhoods, developing housing, and building community wealth.",
+      "scope_note_fr": "Organisme sans but lucratif dirigé par les résident·e·s pour revitaliser les quartiers, développer du logement et bâtir la richesse communautaire."
+    },
+    "GOV_5_1_MUTUAL_AID": {
+      "code": "GOV_5_1_MUTUAL_AID",
+      "category": "GOV_5",
+      "label_en": "Mutual Aid Network",
+      "label_fr": "Réseau d'entraide mutuelle",
+      "scope_note_en": "Unincorporated, horizontal community network practicing direct resource sharing and solidarity care.",
+      "scope_note_fr": "Réseau communautaire horizontal et non constitué en personne morale assurant le partage direct des ressources et la solidarité d'entraide."
+    },
+    "GOV_5_2_POPULAR_COLLECTIVE": {
+      "code": "GOV_5_2_POPULAR_COLLECTIVE",
+      "category": "GOV_5",
+      "label_en": "Popular Economy Collective",
+      "label_fr": "Collectif d'économie populaire",
+      "scope_note_en": "Self-organized association of marginalized or informal workers pooling tools, safety nets, and workspaces.",
+      "scope_note_fr": "Regroupement auto-organisé de travailleur·euse·s marginalisé·e·s ou informel·le·s mettant en commun outils, filets de sécurité et espaces de travail."
+    },
+    "GOV_5_3_DEMOCRATIC_UNION": {
+      "code": "GOV_5_3_DEMOCRATIC_UNION",
+      "category": "GOV_5",
+      "label_en": "Democratic Labor Union Local",
+      "label_fr": "Syndicat démocratique local",
+      "scope_note_en": "Member-controlled workplace union exercising collective bargaining and democratic worker governance to advance decent work across the SSE.",
+      "scope_note_fr": "Section locale d'un syndicat contrôlée par ses membres exerçant la négociation collective et la gouvernance démocratique pour promouvoir le travail décent dans l'ÉSS."
+    }
+  },
+  "excluded": {
+    "code": "EXCLUDED_NON_SSE",
+    "category": "EXCLUDED",
+    "label_en": "Excluded (non-SSE)",
+    "label_fr": "Exclu (hors ÉSS)",
+    "scope_note_en": "Entity fails SSE democratic-governance, non-extractive, or state-autonomy criteria.",
+    "scope_note_fr": "Entité ne répondant pas aux critères de gouvernance démocratique, de non-extractivisme ou d'autonomie face à l'État de l'ÉSS."
+  }
+}

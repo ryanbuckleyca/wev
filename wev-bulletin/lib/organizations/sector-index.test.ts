@@ -9,10 +9,10 @@ describe('sectorBlurb', () => {
     expect(blurb).toMatch(/csa|farm|food/i);
   });
 
-  it('returns null for French when MASTER has no FR example blurb', () => {
-    // Scope inclusions in the workbook are English-only; importer leaves example_fr empty
-    // rather than repeating the sector heading.
-    expect(sectorBlurb('agriculture-food-systems', 'fr')).toBeNull();
+  it('returns French example blurb when available', () => {
+    const blurb = sectorBlurb('agriculture-food-systems', 'fr');
+    expect(blurb).toBeTruthy();
+    expect(blurb).toMatch(/coopératives|alimentaires|jardins/i);
   });
 
   it('returns null for unknown sectors', () => {

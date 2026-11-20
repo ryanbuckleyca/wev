@@ -242,6 +242,27 @@
       "issue": "Legal organization forms (Co-op, NPO, Social Enterprise) confused with sector.",
       "rule": "Decoupled into standalone Legal Form Facet (Row 20) and mapped to legal registries.",
       "reference": "UNTFSSE 2022; ISIC Rev. 4 Manual"
+    },
+    {
+      "id": "RULE_08",
+      "target": "Domain-Specific Legal Defense & Systemic Advocacy",
+      "issue": "Litigation, legal clinics, and court representation conflated with domain cause (e.g. environmental law, tenant rights).",
+      "rule": "Primary activity (legal representation, litigation, law reform) takes precedence over cause domain: map to Advocacy, Rights & Representation (SSE_SEC_14); map specific cause to secondary domain facets. Expression: skos:exactMatch LegalAdvocacy AND (skos:relatedMatch EnvironmentalCause OR skos:relatedMatch HousingCause)",
+      "reference": "Ranganathan 1967 (Modality vs. Matter); Bowker & Star 1999; ISO 25964-2"
+    },
+    {
+      "id": "RULE_09",
+      "target": "Philanthropic Foundations & Endowments (Community vs. Single-Domain)",
+      "issue": "Foundations funding multiple causes conflated with domain-specific auxiliary foundations (e.g. hospital foundations, arts foundations, wildlife trust funds).",
+      "rule": "Broad multi-cause, regional, and community foundations (e.g. Centraide, community foundations) map to Community Development, Philanthropy & Volunteering (SSE_SEC_15). Auxiliary foundations dedicated to supporting a specific institutional service or cause domain (e.g. hospital foundation, university foundation, arts endowment, single conservation trust) map directly to their operational domain sector (SSE_SEC_01 for hospital foundations, SSE_SEC_05 for arts foundations, SSE_SEC_08 for conservation funds). Expression: skos:broadMatch PhilanthropicFoundation AND (skos:exactMatch CommunityDevelopment OR skos:relatedMatch DomainTarget)",
+      "reference": "CRA T3010 Classification; Imagine Canada Sector Benchmarks; ISIC Rev. 4 Section S"
+    },
+    {
+      "id": "RULE_10",
+      "target": "Environmental Education & Ecological Training (Schools vs. Awareness Providers)",
+      "issue": "Environmental NGOs delivering workshops, youth eco-clubs, or public climate awareness conflated with formal educational institutions.",
+      "rule": "Accredited degree-granting or diploma-granting educational institutions, state-recognized primary/secondary schools, and formal colleges map to Education & Knowledge (SSE_SEC_02). Environmental organizations providing ecological literacy workshops, climate action certification, outdoor experiential workshops, or green skills training map to Environment & Circular Economy (SSE_SEC_08). Expression: skos:broadMatch EnvironmentalLiteracy AND (skos:exactMatch EnvironmentCircularEconomy OR skos:relatedMatch EducationKnowledge)",
+      "reference": "ISIC Rev. 4 Division 85 vs Division 94; UNESCO ISCED 2011"
     }
   ],
   "sssom_mappings": [
@@ -486,6 +507,16 @@
         "newcomer/refugee settlement",
         "drop-in centers"
       ],
+      "inclusions_fr": [
+        "Cliniques de santé",
+        "soutien à domicile (EÉSAD)",
+        "santé mentale",
+        "soutien aux personnes handicapées",
+        "soins aux aînés",
+        "rétablissement des dépendances",
+        "accueil des personnes réfugiées et immigrantes",
+        "centres de jour"
+      ],
       "exclusions": [
         "Purely commercial healthcare facilities",
         "early childhood education is mapped here as a secondary facet when integrated with care"
@@ -500,9 +531,18 @@
         "newcomer",
         "drop-in centers"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Cliniques de santé",
+        "soutien à domicile (EÉSAD)",
+        "santé mentale",
+        "soutien aux personnes handicapées",
+        "soins aux aînés",
+        "rétablissement des dépendances",
+        "accueil des personnes réfugiées et immigrantes",
+        "centres de jour"
+      ],
       "example_en": "Example: Health clinics; home care (EÉSAD); mental health.",
-      "example_fr": "",
+      "example_fr": "Exemple : Cliniques de santé; soutien à domicile (EÉSAD); santé mentale.",
       "boundary_note_en": "Exclusions: Purely commercial healthcare facilities; early childhood education is mapped here as a secondary facet when integrated with care.",
       "boundary_note_fr": "",
       "skos": {
@@ -579,6 +619,14 @@
         "social research centers",
         "community workshops"
       ],
+      "inclusions_fr": [
+        "Coopératives étudiantes",
+        "CPE (Centres de la petite enfance)",
+        "alphabétisation des adultes",
+        "éducation populaire",
+        "centres de recherche sociale",
+        "ateliers communautaires"
+      ],
       "exclusions": ["Commercial private tutoring services"],
       "signals_en": [
         "Student co-ops",
@@ -588,9 +636,16 @@
         "social research centers",
         "community workshops"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives étudiantes",
+        "CPE (Centres de la petite enfance)",
+        "alphabétisation des adultes",
+        "éducation populaire",
+        "centres de recherche sociale",
+        "ateliers communautaires"
+      ],
       "example_en": "Example: Student co-ops; CPEs (Centre de la petite enfance); adult literacy.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives étudiantes; CPE (Centres de la petite enfance); alphabétisation des adultes.",
       "boundary_note_en": "Exclusions: Commercial private tutoring services.",
       "boundary_note_fr": "",
       "skos": {
@@ -665,6 +720,12 @@
         "employability programs",
         "career transition co-ops"
       ],
+      "inclusions_fr": [
+        "Entreprises d'insertion (WISEs)",
+        "entreprises adaptées",
+        "programmes d'employabilité",
+        "coopératives de transition professionnelle"
+      ],
       "exclusions": [
         "General employment agencies (mapped under Business & Professional Services)"
       ],
@@ -674,9 +735,14 @@
         "employability programs",
         "career transition co-ops"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Entreprises d'insertion (WISEs)",
+        "entreprises adaptées",
+        "programmes d'employabilité",
+        "coopératives de transition professionnelle"
+      ],
       "example_en": "Example: WISEs; adapted enterprises (entreprises adaptées); employability programs.",
-      "example_fr": "",
+      "example_fr": "Exemple : Entreprises d'insertion (WISEs); entreprises adaptées; programmes d'employabilité.",
       "boundary_note_en": "Exclusions: General employment agencies (mapped under Business & Professional Services).",
       "boundary_note_fr": "",
       "skos": {
@@ -752,6 +818,13 @@
         "intentional communities",
         "emergency shelters"
       ],
+      "inclusions_fr": [
+        "Coopératives d'habitation",
+        "logements sociaux",
+        "fiducies foncières communautaires (CLT)",
+        "communautés intentionnelles",
+        "refuges d'urgence"
+      ],
       "exclusions": ["For-profit real estate development or speculation"],
       "signals_en": [
         "Housing co-ops",
@@ -760,9 +833,15 @@
         "intentional communities",
         "emergency shelters"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives d'habitation",
+        "logements sociaux",
+        "fiducies foncières communautaires (CLT)",
+        "communautés intentionnelles",
+        "refuges d'urgence"
+      ],
       "example_en": "Example: Housing co-ops; social housing; CLTs.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives d'habitation; logements sociaux; fiducies foncières communautaires (CLT).",
       "boundary_note_en": "Exclusions: For-profit real estate development or speculation.",
       "boundary_note_fr": "",
       "skos": {
@@ -840,6 +919,15 @@
         "public libraries",
         "media production collectives"
       ],
+      "inclusions_fr": [
+        "Coopératives d'artistes",
+        "radios et télévisions communautaires",
+        "édition indépendante",
+        "troupes de théâtre",
+        "sites patrimoniaux",
+        "bibliothèques publiques",
+        "collectifs de production médiatique"
+      ],
       "exclusions": [
         "Commercial entertainment conglomerates",
         "general sports/leisure (mapped to Recreation)"
@@ -853,9 +941,17 @@
         "public libraries",
         "media production collectives"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives d'artistes",
+        "radios et télévisions communautaires",
+        "édition indépendante",
+        "troupes de théâtre",
+        "sites patrimoniaux",
+        "bibliothèques publiques",
+        "collectifs de production médiatique"
+      ],
       "example_en": "Example: Artist co-ops; community radio/TV; independent publishing.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives d'artistes; radios et télévisions communautaires; édition indépendante.",
       "boundary_note_en": "Exclusions: Commercial entertainment conglomerates; general sports/leisure (mapped to Recreation).",
       "boundary_note_fr": "",
       "skos": {
@@ -931,6 +1027,13 @@
         "worker-owned cafes/bistros",
         "solidarity microbreweries"
       ],
+      "inclusions_fr": [
+        "Centres récréatifs communautaires",
+        "camps de vacances",
+        "coopératives d'écotourisme",
+        "cafés et bistrots autogérés",
+        "microbrasseries solidaires"
+      ],
       "exclusions": ["Tourist lodging operated solely for private profit"],
       "signals_en": [
         "Community recreation centers",
@@ -939,9 +1042,15 @@
         "worker-owned cafes",
         "solidarity microbreweries"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Centres récréatifs communautaires",
+        "camps de vacances",
+        "coopératives d'écotourisme",
+        "cafés et bistrots autogérés",
+        "microbrasseries solidaires"
+      ],
       "example_en": "Example: Community recreation centers; vacation camps; ecotourism co-ops.",
-      "example_fr": "",
+      "example_fr": "Exemple : Centres récréatifs communautaires; camps de vacances; coopératives d'écotourisme.",
       "boundary_note_en": "Exclusions: Tourist lodging operated solely for private profit.",
       "boundary_note_fr": "",
       "skos": {
@@ -1019,6 +1128,15 @@
         "forestry co-ops",
         "sustainable fisheries"
       ],
+      "inclusions_fr": [
+        "Coopératives agricoles",
+        "pôles alimentaires",
+        "jardins communautaires",
+        "cuisines collectives",
+        "banques alimentaires",
+        "coopératives forestières",
+        "pêcheries durables"
+      ],
       "exclusions": ["Industrial mono-crop agribusiness"],
       "signals_en": [
         "Agricultural co-ops",
@@ -1029,9 +1147,17 @@
         "forestry co-ops",
         "sustainable fisheries"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives agricoles",
+        "pôles alimentaires",
+        "jardins communautaires",
+        "cuisines collectives",
+        "banques alimentaires",
+        "coopératives forestières",
+        "pêcheries durables"
+      ],
       "example_en": "Example: Agricultural co-ops; food hubs; community gardens.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives agricoles; pôles alimentaires; jardins communautaires.",
       "boundary_note_en": "Exclusions: Industrial mono-crop agribusiness.",
       "boundary_note_fr": "",
       "skos": {
@@ -1108,6 +1234,14 @@
         "wildlife conservation",
         "climate advocacy"
       ],
+      "inclusions_fr": [
+        "Coopératives d'énergie renouvelable",
+        "écocentres",
+        "réemploi et recyclage",
+        "outilthèques",
+        "conservation de la faune",
+        "action climatique"
+      ],
       "exclusions": ["Fossil fuel extraction or non-renewable utilities"],
       "signals_en": [
         "Renewable energy co-ops",
@@ -1117,9 +1251,16 @@
         "wildlife conservation",
         "climate advocacy"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives d'énergie renouvelable",
+        "écocentres",
+        "réemploi et recyclage",
+        "outilthèques",
+        "conservation de la faune",
+        "action climatique"
+      ],
       "example_en": "Example: Renewable energy co-ops; eco-centers; waste diversion/recycling.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives d'énergie renouvelable; écocentres; réemploi et recyclage.",
       "boundary_note_en": "Exclusions: Fossil fuel extraction or non-renewable utilities.",
       "boundary_note_fr": "",
       "skos": {
@@ -1195,6 +1336,13 @@
         "time banks",
         "community development financial institutions (CDFIs)"
       ],
+      "inclusions_fr": [
+        "Caisses populaires et coopératives financières",
+        "mutuelles d'assurance",
+        "fonds d'investissement solidaire",
+        "banques de temps",
+        "institutions financières de développement communautaire"
+      ],
       "exclusions": ["Commercial investment banking or speculative finance"],
       "signals_en": [
         "Credit unions",
@@ -1203,9 +1351,15 @@
         "time banks",
         "community development financial institutions"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Caisses populaires et coopératives financières",
+        "mutuelles d'assurance",
+        "fonds d'investissement solidaire",
+        "banques de temps",
+        "institutions financières de développement communautaire"
+      ],
       "example_en": "Example: Credit unions (caisses populaires); mutual insurance; solidarity investment funds.",
-      "example_fr": "",
+      "example_fr": "Exemple : Caisses populaires et coopératives financières; mutuelles d'assurance; fonds d'investissement solidaire.",
       "boundary_note_en": "Exclusions: Commercial investment banking or speculative finance.",
       "boundary_note_fr": "",
       "skos": {
@@ -1281,6 +1435,13 @@
         "thrift stores/friperies",
         "buying clubs"
       ],
+      "inclusions_fr": [
+        "Coopératives de consommateurs",
+        "épiceries coopératives",
+        "boutiques équitables",
+        "friperies",
+        "clubs d'achat"
+      ],
       "exclusions": ["Traditional private retail stores"],
       "signals_en": [
         "Consumer co-ops",
@@ -1289,9 +1450,15 @@
         "thrift stores",
         "buying clubs"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives de consommateurs",
+        "épiceries coopératives",
+        "boutiques équitables",
+        "friperies",
+        "clubs d'achat"
+      ],
       "example_en": "Example: Consumer co-ops; food co-op stores; fair trade shops.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives de consommateurs; épiceries coopératives; boutiques équitables.",
       "boundary_note_en": "Exclusions: Traditional private retail stores.",
       "boundary_note_fr": "",
       "skos": {
@@ -1366,6 +1533,12 @@
         "bike courier collectives",
         "community transit"
       ],
+      "inclusions_fr": [
+        "Manufactures ouvrières",
+        "coopératives d'écoconstruction",
+        "collectifs de coursiers à vélo",
+        "transport communautaire"
+      ],
       "exclusions": ["Non-democratic heavy industrial production"],
       "signals_en": [
         "Worker-owned manufacturing",
@@ -1373,9 +1546,14 @@
         "bike courier collectives",
         "community transit"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Manufactures ouvrières",
+        "coopératives d'écoconstruction",
+        "collectifs de coursiers à vélo",
+        "transport communautaire"
+      ],
       "example_en": "Example: Worker-owned manufacturing; ecological construction co-ops; bike courier collectives.",
-      "example_fr": "",
+      "example_fr": "Exemple : Manufactures ouvrières; coopératives d'écoconstruction; collectifs de coursiers à vélo.",
       "boundary_note_en": "Exclusions: Non-democratic heavy industrial production.",
       "boundary_note_fr": "",
       "skos": {
@@ -1450,6 +1628,12 @@
         "community ISP co-ops",
         "ethical web hosting"
       ],
+      "inclusions_fr": [
+        "Coopératives de plateformes",
+        "fondations de logiciels libres",
+        "fournisseurs d'accès Internet communautaires",
+        "hébergement web éthique"
+      ],
       "exclusions": ["Proprietary Big Tech platforms"],
       "signals_en": [
         "Platform co-ops",
@@ -1457,9 +1641,14 @@
         "community ISP co-ops",
         "ethical web hosting"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives de plateformes",
+        "fondations de logiciels libres",
+        "fournisseurs d'accès Internet communautaires",
+        "hébergement web éthique"
+      ],
       "example_en": "Example: Platform co-ops; open-source software foundations; community ISP co-ops.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives de plateformes; fondations de logiciels libres; fournisseurs d'accès Internet communautaires.",
       "boundary_note_en": "Exclusions: Proprietary Big Tech platforms.",
       "boundary_note_fr": "",
       "skos": {
@@ -1534,6 +1723,12 @@
         "janitorial co-ops",
         "legal aid collectives"
       ],
+      "inclusions_fr": [
+        "Cabinets de conseil coopératif",
+        "services administratifs partagés",
+        "coopératives d'entretien ménager",
+        "collectifs d'aide juridique"
+      ],
       "exclusions": ["Corporate lobbying or management consultancies"],
       "signals_en": [
         "Co-op consulting firms",
@@ -1541,9 +1736,14 @@
         "janitorial co-ops",
         "legal aid collectives"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Cabinets de conseil coopératif",
+        "services administratifs partagés",
+        "coopératives d'entretien ménager",
+        "collectifs d'aide juridique"
+      ],
       "example_en": "Example: Co-op consulting firms; shared back-office providers; janitorial co-ops.",
-      "example_fr": "",
+      "example_fr": "Exemple : Cabinets de conseil coopératif; services administratifs partagés; coopératives d'entretien ménager.",
       "boundary_note_en": "Exclusions: Corporate lobbying or management consultancies.",
       "boundary_note_fr": "",
       "skos": {
@@ -1619,6 +1819,13 @@
         "legal defense funds",
         "tenant rights associations"
       ],
+      "inclusions_fr": [
+        "Organisations de défense des droits",
+        "syndicats",
+        "coalitions de mouvements sociaux",
+        "fonds de défense juridique",
+        "associations de locataires"
+      ],
       "exclusions": ["Corporate lobbying groups"],
       "signals_en": [
         "Human rights organizations",
@@ -1627,9 +1834,15 @@
         "legal defense funds",
         "tenant rights associations"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Organisations de défense des droits",
+        "syndicats",
+        "coalitions de mouvements sociaux",
+        "fonds de défense juridique",
+        "associations de locataires"
+      ],
       "example_en": "Example: Human rights organizations; trade unions; social movement coalitions.",
-      "example_fr": "",
+      "example_fr": "Exemple : Organisations de défense des droits; syndicats; coalitions de mouvements sociaux.",
       "boundary_note_en": "Exclusions: Corporate lobbying groups.",
       "boundary_note_fr": "",
       "skos": {
@@ -1705,6 +1918,13 @@
         "volunteer bureaus",
         "neighborhood centers"
       ],
+      "inclusions_fr": [
+        "Sociétés d'aide au développement des collectivités",
+        "pôles d'économie sociale",
+        "fondations communautaires",
+        "centres d'action bénévole",
+        "centres de quartier"
+      ],
       "exclusions": ["Private family wealth trusts"],
       "signals_en": [
         "Community futures corporations",
@@ -1713,9 +1933,15 @@
         "volunteer bureaus",
         "neighborhood centers"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Sociétés d'aide au développement des collectivités",
+        "pôles d'économie sociale",
+        "fondations communautaires",
+        "centres d'action bénévole",
+        "centres de quartier"
+      ],
       "example_en": "Example: Community futures corporations; social economy poles; community foundations.",
-      "example_fr": "",
+      "example_fr": "Exemple : Sociétés d'aide au développement des collectivités; pôles d'économie sociale; fondations communautaires.",
       "boundary_note_en": "Exclusions: Private family wealth trusts.",
       "boundary_note_fr": "",
       "skos": {
@@ -1789,15 +2015,24 @@
         "cross-border fair trade networks",
         "global solidarity projects"
       ],
+      "inclusions_fr": [
+        "Aide non gouvernementale internationale",
+        "réseaux de commerce équitable transfrontaliers",
+        "projets de solidarité internationale"
+      ],
       "exclusions": ["State diplomatic missions or bilateral military aid"],
       "signals_en": [
         "International NGO aid",
         "cross-border fair trade networks",
         "global solidarity projects"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Aide non gouvernementale internationale",
+        "réseaux de commerce équitable transfrontaliers",
+        "projets de solidarité internationale"
+      ],
       "example_en": "Example: International NGO aid; cross-border fair trade networks; global solidarity projects.",
-      "example_fr": "",
+      "example_fr": "Exemple : Aide non gouvernementale internationale; réseaux de commerce équitable transfrontaliers; projets de solidarité internationale.",
       "boundary_note_en": "Exclusions: State diplomatic missions or bilateral military aid.",
       "boundary_note_fr": "",
       "skos": {
@@ -1872,6 +2107,12 @@
         "animal rescue shelters",
         "emergency first-responder co-ops"
       ],
+      "inclusions_fr": [
+        "Coopératives funéraires",
+        "ministères sociaux confessionnels",
+        "refuges pour animaux",
+        "coopératives de premiers répondants d'urgence"
+      ],
       "exclusions": ["Entities fitting any of the 16 primary sectors"],
       "signals_en": [
         "Funeral co-ops",
@@ -1879,9 +2120,14 @@
         "animal rescue shelters",
         "emergency first-responder co-ops"
       ],
-      "signals_fr": [],
+      "signals_fr": [
+        "Coopératives funéraires",
+        "ministères sociaux confessionnels",
+        "refuges pour animaux",
+        "coopératives de premiers répondants d'urgence"
+      ],
       "example_en": "Example: Funeral co-ops; faith-based social ministries; animal rescue shelters.",
-      "example_fr": "",
+      "example_fr": "Exemple : Coopératives funéraires; ministères sociaux confessionnels; refuges pour animaux.",
       "boundary_note_en": "Exclusions: Entities fitting any of the 16 primary sectors.",
       "boundary_note_fr": "",
       "skos": {
@@ -1953,6 +2199,7 @@
       "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to standard occupational classifications (NOC / ISCO-08).",
       "inclusions": [],
+      "inclusions_fr": [],
       "exclusions": [],
       "signals_en": [
         "Accounting",
@@ -2037,6 +2284,7 @@
       "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to UN SDGs and demographic target facets.",
       "inclusions": [],
+      "inclusions_fr": [],
       "exclusions": [],
       "signals_en": ["Youth", "Women", "Indigenous", "Rural", "Climate Action"],
       "signals_fr": [],
@@ -2117,6 +2365,7 @@
       "definition_fr": "",
       "scope_note_en": "Usage: Decoupled from industry taxonomy; mapped to legal form registries.",
       "inclusions": [],
+      "inclusions_fr": [],
       "exclusions": [],
       "signals_en": ["Non-Profit", "Co-operative", "Private Sector", "All"],
       "signals_fr": [],

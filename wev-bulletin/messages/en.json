@@ -51,7 +51,8 @@
       },
       "other-nec": {
         "label": "Other / not elsewhere classified"
-      }
+      },
+      "includes": "Includes:"
     }
   },
   "organizations": {
@@ -115,7 +116,7 @@
     "noSector": "Sector not specified",
     "noOrganizationSectors": "No sectors available",
     "browseBySector": "Browse by sector",
-    "browseBySectorHint": "Explore solidarity economy (SSE) organizations by field of work.",
+    "browseBySectorHint": "Explore solidarity economy (SSE) organizations by their primary day-to-day activity (like care, housing, education, or legal defense).",
     "browseSectors": "Browse all sectors",
     "browseByGovernance": "Browse by governance",
     "browseByGovernanceHint": "Explore solidarity economy (SSE) organizations by who holds ownership and democratic control.",
@@ -123,7 +124,7 @@
       "category": {
         "GOV_1": "Democratic Member-Owned Cooperatives",
         "GOV_2": "Mutual Benefit & Financial Institutions",
-        "GOV_3": "Collective Asset Stewardship & Land Trusts",
+        "GOV_3": "Collective Asset Stewardship & Territorial Sovereignty",
         "GOV_4": "Participatory Non-Profits & Social Enterprises",
         "GOV_5": "Grassroots & Popular Economy Collectives",
         "EXCLUDED": "Excluded (non-SSE)"
@@ -136,7 +137,7 @@
         "GOV_2_1_CREDIT_UNION": "Credit Union / Caisse Populaire",
         "GOV_2_2_MUTUAL_INSURANCE": "Mutual Insurance Society",
         "GOV_3_1_COMMUNITY_LAND_TRUST": "Community Land Trust (CLT)",
-        "GOV_3_2_INDIGENOUS_LAND_TRUST": "Indigenous & Sovereign Land Trust",
+        "GOV_3_2_INDIGENOUS_LAND_TRUST": "Indigenous Nation Land & Resource Stewardship",
         "GOV_4_1_MEMBER_NPO": "Member-Governed Non-Profit",
         "GOV_4_2_WISE": "Work Integration Social Enterprise",
         "GOV_4_3_COMMUNITY_DEV_CORP": "Community Development Corporation",

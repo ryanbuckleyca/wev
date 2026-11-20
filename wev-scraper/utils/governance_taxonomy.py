@@ -17,39 +17,28 @@ recorded as free-text ``operational_tags``.
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any
 
-GOVERNANCE_TAXONOMY_VERSION = "v1.1"
+_TAXONOMY_PATH = Path(__file__).resolve().parents[2] / "shared" / "taxonomy" / "governance.json"
+
+with open(_TAXONOMY_PATH, encoding="utf-8") as _f:
+    _DATA = json.load(_f)
+
+_RAW_VERSION = str(_DATA.get("version", "1.2"))
+GOVERNANCE_TAXONOMY_VERSION = f"v{_RAW_VERSION}" if not _RAW_VERSION.startswith("v") else _RAW_VERSION
 
 # ── Parent categories ───────────────────────────────────────────────────────
 EXCLUDED_CATEGORY = "EXCLUDED"
 
 GOVERNANCE_CATEGORIES: dict[str, dict[str, str]] = {
-    "GOV_1": {
-        "label_en": "Democratic Member-Owned Cooperatives",
-        "label_fr": "Coopératives démocratiques à propriété collective",
-    },
-    "GOV_2": {
-        "label_en": "Mutual Benefit & Financial Institutions",
-        "label_fr": "Mutuelles et institutions financières",
-    },
-    "GOV_3": {
-        "label_en": "Collective Asset Stewardship & Land Trusts",
-        "label_fr": "Fiducies foncières et gestion d'actifs collectifs",
-    },
-    "GOV_4": {
-        "label_en": "Participatory Non-Profits & Social Enterprises",
-        "label_fr": "OBNL participatifs et entreprises sociales",
-    },
-    "GOV_5": {
-        "label_en": "Grassroots & Popular Economy Collectives",
-        "label_fr": "Collectifs de l'économie populaire et de terrain",
-    },
-    EXCLUDED_CATEGORY: {
-        "label_en": "Excluded (non-SSE)",
-        "label_fr": "Exclu (hors ÉSS)",
-    },
+    code: {
+        "label_en": meta["label_en"],
+        "label_fr": meta["label_fr"],
+    }
+    for code, meta in _DATA["categories"].items()
 }
 
 # ── Subtypes ────────────────────────────────────────────────────────────────
@@ -57,137 +46,15 @@ EXCLUDED_SUBTYPE = "EXCLUDED_NON_SSE"
 
 # Ordered: drives prompt rendering and any UI listing.
 GOVERNANCE_SUBTYPES: dict[str, dict[str, str]] = {
-    "GOV_1_1_WORKER_COOP": {
-        "category": "GOV_1",
-        "label_en": "Worker Cooperative",
-        "label_fr": "Coopérative de travail",
-        "scope_note": (
-            "Enterprise owned and managed entirely by its workers, where labor "
-            "contribution determines governance rights and surplus distribution."
-        ),
-    },
-    "GOV_1_2_CONSUMER_COOP": {
-        "category": "GOV_1",
-        "label_en": "Consumer / Customer Cooperative",
-        "label_fr": "Coopérative de consommateurs",
-        "scope_note": (
-            "Enterprise owned by the households or users purchasing its goods or "
-            "services (food co-ops, housing co-ops, utility co-ops)."
-        ),
-    },
-    "GOV_1_3_PRODUCER_COOP": {
-        "category": "GOV_1",
-        "label_en": "Producer / Supplier Cooperative",
-        "label_fr": "Coopérative de producteurs",
-        "scope_note": (
-            "Enterprise formed by independent farmers, artisans, or small "
-            "producers to pool equipment and collectively market goods."
-        ),
-    },
-    "GOV_1_4_SOLIDARITY_COOP": {
-        "category": "GOV_1",
-        "label_en": "Multi-Stakeholder / Solidarity Cooperative",
-        "label_fr": "Coopérative de solidarité",
-        "scope_note": (
-            "Governance distributes voting power across worker, user/consumer, "
-            "and community-supporter membership colleges on a single board."
-        ),
-    },
-    "GOV_2_1_CREDIT_UNION": {
-        "category": "GOV_2",
-        "label_en": "Credit Union / Caisse Populaire",
-        "label_fr": "Caisse populaire / Credit union",
-        "scope_note": (
-            "Member-owned financial institution providing non-extractive "
-            "savings, lending, and community finance."
-        ),
-    },
-    "GOV_2_2_MUTUAL_INSURANCE": {
-        "category": "GOV_2",
-        "label_en": "Mutual Insurance Society",
-        "label_fr": "Société mutuelle d'assurance",
-        "scope_note": (
-            "Policyholder-owned risk-pooling enterprise where surpluses are "
-            "retained or returned to members."
-        ),
-    },
-    "GOV_3_1_COMMUNITY_LAND_TRUST": {
-        "category": "GOV_3",
-        "label_en": "Community Land Trust (CLT)",
-        "label_fr": "Fiducie foncière communautaire",
-        "scope_note": (
-            "Non-profit trust holding underlying residential, commercial, or "
-            "ecological land permanently off the speculative market."
-        ),
-    },
-    "GOV_3_2_INDIGENOUS_LAND_TRUST": {
-        "category": "GOV_3",
-        "label_en": "Indigenous & Sovereign Land Trust",
-        "label_fr": "Fiducie foncière autochtone et souveraine",
-        "scope_note": (
-            "Autonomous, community-governed Indigenous land trust, urban "
-            "Indigenous stewardship society, or non-state settlement/"
-            "conservation trust that rematriates and protects ancestral lands "
-            "outside the speculative market — distinct from public Indigenous "
-            "governments (band councils, land-claim governments), which remain "
-            "excluded from the enterprise taxonomy."
-        ),
-    },
-    "GOV_4_1_MEMBER_NPO": {
-        "category": "GOV_4",
-        "label_en": "Member-Governed Non-Profit",
-        "label_fr": "Organisme sans but lucratif (OBNL)",
-        "scope_note": (
-            "Non-profit corporation whose ultimate authority rests in an active, "
-            "voting community membership base (not a self-perpetuating board)."
-        ),
-    },
-    "GOV_4_2_WISE": {
-        "category": "GOV_4",
-        "label_en": "Work Integration Social Enterprise",
-        "label_fr": "Entreprise d'insertion (WISE)",
-        "scope_note": (
-            "Mission-driven trading entity structured to train and reintegrate "
-            "marginalized job seekers into sustainable labor."
-        ),
-    },
-    "GOV_4_3_COMMUNITY_DEV_CORP": {
-        "category": "GOV_4",
-        "label_en": "Community Development Corporation",
-        "label_fr": "Corporation de développement (CDEC)",
-        "scope_note": (
-            "Resident-directed non-profit revitalizing neighborhoods, developing "
-            "housing, and building community wealth."
-        ),
-    },
-    "GOV_5_1_MUTUAL_AID": {
-        "category": "GOV_5",
-        "label_en": "Mutual Aid Network",
-        "label_fr": "Réseau d'entraide mutuelle",
-        "scope_note": (
-            "Unincorporated, horizontal community network practicing direct "
-            "resource sharing and solidarity care."
-        ),
-    },
-    "GOV_5_2_POPULAR_COLLECTIVE": {
-        "category": "GOV_5",
-        "label_en": "Popular Economy Collective",
-        "label_fr": "Collectif d'économie populaire",
-        "scope_note": (
-            "Self-organized association of marginalized or informal workers "
-            "pooling tools, safety nets, and workspaces."
-        ),
-    },
-    "GOV_5_3_DEMOCRATIC_UNION": {
-        "category": "GOV_5",
-        "label_en": "Democratic Labor Union Local",
-        "label_fr": "Syndicat démocratique local",
-        "scope_note": (
-            "Member-controlled workplace union exercising collective bargaining "
-            "and democratic worker governance to advance decent work across "
-            "the SSE."
-        ),
-    },
+    code: {
+        "category": meta["category"],
+        "label_en": meta["label_en"],
+        "label_fr": meta["label_fr"],
+        "scope_note": meta["scope_note_en"],
+        "scope_note_en": meta["scope_note_en"],
+        "scope_note_fr": meta.get("scope_note_fr", ""),
+    }
+    for code, meta in _DATA["subtypes"].items()
 }
 
 # ── Derived lookups ─────────────────────────────────────────────────────────
@@ -301,15 +168,21 @@ def format_governance_taxonomy_prompt() -> str:
         "3. EXCLUSIONS → EXCLUDED_NON_SSE when any apply: investor-owned / "
         "private for-profits; top-down non-profits with self-perpetuating "
         "donor/corporate boards and no worker or voting-member power; "
-        "government / state entities (hospital authorities and ministry-run "
-        "facilities with government-appointed boards, public universities/colleges "
-        "as state institutions, Crown corporations, municipal bodies) — NOT "
+        "SETTLER-COLONIAL state entities (federal/provincial/municipal "
+        "governments, Crown corporations, state-owned utilities, hospital authorities and ministry-run "
+        "facilities with government-appointed boards, public universities/colleges as state institutions) — NOT "
         "independent registered-charity / non-profit hospitals that merely receive "
         "public health-system funding; corporate trade associations "
         "(chambers of commerce, industry lobbies); registered political parties "
         "/ electoral campaign organizations; and extractive co-ops that "
-        "violate SSE decent-work or ecological criteria. Do NOT exclude "
-        "citizens' advocacy, civic campaign, or public-interest movement "
+        "violate SSE decent-work or ecological criteria. INDIGENOUS GOVERNMENTS: "
+        "Indigenous Nation enterprises exercising community self-determination "
+        "(e.g., Band Council-owned resource stewardship, iwi trusts, autonomous "
+        "municipality cooperatives) are NOT excluded — classify as GOV_3_2. The "
+        "distinction is community self-governance (subsidiarity, Indigenous "
+        "sovereignty) vs. colonial state administration. Only exclude Indigenous "
+        "entities that function as delegated colonial state administrators. Do NOT "
+        "exclude citizens' advocacy, civic campaign, or public-interest movement "
         "nonprofits merely because they advocate rather than trade — those "
         "are typically GOV_4_1_MEMBER_NPO (or another GOV_4/GOV_5 subtype) "
         "when SSE Yes, never EXCLUDED_NON_SSE for 'not an enterprise'.",
