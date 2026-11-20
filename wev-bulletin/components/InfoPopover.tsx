@@ -88,16 +88,16 @@ export default function InfoPopover({
       clearTimeout(timerRef.current);
       timerRef.current = null;
     }
-    setOpen(nextOpen);
-    if (!nextOpen) {
+    // Keep the opening method until the content finishes closing.
+    if (nextOpen) {
       setOpenedByHover(false);
     }
+    setOpen(nextOpen);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setOpenedByHover(false);
       handleOpenChange(!open);
     }
   };
@@ -127,6 +127,7 @@ export default function InfoPopover({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onOpenAutoFocus={openedByHover ? (e) => e.preventDefault() : undefined}
+        onCloseAutoFocus={openedByHover ? (e) => e.preventDefault() : undefined}
       >
         {typeof content === 'string' ? (
           <div dangerouslySetInnerHTML={{ __html: content }} />

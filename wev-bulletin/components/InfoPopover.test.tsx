@@ -73,6 +73,46 @@ describe('InfoPopover', () => {
     expect(screen.queryByText('Tooltip popup text')).not.toBeInTheDocument();
   });
 
+  it('leaves focus in place after Escape closes a hover-opened popover', () => {
+    render(
+      <>
+        <input aria-label="Search" />
+        <InfoPopover hoverable content="Tooltip popup text">
+          <span>Hover Trigger</span>
+        </InfoPopover>
+      </>,
+    );
+
+    const input = screen.getByRole('textbox');
+    input.focus();
+    fireEvent.mouseEnter(screen.getByRole('button'));
+    act(() => {
+      vi.advanceTimersByTime(350);
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(input).toHaveFocus();
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(input).toHaveFocus();
+
+    const trigger = screen.getByRole('button');
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveFocus();
+
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+  });
+
   it('buffers closing by 150ms when leaving', () => {
     render(
       <InfoPopover hoverable content="Tooltip popup text">
