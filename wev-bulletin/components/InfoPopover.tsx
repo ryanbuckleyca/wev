@@ -32,7 +32,7 @@ export default function InfoPopover({
 }: InfoPopoverProps) {
   const [open, setOpen] = React.useState(false);
   const [openedByHover, setOpenedByHover] = React.useState(false);
-  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const triggerRef = React.useRef<HTMLDivElement>(null);
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   React.useEffect(() => {
@@ -105,11 +105,11 @@ export default function InfoPopover({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <button
+        <div
           ref={triggerRef}
-          type="button"
-          className={`inline-flex cursor-help bg-transparent border-0 p-0 m-0 font-inherit ${className}`}
+          className={`inline-flex cursor-help ${className}`}
           style={{ touchAction: 'manipulation' }}
+          role="button"
           aria-label={ariaLabel}
           tabIndex={triggerTabIndex ?? 0}
           onMouseEnter={handleMouseEnter}
@@ -117,7 +117,7 @@ export default function InfoPopover({
           onKeyDown={handleKeyDown}
         >
           {children}
-        </button>
+        </div>
       </PopoverTrigger>
       <PopoverContent
         side="top"
