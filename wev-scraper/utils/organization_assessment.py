@@ -292,7 +292,14 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
   (including multi-discipline firms whose core line is environmental science,
   water resources, remediation, or environmental engineering) →
   environment-circular-economy (not community-development-philanthropy-volunteering).
-- Foundations whose core program is education / fellowships → education-knowledge.
+- Broad multi-cause, regional, or community foundations (e.g., Centraide, United Way, community foundations) →
+  community-development-philanthropy-volunteering. Auxiliary foundations dedicated to supporting a specific
+  institutional service or single cause domain (e.g., hospital foundations, university endowments, arts foundations,
+  wildlife conservation trust funds) → their operational domain sector (e.g., social-health-care-services,
+  education-knowledge, arts-culture-media, environment-circular-economy).
+- Formal accredited schools, colleges, and degree/diploma programs → education-knowledge.
+  Environmental nonprofits delivering climate awareness workshops, eco-certifications, youth eco-clubs,
+  or green skills training → environment-circular-economy.
 - Arts marketing, audience development, cultural fundraising, ticketing /
   subscription services for arts organizations, or arts-information services →
   arts-culture-media (not social-health-care-services; not
@@ -302,6 +309,11 @@ _SECTOR_PRIORITY_RULES = """SECTOR PRIORITY (when multiple sectors could fit):
   employment-workforce-integration (not business-professional-services).
 - Tourist lodging / ecotourism → recreation-tourism-hospitality;
   emergency shelters / HLMs → housing-collective-real-estate.
+- Legal defense clinics, public interest litigation, and rights advocacy
+  (including environmental law organizations, tenant rights associations, and
+  Indigenous legal defense funds) → advocacy-rights-representation (primary legal/court
+  modality takes precedence over domain cause; do not map to environment or housing
+  unless direct physical stewardship or housing management is the core operation).
 - other-nec is residual/catch-all — prefer a more specific sector whenever one applies.
 - Never use facet IDs (role/function, population/cause, employer type) as sector_id.
 - Return the slug ID shown as ID `...` in ALLOWED SECTORS (not MASTER codes like SSE_SEC_01)."""

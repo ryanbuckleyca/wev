@@ -12,6 +12,8 @@ import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { computeOrgValueMatch } from '@/lib/organizations/value-match';
 import type { OrgRecord } from '@/lib/organizations/types';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
+import SectorTooltip from './SectorTooltip';
+import GovernanceTooltip from './GovernanceTooltip';
 import { buttonVariants } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -73,13 +75,14 @@ export default function OrganizationProfileHeader({
                     : t('orgType')}
                   :
                 </span>{' '}
-                {governanceLabel}
+                <GovernanceTooltip subtype={org.governance_subtype} label={governanceLabel} />
               </div>
             )}
 
             {sectorLabel && (
               <div className="flex flex-col items-start gap-1.5">
-                <span className="font-medium text-foreground">{t('sector')}:</span> {sectorLabel}
+                <span className="font-medium text-foreground">{t('sector')}:</span>{' '}
+                <SectorTooltip sectorId={org.sector_id} label={sectorLabel} />
               </div>
             )}
 

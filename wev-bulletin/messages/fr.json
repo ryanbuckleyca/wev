@@ -51,7 +51,8 @@
       },
       "other-nec": {
         "label": "Autre / non classé ailleurs"
-      }
+      },
+      "includes": "Comprend :"
     }
   },
   "organizations": {
@@ -115,7 +116,7 @@
     "noSector": "Secteur non précisé",
     "noOrganizationSectors": "Aucun secteur disponible",
     "browseBySector": "Parcourir par secteur",
-    "browseBySectorHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) par domaine d'activité.",
+    "browseBySectorHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) selon leur activité principale au quotidien (soins, logement, éducation, défense juridique, etc.).",
     "browseSectors": "Parcourir tous les secteurs",
     "browseByGovernance": "Parcourir par gouvernance",
     "browseByGovernanceHint": "Explorez les organisations d'économie sociale et solidaire (ÉSS) selon qui détient la propriété et le contrôle démocratique.",
@@ -123,7 +124,7 @@
       "category": {
         "GOV_1": "Coopératives démocratiques à propriété collective",
         "GOV_2": "Mutuelles et institutions financières",
-        "GOV_3": "Fiducies foncières et gestion d'actifs collectifs",
+        "GOV_3": "Gestion d'actifs collectifs et souveraineté territoriale",
         "GOV_4": "OBNL participatifs et entreprises sociales",
         "GOV_5": "Collectifs de l'économie populaire et de terrain",
         "EXCLUDED": "Exclu (hors ÉSS)"

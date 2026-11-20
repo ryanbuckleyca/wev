@@ -9,6 +9,8 @@ import { pickOrgLocalizedText } from '@/lib/organizations/localized';
 import { canonicalizeSectorId } from '@/lib/sectors';
 import { safeUrl } from '@/lib/url';
 import SseBadge from './SseBadge';
+import SectorTooltip from './SectorTooltip';
+import GovernanceTooltip from './GovernanceTooltip';
 import OrgValuesMatchFooter from './OrgValuesMatchFooter';
 import Collapsible from './Collapsible';
 import type { OrgIndexEntry } from '@/lib/organizations/types';
@@ -93,8 +95,14 @@ function OrganizationCardHeader({
             </Link>
             {org.is_sse ? <SseBadge label={sseBadgeLabel} /> : null}
           </div>
-          {metadata ? (
-            <div className="text-muted-foreground text-sm truncate">{metadata}</div>
+          {sectorLabel || governanceLabel ? (
+            <div className="flex items-center gap-1.5 text-muted-foreground text-sm truncate">
+              {sectorLabel ? <SectorTooltip sectorId={org.sector_id} label={sectorLabel} /> : null}
+              {sectorLabel && governanceLabel ? <span aria-hidden="true">•</span> : null}
+              {governanceLabel ? (
+                <GovernanceTooltip subtype={org.governance_subtype} label={governanceLabel} />
+              ) : null}
+            </div>
           ) : null}
         </div>
 
